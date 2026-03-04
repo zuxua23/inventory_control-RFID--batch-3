@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="20dp"
+    app:cardBackgroundColor="@color/blue_theme"
+    app:cardElevation="4dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?android:attr/selectableItemBackground"
+    android:stateListAnimator="@animator/card_click_animator">
+
+    <LinearLayout
+        android:id="@+id/itemDo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp">
+
+        <TextView
+            android:id="@+id/tvDoNo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="[DO NO]"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:fontFamily="@font/raleway_bold" />
+
+        <TextView
+            android:id="@+id/tvDoName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="[DO name]"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:fontFamily="@font/raleway_bold" />
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

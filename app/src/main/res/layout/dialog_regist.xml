@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    app:cardCornerRadius="30dp"
+    android:elevation="10dp"
+    android:layout_margin="40dp"
+    app:cardBackgroundColor="@color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <ImageView
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_warning"/>
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="20dp"
+            android:paddingTop="10dp"
+            android:text="Are you sure you want to Regist This Tag?"
+            android:textSize="16sp"
+            android:fontFamily="@font/raleway_bold"
+            android:textAlignment="center"
+            android:textColor="@color/black"/>
+
+        <Spinner
+            android:id="@+id/spinnerItems"
+            android:layout_width="match_parent"
+            android:layout_height="45dp"
+            android:layout_marginTop="15dp"
+            android:layout_marginHorizontal="10dp"
+            android:backgroundTint="@color/blue_theme" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:orientation="horizontal"
+            android:paddingLeft="30dp"
+            android:paddingRight="30dp"
+            android:weightSum="2">
+
+            <Button
+                android:id="@+id/btnNo"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:backgroundTint="@color/merah"
+                android:fontFamily="@font/raleway_bold"
+                android:text="No"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                app:cornerRadius="20dp" />
+
+            <Button
+                android:id="@+id/btnYes"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:fontFamily="@font/raleway_bold"
+                android:backgroundTint="#01C470"
+                android:text="Yes"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                app:cornerRadius="20dp" />
+        </LinearLayout>
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

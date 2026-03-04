@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    app:cardCornerRadius="30dp"
+    android:elevation="10dp"
+    android:layout_margin="40dp"
+    app:cardBackgroundColor="@color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="6dp"
+            android:fontFamily="@font/raleway_bold"
+            android:paddingBottom="15dp"
+            android:text="Set your IP Network"
+            android:textColor="@color/black"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_setting_edit_text"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/etIpAPI"
+                android:layout_width="170dp"
+                android:layout_height="35dp"
+                android:background="@color/white"
+                android:hint="http://1.2.3.4:1234/"
+                android:fontFamily="@font/raleway_regular"
+                android:textColor="@android:color/black"
+                android:textColorHint="@android:color/darker_gray"
+                android:textSize="14dp" />
+
+            <ImageButton
+                android:id="@+id/buttonCekIp"
+                android:layout_width="35dp"
+                android:layout_height="35dp"
+                android:background="@android:color/transparent"
+                android:stateListAnimator="@null"
+                android:foreground="?android:attr/selectableItemBackground"
+                android:src="@drawable/ic_ceklis" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingLeft="30dp"
+            android:paddingTop="20dp"
+            android:paddingRight="30dp"
+            android:weightSum="2">
+
+            <Button
+                android:id="@+id/btnCancel"
+                android:layout_width="140dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:backgroundTint="@color/merah"
+                android:fontFamily="@font/raleway_bold"
+                android:stateListAnimator="@null"
+                android:foreground="?android:attr/selectableItemBackground"
+                android:text="Cancel"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                app:cornerRadius="30dp" />
+
+            <Button
+                android:id="@+id/btnApplyIp"
+                android:layout_width="140dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:fontFamily="@font/raleway_bold"
+                android:backgroundTint="#01C470"
+                android:stateListAnimator="@null"
+                android:foreground="?android:attr/selectableItemBackground"
+                android:text="Apply"
+                android:textAlignment="center"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                app:cornerRadius="30dp" />
+        </LinearLayout>
+    </LinearLayout>
+</androidx.cardview.widget.CardView>
+

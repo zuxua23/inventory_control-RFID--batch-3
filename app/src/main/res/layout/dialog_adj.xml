@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    app:cardCornerRadius="30dp"
+    android:elevation="10dp"
+    android:layout_margin="40dp"
+    app:cardBackgroundColor="@color/white">
+
+    <ImageButton
+        android:id="@+id/btnFaq"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/ic_faq"
+        android:layout_marginTop="16dp"
+        android:layout_marginStart="16dp"
+        android:background="@android:color/transparent" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="24dp">
+
+        <ImageView
+            android:layout_width="55dp"
+            android:layout_height="55dp"
+            android:src="@drawable/ic_question_alert" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:text="What's Your Choice?"
+            android:textSize="18sp"
+            android:fontFamily="@font/raleway_bold"
+            android:textAlignment="center"
+            android:textColor="@color/black" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <Button
+                android:id="@+id/btnRemove"
+                android:layout_width="130dp"
+                android:layout_height="40dp"
+                android:backgroundTint="@color/merah"
+                android:fontFamily="@font/raleway_bold"
+                android:stateListAnimator="@null"
+                android:text="Remove"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                app:cornerRadius="20dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Or"
+                android:textSize="12sp"
+                android:fontFamily="@font/raleway_bold"
+                android:textColor="@color/black" />
+
+            <Button
+                android:id="@+id/btnAddManual"
+                android:layout_width="130dp"
+                android:layout_height="40dp"
+                android:fontFamily="@font/raleway_bold"
+                android:backgroundTint="#01C470"
+                android:stateListAnimator="@null"
+                android:text="Add Manual"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                app:cornerRadius="20dp" />
+
+        </LinearLayout>
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

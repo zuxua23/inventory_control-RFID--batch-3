@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:fitsSystemWindows="true">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <ImageView
+                android:layout_width="160dp"
+                android:layout_height="132dp"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="16dp"
+                android:backgroundTint="#20FFFFFF"
+                android:padding="16dp"
+                android:src="@drawable/ic_box_24"
+                app:tint="#0181CC" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:letterSpacing="0.02"
+                android:text="Inventory Control"
+                android:textColor="#0181CC"
+                android:fontFamily="@font/raleway_extra_bold"
+                android:textSize="26sp"
+                android:paddingBottom="30dp"
+                android:textStyle="bold" />
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/blue_theme"
+                app:cardCornerRadius="20dp">
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+                <View android:layout_width="8dp" android:layout_height="8dp" android:background="@drawable/shape_paku" android:layout_gravity="top|start" android:layout_margin="15dp"/>
+                <View android:layout_width="8dp" android:layout_height="8dp" android:background="@drawable/shape_paku" android:layout_gravity="top|end" android:layout_margin="15dp"/>
+                <View android:layout_width="8dp" android:layout_height="8dp" android:background="@drawable/shape_paku" android:layout_gravity="bottom|start" android:layout_margin="15dp"/>
+                <View android:layout_width="8dp" android:layout_height="8dp" android:background="@drawable/shape_paku" android:layout_gravity="bottom|end" android:layout_margin="15dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="32dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="Welcome Back!"
+                        android:fontFamily="@font/raleway_semi_bold"
+                        android:textColor="@color/bg"
+                        android:textSize="20sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="24dp"
+                        android:text="Please sign in to continue"
+                        android:textColor="@color/bg"
+                        android:fontFamily="@font/raleway_light"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="Username"
+                        android:fontFamily="@font/raleway_bold"
+                        android:textColor="@color/bg"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/etUsername"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:layout_marginBottom="20dp"
+                        android:background="@drawable/bg_edit_text"
+                        android:drawablePadding="12dp"
+                        android:hint="admin123"
+                        android:fontFamily="@font/raleway_regular"
+                        android:imeOptions="actionNext"
+                        android:inputType="text"
+                        android:maxLines="1"
+                        android:textColor="@color/black"
+                        android:paddingHorizontal="16dp"
+                        android:textColorHint="@color/text_grey" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="Password"
+                        android:fontFamily="@font/raleway_bold"
+                        android:textColor="@color/bg"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <EditText
+                        android:id="@+id/etPassword"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:fontFamily="@font/raleway_regular"
+                        android:layout_marginBottom="32dp"
+                        android:background="@drawable/bg_edit_text"
+                        android:drawablePadding="12dp"
+                        android:hint="••••••••"
+                        android:imeOptions="actionDone"
+                        android:inputType="textPassword"
+                        android:maxLines="1"
+                        android:textColor="@color/black"
+                        android:paddingHorizontal="16dp"
+                        android:textColorHint="@color/text_grey" />
+
+                    <Button
+                        android:id="@+id/btnLogin"
+                        android:layout_width="150dp"
+                        android:layout_height="50dp"
+                        android:backgroundTint="@color/green_button"
+                        android:text="Sign In"
+                        android:textAllCaps="false"
+
+                        android:gravity="center"
+                        android:layout_gravity="center"
+                        android:fontFamily="@font/raleway_bold"
+                        android:stateListAnimator="@null"
+                        android:textColor="@color/white"
+                        android:textSize="18sp"
+                        app:cornerRadius="20dp" />
+
+                </LinearLayout>
+                </FrameLayout>
+            </androidx.cardview.widget.CardView>
+        </LinearLayout>
+    </ScrollView>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="right"
+        android:padding="10dp">
+
+        <ImageButton
+            android:id="@+id/btnSetting"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/ic_setting_24"
+            android:background="@drawable/bg_btn_setting"
+            android:stateListAnimator="@null"
+            app:tint="@color/black" />
+    </LinearLayout>
+</FrameLayout>

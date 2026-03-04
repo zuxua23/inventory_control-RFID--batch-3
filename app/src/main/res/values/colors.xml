@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="abu">#F1F4F5</color>
+    <color name="primary">#4B7BEC</color>
+    <color name="merah">#E74C3C</color>
+    <color name="light_blue_bg">#F5F6FA</color>
+    <color name="soft_blue">#E3F2FD</color>
+    <color name="text_dark">#263238</color>
+    <color name="text_grey">#78909C</color>
+    <color name="success_green">#4CAF50</color>
+    <color name="success_bg">#E8F5E9</color>
+    <color name="warning_orange">#F57C00</color>
+    <color name="warning_bg">#FFF3E0</color>
+    <color name="bg">#F4F7F9</color>
+    <color name="blue_theme">#0181CC</color>
+    <color name="green_button">#01C470</color>
+    <color name="bg_white">#F4F7F9</color>
+</resources>

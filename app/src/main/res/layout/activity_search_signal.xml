@@ -8,10 +8,11 @@
 
     <ImageView
         android:id="@+id/btnBack"
-        android:layout_width="34dp"
-        android:layout_height="30dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_marginStart="10dp"
-        android:layout_marginTop="15dp"
+        android:layout_marginTop="10dp"
+        android:padding="8dp"
         android:src="@drawable/baseline_arrow_back_24"
         android:clickable="true"
         android:focusable="true"
@@ -23,9 +24,9 @@
     <androidx.cardview.widget.CardView
         android:id="@+id/cardHeaderSearch"
         android:layout_width="match_parent"
-        android:layout_height="75dp"
+        android:layout_height="80dp"
         android:layout_marginHorizontal="15dp"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="5dp"
         app:cardCornerRadius="16dp"
         app:cardBackgroundColor="@color/blue_theme"
         app:layout_constraintTop_toBottomOf="@id/btnBack">
@@ -42,6 +43,7 @@
                 android:text="Locating: [Item Name]"
                 android:textColor="@color/white"
                 android:textSize="16sp"
+                android:layout_marginRight="10dp"
                 android:fontFamily="@font/raleway_bold"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toStartOf="@+id/cardSwitchContainer"
@@ -52,7 +54,7 @@
                 android:id="@+id/cardSwitchContainer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="18dp"
+                app:cardCornerRadius="20dp"
                 app:cardElevation="0dp"
                 app:cardBackgroundColor="@color/white"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -63,27 +65,29 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="2dp"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="4dp"
                     android:gravity="center_vertical">
 
                     <TextView
                         android:id="@+id/tvModeLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="RFID"
-                        android:textSize="12sp"
-                        android:textColor="@color/blue_theme"
+                        android:layout_marginEnd="6dp"
                         android:fontFamily="@font/raleway_bold"
-                        android:layout_marginEnd="4dp"/>
+                        android:text="RFID"
+                        android:textColor="@color/blue_theme"
+                        android:textSize="14sp" />
 
                     <Switch
                         android:id="@+id/switchRfid"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:minWidth="48dp"
+                        android:minHeight="32dp"
                         android:checked="true"
-                        android:thumbTint="@color/blue_theme"
-                        android:trackTint="@color/text_grey"
+                        android:thumbTint="@color/switch_thumb_selector"
+                        android:trackTint="@color/switch_track_selector"
                         tools:ignore="UseSwitchCompatOrMaterialXml" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -95,7 +99,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_margin="15dp"
-        app:cardCornerRadius="25dp"
+        app:cardCornerRadius="16dp"
         app:cardElevation="8dp"
         app:layout_constraintTop_toBottomOf="@id/cardHeaderSearch"
         app:layout_constraintBottom_toTopOf="@id/btnStopSearch">
@@ -140,6 +144,7 @@
                 android:layout_height="wrap_content"
                 android:text="-00 dBm"
                 android:layout_marginTop="20dp"
+                android:textSize="22sp"
                 android:fontFamily="@font/raleway_bold"
                 android:textColor="@color/blue_theme"/>
         </LinearLayout>
@@ -151,9 +156,10 @@
         android:layout_height="60dp"
         android:layout_margin="20dp"
         android:text="STOP SEARCHING"
-        android:backgroundTint="#FF5252"
+        android:backgroundTint="@color/merah"
         android:textColor="@color/white"
         android:fontFamily="@font/raleway_bold"
+        app:cornerRadius="16dp"
         app:layout_constraintBottom_toBottomOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

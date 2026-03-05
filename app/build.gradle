@@ -45,4 +45,9 @@ dependencies {
     implementation 'org.slf4j:slf4j-api:1.7.32'
     implementation 'com.github.tony19:logback-android:3.0.0'
     implementation project(path: ':DENSOScannerSDK')
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'com.google.android.material:material:1.9.0'
+    def room_version = "2.6.1"
+    implementation "androidx.room:room-runtime:$room_version"
+    annotationProcessor "androidx.room:room-compiler:$room_version"
 }

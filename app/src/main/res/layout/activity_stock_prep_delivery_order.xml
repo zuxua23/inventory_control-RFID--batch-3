@@ -10,10 +10,11 @@
 
     <ImageView
         android:id="@+id/btnBack"
-        android:layout_width="34dp"
-        android:layout_height="30dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_marginStart="10dp"
-        android:layout_marginTop="15dp"
+        android:layout_marginTop="10dp"
+        android:padding="8dp"
         android:src="@drawable/baseline_arrow_back_24"
         android:clickable="true"
         android:focusable="true"
@@ -98,7 +99,7 @@
         app:cardElevation="8dp"
         app:cardBackgroundColor="@color/white"
         app:layout_constraintTop_toBottomOf="@id/cardHeader"
-        app:layout_constraintBottom_toTopOf="@id/btnRefresh">
+        app:layout_constraintBottom_toBottomOf="parent">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
@@ -123,15 +124,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_marginTop="10dp"
+                android:paddingBottom="70dp"
+                android:clipToPadding="false"
                 android:verticalScrollbarPosition="left"
                 android:scrollbars="vertical"
-                android:scrollbarThumbVertical="@drawable/scrollbar_thumb"
-                android:scrollbarTrackVertical="@drawable/scrollbar_track"
-                android:scrollbarSize="6dp"
-                android:fadeScrollbars="false"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tvListTitle"
-                app:layout_constraintVertical_bias="1.0"
                 tools:listitem="@layout/item_delivery_order" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
@@ -139,11 +137,11 @@
     <androidx.cardview.widget.CardView
         android:id="@+id/btnRefresh"
         android:layout_width="wrap_content"
-        android:layout_height="38dp"
+        android:layout_height="45dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
-        app:cardCornerRadius="20dp"
-        app:cardElevation="6dp"
+        android:layout_marginBottom="24dp"
+        app:cardCornerRadius="22.5dp"
+        app:cardElevation="10dp"
         app:cardBackgroundColor="@color/white"
         android:clickable="true"
         android:focusable="true"
@@ -153,11 +151,10 @@
 
         <LinearLayout
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:orientation="horizontal"
             android:paddingHorizontal="20dp"
-            android:paddingVertical="8dp"
-            android:layout_gravity="center">
+            android:gravity="center">
 
             <ImageView
                 android:layout_width="20dp"
@@ -171,9 +168,8 @@
                 android:layout_height="wrap_content"
                 android:text="Refresh"
                 android:textColor="@color/blue_theme"
-                android:textSize="15sp"
+                android:textSize="16sp"
                 android:fontFamily="@font/raleway_bold"/>
-
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 

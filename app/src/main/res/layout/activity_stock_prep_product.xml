@@ -10,10 +10,11 @@
 
     <ImageView
         android:id="@+id/btnBack"
-        android:layout_width="34dp"
-        android:layout_height="30dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_marginStart="10dp"
-        android:layout_marginTop="15dp"
+        android:layout_marginTop="10dp"
+        android:padding="8dp"
         android:src="@drawable/baseline_arrow_back_24"
         android:clickable="true"
         android:focusable="true"
@@ -147,7 +148,7 @@
                 android:layout_marginStart="12dp"
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="16dp"
-                android:layout_marginEnd="4dp"
+                android:layout_marginEnd="8dp"
                 android:orientation="vertical"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@+id/cardRfid"
@@ -158,11 +159,11 @@
                     android:id="@+id/tvScanned"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="4dp"
+                    android:layout_marginBottom="6dp"
                     android:fontFamily="@font/raleway_bold"
                     android:text="Scanned : 0"
                     android:textColor="@color/white"
-                    android:textSize="12sp" />
+                    android:textSize="18sp" />
 
                 <TextView
                     android:id="@+id/tvNoDo"
@@ -172,7 +173,7 @@
                     android:fontFamily="@font/raleway_bold"
                     android:text="No : DO-1234-123"
                     android:textColor="@color/white"
-                    android:textSize="12sp" />
+                    android:textSize="14sp" />
 
                 <TextView
                     android:id="@+id/tvDateDo"
@@ -181,7 +182,7 @@
                     android:fontFamily="@font/raleway_bold"
                     android:text="Date : 12-12-2012"
                     android:textColor="@color/white"
-                    android:textSize="12sp" />
+                    android:textSize="14sp" />
 
             </LinearLayout>
 
@@ -210,7 +211,7 @@
                         android:fontFamily="@font/raleway_bold"
                         android:text="RFID"
                         android:textColor="@color/blue_theme"
-                        android:textSize="12sp" />
+                        android:textSize="15sp" />
 
                     <Switch
                         android:id="@+id/switchRfid"
@@ -218,9 +219,9 @@
                         android:layout_height="wrap_content"
                         android:minWidth="48dp"
                         android:minHeight="48dp"
-                        android:checked="true"
-                        android:thumbTint="@color/blue_theme"
-                        android:trackTint="#C8C8C8"
+                        android:checked="false"
+                        android:thumbTint="@color/switch_thumb_selector"
+                        android:trackTint="@color/switch_track_selector"
                         android:contentDescription="RFID Switch"
                         tools:ignore="UseSwitchCompatOrMaterialXml" />
                 </LinearLayout>

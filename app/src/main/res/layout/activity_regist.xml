@@ -10,10 +10,11 @@
 
     <ImageView
         android:id="@+id/btnBack"
-        android:layout_width="34dp"
-        android:layout_height="30dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_marginStart="10dp"
-        android:layout_marginTop="15dp"
+        android:layout_marginTop="10dp"
+        android:padding="8dp"
         android:src="@drawable/baseline_arrow_back_24"
         android:clickable="true"
         android:focusable="true"
@@ -127,7 +128,7 @@
                 android:fontFamily="@font/raleway_bold"
                 android:text="Scanned: 0"
                 android:textColor="@color/white"
-                android:textSize="15sp"
+                android:textSize="18sp"
                 android:layout_centerVertical="true"
                 android:layout_toEndOf="@id/pakuScanned"
                 android:layout_marginStart="15dp" />
@@ -166,9 +167,9 @@
                         android:layout_height="wrap_content"
                         android:minWidth="48dp"
                         android:minHeight="48dp"
-                        android:checked="true"
-                        android:thumbTint="@color/blue_theme"
-                        android:trackTint="#C8C8C8"
+                        android:checked="false"
+                        android:thumbTint="@color/switch_thumb_selector"
+                        android:trackTint="@color/switch_track_selector"
                         android:contentDescription="RFID Switch"
                         tools:ignore="UseSwitchCompatOrMaterialXml" />
                 </LinearLayout>
@@ -188,7 +189,7 @@
         app:cardElevation="8dp"
         app:cardBackgroundColor="@color/white"
         app:layout_constraintTop_toBottomOf="@id/cardInfo"
-        app:layout_constraintBottom_toTopOf="@id/btnRefresh">
+        app:layout_constraintBottom_toBottomOf="parent">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
@@ -213,6 +214,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_marginTop="10dp"
+                android:paddingBottom="70dp"
+                android:clipToPadding="false"
                 android:verticalScrollbarPosition="left"
                 android:scrollbars="vertical"
                 android:scrollbarThumbVertical="@drawable/scrollbar_thumb"
@@ -221,7 +224,6 @@
                 android:fadeScrollbars="false"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tvListTitle"
-                app:layout_constraintVertical_bias="1.0"
                 tools:listitem="@layout/item_tag" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>

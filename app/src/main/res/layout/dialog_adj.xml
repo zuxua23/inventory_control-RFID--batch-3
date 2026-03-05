@@ -50,7 +50,7 @@
             <Button
                 android:id="@+id/btnRemove"
                 android:layout_width="130dp"
-                android:layout_height="40dp"
+                android:layout_height="50dp"
                 android:backgroundTint="@color/merah"
                 android:fontFamily="@font/raleway_bold"
                 android:stateListAnimator="@null"
@@ -64,14 +64,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Or"
-                android:textSize="12sp"
+                android:textSize="10sp"
                 android:fontFamily="@font/raleway_bold"
                 android:textColor="@color/black" />
 
             <Button
                 android:id="@+id/btnAddManual"
                 android:layout_width="130dp"
-                android:layout_height="40dp"
+                android:layout_height="50dp"
                 android:fontFamily="@font/raleway_bold"
                 android:backgroundTint="#01C470"
                 android:stateListAnimator="@null"

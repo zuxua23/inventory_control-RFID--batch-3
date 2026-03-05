@@ -10,10 +10,11 @@
 
     <ImageView
         android:id="@+id/btnBack"
-        android:layout_width="34dp"
-        android:layout_height="30dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_marginStart="10dp"
         android:layout_marginTop="15dp"
+        android:padding="8dp"
         android:src="@drawable/baseline_arrow_back_24"
         android:clickable="true"
         android:focusable="true"
@@ -73,27 +74,33 @@
             <View android:layout_width="8dp" android:layout_height="8dp" android:background="@drawable/shape_paku" android:layout_gravity="bottom|end" android:layout_margin="12dp"/>
 
             <LinearLayout
-                android:layout_width="285dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
+                android:layout_marginHorizontal="25dp"
                 android:layout_marginVertical="15dp"
                 android:background="@drawable/bg_setting_edit_text"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="8dp"
+                android:gravity="center_vertical"
                 android:orientation="horizontal">
 
                 <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
                     android:src="@drawable/ic_search"
-                    android:paddingRight="5dp"/>
+                    android:paddingEnd="8dp"/>
+
                 <EditText
                     android:id="@+id/searchItem"
                     android:layout_width="match_parent"
-                    android:layout_height="20dp"
-                    android:background="@color/white"
+                    android:layout_height="wrap_content"
+                    android:background="@android:color/transparent"
                     android:fontFamily="@font/raleway_regular"
                     android:textColor="@android:color/black"
+                    android:hint="Search item"
                     android:textColorHint="@android:color/darker_gray"
-                    android:textSize="12dp" />
+                    android:textSize="16sp" />
 
                </LinearLayout>
         </FrameLayout>
@@ -111,16 +118,6 @@
         app:cardBackgroundColor="@color/white"
         app:layout_constraintTop_toBottomOf="@id/cardInfo"
         app:layout_constraintBottom_toBottomOf="parent">
-
-        <EditText
-            android:id="@+id/resultScan"
-            android:layout_width="1dp"
-            android:layout_height="1dp"
-            android:background="@null"
-            android:textColor="@android:color/transparent"
-            android:cursorVisible="false"
-            android:inputType="textNoSuggestions"
-            android:imeOptions="actionDone" />
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"

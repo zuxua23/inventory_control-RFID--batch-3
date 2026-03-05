@@ -1,14 +1,13 @@
 package com.example.inventory_system_ht.Activity;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.KeyEvent;
 import android.view.View;
-import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.CompoundButton;
@@ -16,11 +15,18 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Switch;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+// SDK DENSO
+import com.densowave.scannersdk.Barcode.BarcodeData;
+import com.densowave.scannersdk.Barcode.BarcodeDataReceivedEvent;
+import com.densowave.scannersdk.Common.CommScanner;
+import com.densowave.scannersdk.Listener.BarcodeDataDelegate;
+import com.densowave.scannersdk.Listener.RFIDDataDelegate;
+import com.densowave.scannersdk.RFID.RFIDData;
+import com.densowave.scannersdk.RFID.RFIDDataReceivedEvent;
 
 import com.example.inventory_system_ht.Adapter.ItemAdapter;
 import com.example.inventory_system_ht.Models.ItemModel;
@@ -30,7 +36,8 @@ import com.google.android.material.snackbar.Snackbar;
 import java.util.ArrayList;
 import java.util.List;
 
-public class StockInActivity extends AppCompatActivity {
+// 👇 SEKARANG EXTENDS KE BASE BIAR DAPET FITUR SAGA & CEK KONEKSI 👇
+public class StockInActivity extends BaseScannerActivity implements BarcodeDataDelegate, RFIDDataDelegate {
 
     private ImageView btnBack;
     private Button btnClear, btnSave;
@@ -38,14 +45,13 @@ public class StockInActivity extends AppCompatActivity {
     private EditText resultScan;
     private TextView tvScanned;
     private RecyclerView rvTags;
-
-    // Variabel Array & Adapter
     private ItemAdapter adapter;
     private List<ItemModel> scannedItemsList;
     private int scanCount = 0;
 
     private ToneGenerator toneGen;
     private Handler handler = new Handler(Looper.getMainLooper());
+    private CommScanner mCommScanner;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,9 +60,7 @@ public class StockInActivity extends AppCompatActivity {
 
         try {
             toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        } catch (Exception e) { e.printStackTrace(); }
 
         btnBack = findViewById(R.id.btnBack);
         btnClear = findViewById(R.id.btnClear);
@@ -66,173 +70,208 @@ public class StockInActivity extends AppCompatActivity {
         tvScanned = findViewById(R.id.tvScanned);
         rvTags = findViewById(R.id.rvTags);
 
-        // Setup RecyclerView
+        switchRfid.setChecked(false);
         scannedItemsList = new ArrayList<>();
         adapter = new ItemAdapter(scannedItemsList);
         rvTags.setLayoutManager(new LinearLayoutManager(this));
         rvTags.setAdapter(adapter);
 
+        setupScanner();
+
         resultScan.setShowSoftInputOnFocus(false);
         resultScan.postDelayed(() -> resultScan.requestFocus(), 100);
 
         resultScan.addTextChangedListener(new android.text.TextWatcher() {
-            private final long DELAY = 500; // Tunggu setengah detik setelah scan
-            private Runnable searchRunnable;
-
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (searchRunnable != null) {
-                    handler.removeCallbacks(searchRunnable);
-                }
+                handler.removeCallbacksAndMessages(null);
             }
-
             @Override
             public void afterTextChanged(android.text.Editable s) {
                 String hasilScan = s.toString().trim();
-
-                // Kalau kosong, cuekin aja
                 if (hasilScan.isEmpty()) return;
 
-                // Bikin timer baru: Kalau udah 500ms diam (scan selesai), hajar datanya!
-                searchRunnable = () -> {
+                handler.postDelayed(() -> {
                     prosesValidasiLokal(hasilScan);
-
-                    // Bersihin text biar siap buat scan berikutnya, tanpa bikin IMM bawel
-                    resultScan.removeTextChangedListener(this); // Stop nyimak bentar biar gak infinite loop
+                    resultScan.removeTextChangedListener(this);
                     resultScan.setText("");
-                    resultScan.addTextChangedListener(this); // Mulai nyimak lagi
-
+                    resultScan.addTextChangedListener(this);
                     resultScan.postDelayed(() -> resultScan.requestFocus(), 50);
-                };
-                handler.postDelayed(searchRunnable, DELAY);
+                }, 500);
             }
         });
 
-        // Tombol Back
         btnBack.setOnClickListener(v -> finish());
 
-        // Switch RFID / Barcode
-        switchRfid.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            View rootView = findViewById(android.R.id.content);
-            String msg = isChecked ? "Mode RFID: ON" : "Mode RFID: OFF";
-            Snackbar.make(rootView, msg, 1000).show();
-            if(isChecked) resultScan.requestFocus();
-        });
-
-        // Tombol Clear
         btnClear.setOnClickListener(v -> {
             scannedItemsList.clear();
             adapter.notifyDataSetChanged();
             scanCount = 0;
             tvScanned.setText("Scanned: 0");
             resultScan.requestFocus();
-            Toast.makeText(this, "List dibersihkan", Toast.LENGTH_SHORT).show();
+            showSagaFeedback("List dibersihkan bre!", true);
         });
 
-        // Tombol Save
+        // ==========================================
+        // 👇 LOGIC SAVE DENGAN FLOW SAGA & ROLLBACK 👇
+        // ==========================================
         btnSave.setOnClickListener(v -> {
             if (scannedItemsList.isEmpty()) {
-                Toast.makeText(this, "Belum ada barang!", Toast.LENGTH_SHORT).show();
+                showSagaFeedback("Belum ada barang yang di-scan bre!", false);
                 return;
             }
-            Toast.makeText(this, "Data " + scanCount + " item berhasil disimpan (Lokal)!", Toast.LENGTH_LONG).show();
+
+            // 1. CEK INTERNET (Pake fungsi dari BaseScannerActivity)
+            if (!isNetworkConnected()) {
+                showSagaFeedback("KONEKSI PUTUS! Cek WiFi/Data lu sebelum simpan.", false);
+                return;
+            }
+
+            // 2. SIMULASI KIRIM KE BACKEND (SAGA FLOW)
+            showSagaFeedback("Menyimpan ke server (Saga Process)...", true);
+
+            handler.postDelayed(() -> {
+                // Simulasi Response: 1=Sukses, 2=Rollback (Gagal di Tengah)
+                int skenarioSaga = 2;
+
+                if (skenarioSaga == 1) {
+                    showSagaFeedback("SUKSES: Data tersimpan permanen!", true);
+
+                    // Clear list hanya jika benar-benar sukses (Saga Completed)
+                    scannedItemsList.clear();
+                    adapter.notifyDataSetChanged();
+                    scanCount = 0;
+                    tvScanned.setText("Scanned: 0");
+                }
+                else if (skenarioSaga == 2) {
+                    // SERVER BALIKIN STATUS ROLLBACK
+                    String errorMsg = "SAGA ROLLBACK: Transaksi dibatalkan server (Redis Stream Timeout)!";
+                    showSagaFeedback(errorMsg, false);
+
+                    // LIST TIDAK DIHAPUS (Biar operator tinggal coba Save lagi nanti)
+                }
+            }, 2000);
+        });
+
+        // SWITCH LOGIC
+        switchRfid.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    boolean isConnected = (mCommScanner != null && mCommScanner.getRFIDScanner() != null);
+                    if (!isConnected) {
+                        showSagaFeedback("HT not Connected to Reader RFID", false);
+                        switchRfid.setOnCheckedChangeListener(null);
+                        switchRfid.setChecked(false);
+                        switchRfid.setOnCheckedChangeListener(this);
+                        return;
+                    }
+                }
+                String msg = isChecked ? "Mode RFID: ON" : "Mode RFID: OFF";
+                Snackbar.make(findViewById(android.R.id.content), msg, 1000).show();
+                resultScan.requestFocus();
+            }
         });
     }
 
-    // FUNGSI PENGGANTI API (Simpan ke Array)
+    private void setupScanner() {
+        // mCommScanner = MyApplication.getCommScanner();
+        if (mCommScanner != null) {
+            try {
+                mCommScanner.getRFIDScanner().setDataDelegate(this);
+                mCommScanner.getBarcodeScanner().setDataDelegate(this);
+            } catch (Exception e) { e.printStackTrace(); }
+        }
+    }
+
+    @Override
+    public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
+        if (!switchRfid.isChecked()) return;
+        for (RFIDData data : event.getRFIDData()) {
+            String epc = bytesToHexString(data.getUII());
+            handler.post(() -> prosesValidasiLokal(epc));
+        }
+    }
+
+    @Override
+    public void onBarcodeDataReceived(CommScanner scanner, BarcodeDataReceivedEvent event) {
+        if (switchRfid.isChecked()) return;
+        if (!event.getBarcodeData().isEmpty()) {
+            String barcode = new String(event.getBarcodeData().get(0).getData());
+            handler.post(() -> prosesValidasiLokal(barcode));
+        }
+    }
+
     private void prosesValidasiLokal(String scanData) {
-        handler.removeCallbacksAndMessages(null);
-
-        boolean isRfidMode = switchRfid.isChecked();
-        ItemModel foundItem = lookupDummyData(scanData, isRfidMode);
-
-        // Kalau barang gak ada di database dummy
+        ItemModel foundItem = lookupDummyData(scanData, switchRfid.isChecked());
         if (foundItem == null) {
-            playBeep(false); // Bunyi tetoot
-            String errorMsg = isRfidMode ? "Tag RFID" : "Barcode";
-            Snackbar.make(findViewById(android.R.id.content), errorMsg + " " + scanData + " gak dikenali!", Snackbar.LENGTH_SHORT).show();
+            playBeep(false);
+            showSagaFeedback("Tag/Barcode tidak dikenali!", false);
             return;
         }
 
-        // Kalau barang ada, cek apakah udah ada di list (buat update Qty)
         boolean isExist = false;
         for (int i = 0; i < scannedItemsList.size(); i++) {
-            if ((isRfidMode && scannedItemsList.get(i).getEpcTag().equals(scanData)) ||
-                    (!isRfidMode && scannedItemsList.get(i).getItemId().equals(scanData))) {
-
-                int currentQty = scannedItemsList.get(i).getQty();
-                scannedItemsList.get(i).setQty(currentQty + 1);
+            if ((switchRfid.isChecked() && scannedItemsList.get(i).getEpcTag().equals(scanData)) ||
+                    (!switchRfid.isChecked() && scannedItemsList.get(i).getItemId().equals(scanData))) {
+                scannedItemsList.get(i).setQty(scannedItemsList.get(i).getQty() + 1);
                 adapter.notifyItemChanged(i);
                 isExist = true;
                 break;
             }
         }
 
-        // Kalau barang belum ada di list, tambah baris baru
         if (!isExist) {
             scannedItemsList.add(new ItemModel(foundItem.getEpcTag(), foundItem.getItemId(), foundItem.getItemName(), 1));
             adapter.notifyItemInserted(scannedItemsList.size() - 1);
-            rvTags.scrollToPosition(scannedItemsList.size() - 1); // Auto scroll ke bawah
+            rvTags.scrollToPosition(scannedItemsList.size() - 1);
         }
-
-        // Update UI Sukses
         scanCount++;
         tvScanned.setText("Scanned: " + scanCount);
-        playBeep(true); // Bunyi Tiit
+        playBeep(true);
     }
 
-    // FUNGSI DUMMY DATABASE (Gak Perlu API)
     private ItemModel lookupDummyData(String scanData, boolean isRfid) {
         if (isRfid) {
             if (scanData.equalsIgnoreCase("112233")) return new ItemModel("112233", "ITM001", "Kemeja Anti Kusut", 1);
-            if (scanData.equalsIgnoreCase("445566")) return new ItemModel("445566", "ITM002", "Vans Japan Edition", 1);
-            if (scanData.equalsIgnoreCase("778899")) return new ItemModel("778899", "ITM003", "Trucker Hat Custom", 1);
         } else {
             if (scanData.equalsIgnoreCase("ITM001")) return new ItemModel("-", "ITM001", "Kemeja Anti Kusut", 1);
-            if (scanData.equalsIgnoreCase("ITM002")) return new ItemModel("-", "ITM002", "Vans Japan Edition", 1);
-            if (scanData.equalsIgnoreCase("ITM003")) return new ItemModel("-", "ITM003", "Trucker Hat Custom", 1);
         }
         return null;
     }
 
-    // FUNGSI BUNYI BEEP
     private void playBeep(boolean isSuccess) {
-        if (toneGen == null) return;
-        try {
-            if (isSuccess) {
-                toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 150); // Bunyi sukses
-            } else {
-                toneGen.startTone(ToneGenerator.TONE_CDMA_HIGH_L, 300); // Bunyi error
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (toneGen != null) toneGen.startTone(isSuccess ? ToneGenerator.TONE_PROP_BEEP : ToneGenerator.TONE_CDMA_HIGH_L, 150);
+    }
+
+    private String bytesToHexString(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) { sb.append(String.format("%02X", b)); }
+        return sb.toString();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (mCommScanner != null) {
+            try {
+                mCommScanner.getRFIDScanner().setDataDelegate(null);
+                mCommScanner.getBarcodeScanner().setDataDelegate(null);
+            } catch (Exception e) { e.printStackTrace(); }
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (resultScan != null) {
-            resultScan.postDelayed(() -> {
-                resultScan.requestFocus();
-                // Sembunyiin keyboard otomatis
-                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (imm != null) {
-                    imm.hideSoftInputFromWindow(resultScan.getWindowToken(), 0);
-                }
-            }, 200);
-        }
+        setupScanner();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (toneGen != null) {
-            toneGen.release(); // Matiin memori ToneGenerator
-            toneGen = null;
-        }
+        if (toneGen != null) { toneGen.release(); toneGen = null; }
     }
 }

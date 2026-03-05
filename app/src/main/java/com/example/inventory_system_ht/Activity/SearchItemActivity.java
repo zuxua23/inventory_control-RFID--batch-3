@@ -2,16 +2,24 @@ package com.example.inventory_system_ht.Activity;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.view.KeyEvent;
-import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.ImageView;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+// 👇 IMPORT SDK DENSO 👇
+import com.densowave.scannersdk.Barcode.BarcodeData;
+import com.densowave.scannersdk.Barcode.BarcodeDataReceivedEvent;
+import com.densowave.scannersdk.Common.CommScanner;
+import com.densowave.scannersdk.Listener.BarcodeDataDelegate;
+import com.densowave.scannersdk.Listener.RFIDDataDelegate;
+import com.densowave.scannersdk.RFID.RFIDData;
+import com.densowave.scannersdk.RFID.RFIDDataReceivedEvent;
 
 import com.example.inventory_system_ht.Adapter.TagAdapter;
 import com.example.inventory_system_ht.Models.TagModel;
@@ -20,14 +28,22 @@ import com.example.inventory_system_ht.R;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SearchItemActivity extends AppCompatActivity {
+/**
+ * SearchItemActivity: Mencari barang dalam list.
+ * Sudah terintegrasi dengan BaseScannerActivity untuk cek koneksi & feedback.
+ */
+public class SearchItemActivity extends BaseScannerActivity implements BarcodeDataDelegate, RFIDDataDelegate {
 
     private ImageView btnBack;
-    private EditText etSearchItem, resultScan;
+    private EditText etSearchItem;
     private RecyclerView rvTags;
     private TagAdapter adapter;
     private List<TagModel> allItemList;
     private List<TagModel> filteredList;
+
+    // Integrasi SDK Denso
+    private CommScanner mCommScanner;
+    private Handler handler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,25 +52,32 @@ public class SearchItemActivity extends AppCompatActivity {
 
         btnBack = findViewById(R.id.btnBack);
         etSearchItem = findViewById(R.id.searchItem);
-        resultScan = findViewById(R.id.resultScan);
         rvTags = findViewById(R.id.rvTags);
 
         allItemList = new ArrayList<>();
         filteredList = new ArrayList<>();
 
-        // Dummy Data
-        allItemList.add(new TagModel("EPC001", "Kemeja Sato Anti Kusut"));
-        allItemList.add(new TagModel("EPC002", "Vans Japan Edition"));
-        allItemList.add(new TagModel("EPC003", "Trucker Hat Custom"));
-        allItemList.add(new TagModel("EPC004", "RFID Tag Sample"));
-
+        allItemList.add(new TagModel("EPC001", "ITM-001", "Kemeja Anti Kusut", "DO-001", 0));
+        allItemList.add(new TagModel("EPC002", "ITM-002", "Vans Japan Edition", "DO-001", 0));
+        allItemList.add(new TagModel("EPC003", "ITM-003", "Trucker Hat Custom", "DO-002", 0));
+        allItemList.add(new TagModel("EPC004", "ITM-004", "RFID Tag Sample", "DO-002", 0));
         filteredList.addAll(allItemList);
 
         adapter = new TagAdapter(filteredList);
         rvTags.setLayoutManager(new LinearLayoutManager(this));
         rvTags.setAdapter(adapter);
 
-        // Fitur 1: Pencarian via Ngetik
+        // Setup Scanner pas awal activity dibuat
+        setupScanner();
+
+        // Cek koneksi di awal sebagai peringatan halus
+        if (!isNetworkConnected()) {
+            showSagaFeedback("Mode Offline: Pencarian hanya menggunakan data lokal.", false);
+        }
+
+        // Focus ke search bar otomatis biar operator gak usah ngeklik box-nya
+        etSearchItem.requestFocus();
+
         etSearchItem.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -68,52 +91,107 @@ public class SearchItemActivity extends AppCompatActivity {
             public void afterTextChanged(Editable s) {}
         });
 
-        // Fitur 2: Kalau User Klik Item di List (Langsung pindah ke halaman Sinyal)
         adapter.setOnItemClickListener(item -> {
             Intent intent = new Intent(SearchItemActivity.this, SearchSignalActivity.class);
-            // Lempar data barang yang dipilih
             intent.putExtra("SELECTED_ITEM", item);
-            // Defaultnya kita kasih mode RFID True pas pindah halaman
-            intent.putExtra("IS_RFID_MODE", true);
+            // Default ke false karena reader RFID fisik belum terpasang
+            intent.putExtra("IS_RFID_MODE", false);
             startActivity(intent);
         });
 
-        // Fitur 3: Kalau User nge-Scan pakai Handheld Scanner (Mode Keyboard Wedge)
-        resultScan.requestFocus();
-        resultScan.setShowSoftInputOnFocus(false);
-        resultScan.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_DONE || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
-                String scannedData = resultScan.getText().toString().trim();
-                if (!scannedData.isEmpty()) {
-                    // Cari barang di list berdasarkan hasil scan
-                    for (TagModel item : allItemList) {
-                        if (item.getEpcTag().equals(scannedData)) {
-                            Intent intent = new Intent(SearchItemActivity.this, SearchSignalActivity.class);
-                            intent.putExtra("SELECTED_ITEM", item);
-                            intent.putExtra("IS_RFID_MODE", true);
-                            startActivity(intent);
-                            break; // Stop looping kalau udah ketemu
-                        }
-                    }
-                    resultScan.setText(""); // Kosongin lagi buat scan berikutnya
-                }
-                return true;
-            }
-            return false;
-        });
-
-        // Fitur 4: Tombol Back
         btnBack.setOnClickListener(v -> finish());
     }
 
     private void filter(String text) {
         filteredList.clear();
+        String query = text.toLowerCase().trim();
+
         for (TagModel item : allItemList) {
-            if (item.getProductName().toLowerCase().contains(text.toLowerCase()) ||
-                    item.getEpcTag().toLowerCase().contains(text.toLowerCase())) {
+            if (item.getProductName().toLowerCase().contains(query) ||
+                    item.getEpcTag().toLowerCase().contains(query)) {
                 filteredList.add(item);
             }
         }
         adapter.notifyDataSetChanged();
+    }
+
+    // ==========================================
+    // SDK DENSO IMPLEMENTATION
+    // ==========================================
+
+    private void setupScanner() {
+        // Ambil instance scanner (Sesuaikan dengan cara lu naruh CommScanner di project)
+        // mCommScanner = MyApplication.getCommScanner();
+
+        if (mCommScanner != null) {
+            try {
+                mCommScanner.getRFIDScanner().setDataDelegate(this);
+                mCommScanner.getBarcodeScanner().setDataDelegate(this);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
+        // Jika scan RFID, masukkan EPC ke kolom search
+        List<RFIDData> dataList = event.getRFIDData();
+        for (RFIDData data : dataList) {
+            String epc = bytesToHexString(data.getUII());
+            handler.post(() -> {
+                etSearchItem.setText(epc);
+                etSearchItem.setSelection(etSearchItem.getText().length()); // Pindah kursor ke akhir
+                showSagaFeedback("RFID Scanned: " + epc, true);
+            });
+        }
+    }
+
+    @Override
+    public void onBarcodeDataReceived(CommScanner scanner, BarcodeDataReceivedEvent event) {
+        // Jika scan Barcode, masukkan kode ke kolom search
+        List<BarcodeData> dataList = event.getBarcodeData();
+        if (!dataList.isEmpty()) {
+            String barcode = new String(dataList.get(0).getData());
+            handler.post(() -> {
+                etSearchItem.setText(barcode);
+                etSearchItem.setSelection(etSearchItem.getText().length());
+                showSagaFeedback("Barcode Scanned: " + barcode, true);
+            });
+        }
+    }
+
+    private String bytesToHexString(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02X", b));
+        }
+        return sb.toString();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Pasang ulang delegate saat aplikasi kembali ke foreground
+        setupScanner();
+
+        // Pastikan kursor tetap standby di kolom pencarian
+        if (etSearchItem != null) {
+            etSearchItem.postDelayed(() -> etSearchItem.requestFocus(), 200);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Lepas delegate agar tidak bentrok dengan activity lain
+        if (mCommScanner != null) {
+            try {
+                mCommScanner.getRFIDScanner().setDataDelegate(null);
+                mCommScanner.getBarcodeScanner().setDataDelegate(null);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

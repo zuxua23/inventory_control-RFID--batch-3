@@ -39,8 +39,12 @@ public class DOAdapter extends RecyclerView.Adapter<DOAdapter.DOViewHolder> {
     @Override
     public void onBindViewHolder(@NonNull DOViewHolder holder, int position) {
         DOModel doItem = doList.get(position);
+
         holder.tvDoNo.setText(doItem.getDoNo());
-        holder.tvDoName.setText(doItem.getDoName());
+
+        // 👇 FIX: Diganti jadi getStatus() menyesuaikan PDM Database lu 👇
+        holder.tvDoName.setText(doItem.getStatus());
+
         holder.itemView.setOnClickListener(v -> listener.onItemClick(doItem));
     }
 
@@ -49,6 +53,8 @@ public class DOAdapter extends RecyclerView.Adapter<DOAdapter.DOViewHolder> {
         public DOViewHolder(@NonNull View itemView) {
             super(itemView);
             tvDoNo = itemView.findViewById(R.id.tvDoNo);
+
+            // Biarin aja ID XML-nya tvDoName biar lu gak repot ngedit layout UI lagi
             tvDoName = itemView.findViewById(R.id.tvDoName);
         }
     }

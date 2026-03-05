@@ -58,6 +58,7 @@
     </RelativeLayout>
 
     <androidx.cardview.widget.CardView
+        android:id="@+id/cardStatus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="10dp"
@@ -175,9 +176,7 @@
 
                         <ImageButton
                             android:id="@+id/ButtonStockIn"
-                            android:layout_width="77dp"
-                            android:layout_height="69dp"
-                            android:src="@drawable/stock_in_icon"
+                            android:layout_width="90dp"    android:layout_height="85dp"   android:src="@drawable/stock_in_icon"
                             android:padding="8dp"
                             android:background="@drawable/bg_badge_card_menu"
                             android:foreground="@drawable/bg_menu_selector"/>
@@ -189,8 +188,7 @@
                             android:layout_marginTop="8dp"
                             android:gravity="center"
                             android:textColor="@color/white"
-                            android:textSize="12sp"
-                            android:fontFamily="@font/raleway_semi_bold"/>
+                            android:textSize="13sp"        android:fontFamily="@font/raleway_semi_bold"/>
                     </LinearLayout>
 
                     <LinearLayout
@@ -202,9 +200,7 @@
 
                         <ImageButton
                             android:id="@+id/ButtonStockPreparation"
-                            android:layout_width="77dp"
-                            android:layout_height="69dp"
-                            android:background="@drawable/bg_badge_card_menu"
+                            android:layout_width="90dp"    android:layout_height="85dp"   android:background="@drawable/bg_badge_card_menu"
                             android:padding="8dp"
                             android:src="@drawable/stock_preparation_icon"
                             android:foreground="@drawable/bg_menu_selector"/>
@@ -216,8 +212,7 @@
                             android:layout_marginTop="8dp"
                             android:gravity="center"
                             android:textColor="@color/white"
-                            android:textSize="12sp"
-                            android:fontFamily="@font/raleway_semi_bold"/>
+                            android:textSize="13sp"        android:fontFamily="@font/raleway_semi_bold"/>
                     </LinearLayout>
 
                     <LinearLayout
@@ -229,9 +224,7 @@
 
                         <ImageButton
                             android:id="@+id/ButtonStockTaking"
-                            android:layout_width="77dp"
-                            android:layout_height="69dp"
-                            android:background="@drawable/bg_badge_card_menu"
+                            android:layout_width="90dp"    android:layout_height="85dp"   android:background="@drawable/bg_badge_card_menu"
                             android:foreground="@drawable/bg_menu_selector"
                             android:padding="8dp"
                             android:src="@drawable/stock_taking_icon" />
@@ -242,9 +235,9 @@
                             android:text="Stock Taking And Adjutment"
                             android:layout_marginTop="8dp"
                             android:gravity="center"
+                            android:textAlignment="center"
                             android:textColor="@color/white"
-                            android:textSize="12sp"
-                            android:fontFamily="@font/raleway_semi_bold"/>
+                            android:textSize="13sp"        android:fontFamily="@font/raleway_semi_bold"/>
                     </LinearLayout>
 
                     <LinearLayout
@@ -257,9 +250,7 @@
 
                         <ImageButton
                             android:id="@+id/ButtonTagRegis"
-                            android:layout_width="77dp"
-                            android:layout_height="69dp"
-                            android:src="@drawable/ic_tag"
+                            android:layout_width="90dp"    android:layout_height="85dp"   android:src="@drawable/ic_tag"
                             android:background="@drawable/bg_badge_card_menu"
                             android:foreground="@drawable/bg_menu_selector"
                             android:padding="8dp"/>
@@ -271,8 +262,7 @@
                             android:layout_marginTop="8dp"
                             android:gravity="center"
                             android:textColor="@color/white"
-                            android:textSize="12sp"
-                            android:fontFamily="@font/raleway_semi_bold"/>
+                            android:textSize="13sp"        android:fontFamily="@font/raleway_semi_bold"/>
                     </LinearLayout>
 
                     <LinearLayout
@@ -285,9 +275,7 @@
 
                         <ImageButton
                             android:id="@+id/ButtonSearchItem"
-                            android:layout_width="77dp"
-                            android:layout_height="69dp"
-                            android:background="@drawable/bg_badge_card_menu"
+                            android:layout_width="90dp"    android:layout_height="85dp"   android:background="@drawable/bg_badge_card_menu"
                             android:foreground="@drawable/bg_menu_selector"
                             android:padding="8dp"
                             android:src="@drawable/seacrh_item_icon" />
@@ -299,8 +287,7 @@
                             android:layout_marginTop="8dp"
                             android:gravity="center"
                             android:textColor="@color/white"
-                            android:textSize="12sp"
-                            android:fontFamily="@font/raleway_semi_bold"/>
+                            android:textSize="13sp"        android:fontFamily="@font/raleway_semi_bold"/>
                     </LinearLayout>
                 </GridLayout>
             </LinearLayout>

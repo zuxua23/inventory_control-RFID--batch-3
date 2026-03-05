@@ -5,17 +5,16 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.Handler;
-import android.view.KeyEvent;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
-import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Switch;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AppCompatActivity; // Pake ini biar findViewById kenal
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -30,12 +29,12 @@ import com.densowave.scannersdk.RFID.RFIDDataReceivedEvent;
 import com.example.inventory_system_ht.Adapter.TagAdapter;
 import com.example.inventory_system_ht.Models.TagModel;
 import com.example.inventory_system_ht.R;
-import com.google.android.material.snackbar.Snackbar;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class TagRegisActivity extends AppCompatActivity implements BarcodeDataDelegate, RFIDDataDelegate {
+// 👇 UPGRADE: Extends ke BaseScannerActivity biar fitur Offline & Saga Feedback aktif 👇
+public class TagRegisActivity extends BaseScannerActivity implements BarcodeDataDelegate, RFIDDataDelegate {
 
     private CommScanner mCommScanner;
     private ImageView btnBack;
@@ -54,7 +53,6 @@ public class TagRegisActivity extends AppCompatActivity implements BarcodeDataDe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_regist);
 
-        // Inisialisasi UI
         btnBack = findViewById(R.id.btnBack);
         resultScan = findViewById(R.id.resultScan);
         tvScanned = findViewById(R.id.tvScanned);
@@ -62,10 +60,12 @@ public class TagRegisActivity extends AppCompatActivity implements BarcodeDataDe
         btnRefresh = findViewById(R.id.btnRefresh);
         rvTags = findViewById(R.id.rvTags);
 
+        // WAJIB: Default switch dimatikan biar mulai dari mode Barcode
+        switchRfid.setChecked(false);
+
         registeredTagList = new ArrayList<>();
         adapter = new TagAdapter(registeredTagList);
 
-        // Sekarang "this" udah valid sebagai Context karena pake AppCompatActivity
         rvTags.setLayoutManager(new LinearLayoutManager(this));
         rvTags.setAdapter(adapter);
 
@@ -76,50 +76,105 @@ public class TagRegisActivity extends AppCompatActivity implements BarcodeDataDe
             tvScanned.setText("Scanned: " + scanCount);
             registeredTagList.clear();
             adapter.notifyDataSetChanged();
-            Snackbar.make(v, "Data session di-refresh bre!", Snackbar.LENGTH_SHORT).show();
+            showSagaFeedback("Session data is refreshed, bro!", true);
+            resultScan.requestFocus();
         });
 
         adapter.setOnItemClickListener(selectedTag -> {
-            // Buka dialog registrasi untuk Tag yang diklik
             showRegisterDialog(selectedTag);
         });
-        // Panggil fungsi setup scanner
+
         setupScanner();
 
+        // Cek koneksi di awal
+        if (!isNetworkConnected()) {
+            showSagaFeedback("Offline Mode: Data will be saved locally.", false);
+        }
+
+        // TextWatcher buat nangkep hasil scan Barcode (Keyboard Wedge)
+        resultScan.setShowSoftInputOnFocus(false);
+        resultScan.postDelayed(() -> resultScan.requestFocus(), 100);
+
+        resultScan.addTextChangedListener(new android.text.TextWatcher() {
+            private final long DELAY = 500;
+            private Runnable searchRunnable;
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (searchRunnable != null) {
+                    handler.removeCallbacks(searchRunnable);
+                }
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                String hasilScan = s.toString().trim();
+                if (hasilScan.isEmpty()) return;
+
+                searchRunnable = () -> {
+                    processScannedData(hasilScan);
+
+                    resultScan.removeTextChangedListener(this);
+                    resultScan.setText("");
+                    resultScan.addTextChangedListener(this);
+                    resultScan.postDelayed(() -> resultScan.requestFocus(), 50);
+                };
+                handler.postDelayed(searchRunnable, DELAY);
+            }
+        });
+
+        // LOGIC SMART SWITCH
+        CompoundButton.OnCheckedChangeListener switchListener = new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    boolean isRfidReady = (mCommScanner != null && mCommScanner.getRFIDScanner() != null);
+
+                    if (!isRfidReady) {
+                        showSagaFeedback("The RFID reader is not installed on the HT, bro!", false);
+
+                        switchRfid.setOnCheckedChangeListener(null);
+                        switchRfid.setChecked(false);
+                        switchRfid.setOnCheckedChangeListener(this);
+                        return;
+                    }
+                }
+
+                String msg = isChecked ? "RFID Mode: ON" : "RFID Mode: OFF";
+                showSagaFeedback(msg, true);
+
+                if (isChecked && resultScan != null) {
+                    resultScan.requestFocus();
+                }
+            }
+        };
+        switchRfid.setOnCheckedChangeListener(switchListener);
     }
 
     private void showRegisterDialog(TagModel scannedTag) {
         Dialog dialog = new Dialog(this);
-        dialog.setContentView(R.layout.dialog_regist); // Pake layout dialog lu
+        dialog.setContentView(R.layout.dialog_regist);
 
-        TextView tvTitle = dialog.findViewById(R.id.tvTitle); // Sesuaikan ID di XML lu
+        TextView tvTitle = dialog.findViewById(R.id.tvTitle);
         tvTitle.setText("Register Tag: " + scannedTag.getEpcTag());
-
-        // --- TAMBAHAN PENTING: Pilihan Barang ---
-        // Di sini lu butuh Spinner atau AutoCompleteTextView buat milih barang
-        // Lu bisa ambil data dari allItemList (tb_item)
 
         Button btnYes = dialog.findViewById(R.id.btnYes);
         btnYes.setOnClickListener(v -> {
-            // Logika Registrasi (Kirim ke API / Database)
-            // 1. Ambil itm_id dari pilihan user
-            // 2. Hubungkan dengan epc_tag
-
             saveToDatabase(scannedTag.getEpcTag(), "SELECTED_ITEM_ID");
-
             dialog.dismiss();
-            Snackbar.make(rvTags, "Tag Berhasil Terdaftar!", Snackbar.LENGTH_SHORT).show();
+            showSagaFeedback("Tag Successfully Registered!", true);
+            resultScan.requestFocus();
         });
 
         dialog.show();
     }
-    private void setupScanner() {
-        // Ambil instance scanner lu di sini (contoh pake Singleton/MainApp)
-        // mCommScanner = MainApplication.getCommScanner();
 
+    private void setupScanner() {
         if (mCommScanner != null) {
             try {
-                // Register delegate biar bisa dengerin hasil scan
                 mCommScanner.getRFIDScanner().setDataDelegate(this);
                 mCommScanner.getBarcodeScanner().setDataDelegate(this);
             } catch (Exception e) {
@@ -128,7 +183,6 @@ public class TagRegisActivity extends AppCompatActivity implements BarcodeDataDe
         }
     }
 
-    // --- LOGIC RFID ---
     @Override
     public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
         if (!switchRfid.isChecked()) return;
@@ -140,7 +194,6 @@ public class TagRegisActivity extends AppCompatActivity implements BarcodeDataDe
         }
     }
 
-    // --- LOGIC BARCODE ---
     @Override
     public void onBarcodeDataReceived(CommScanner scanner, BarcodeDataReceivedEvent event) {
         if (switchRfid.isChecked()) return;
@@ -163,6 +216,8 @@ public class TagRegisActivity extends AppCompatActivity implements BarcodeDataDe
 
         if (!isAlreadyInList) {
             showConfirmDialog(scannedData);
+        } else {
+            showSagaFeedback("This item is already on the list, bro!", false);
         }
     }
 
@@ -179,16 +234,24 @@ public class TagRegisActivity extends AppCompatActivity implements BarcodeDataDe
         Button btnNo = dialog.findViewById(R.id.btnNo);
         Button btnYes = dialog.findViewById(R.id.btnYes);
 
-        btnNo.setOnClickListener(v -> dialog.dismiss());
+        btnNo.setOnClickListener(v -> {
+            dialog.dismiss();
+            resultScan.requestFocus();
+        });
 
         btnYes.setOnClickListener(v -> {
             scanCount++;
             tvScanned.setText("Scanned: " + scanCount);
-            registeredTagList.add(new TagModel(scannedData, "New Product Registered"));
+
+            // 👇 FIX: DUMMY DATA MENGGUNAKAN 5 ARGUMEN 👇
+            // Karena ini registrasi awal, doIdRef bisa diisi "N/A" atau kosong
+            registeredTagList.add(new TagModel(scannedData, "ITM-NEW", "New Product Registered", "N/A", 0));
+
             adapter.notifyItemInserted(registeredTagList.size() - 1);
             rvTags.scrollToPosition(registeredTagList.size() - 1);
             dialog.dismiss();
-            Snackbar.make(findViewById(android.R.id.content), "Sukses terdaftar!", Snackbar.LENGTH_SHORT).show();
+            showSagaFeedback("Registered successfully!", true);
+            resultScan.requestFocus();
         });
 
         dialog.show();
@@ -203,17 +266,29 @@ public class TagRegisActivity extends AppCompatActivity implements BarcodeDataDe
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        // Tutup scanner dengan aman
-        if (mCommScanner != null) {
-            try {
-                mCommScanner.getRFIDScanner().close();
-                mCommScanner.getBarcodeScanner().closeReader();
-            } catch (Exception e) { e.printStackTrace(); }
+    protected void onResume() {
+        super.onResume();
+        setupScanner();
+
+        if (resultScan != null) {
+            resultScan.postDelayed(() -> resultScan.requestFocus(), 200);
         }
     }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (mCommScanner != null) {
+            try {
+                mCommScanner.getRFIDScanner().setDataDelegate(null);
+                mCommScanner.getBarcodeScanner().setDataDelegate(null);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     private void saveToDatabase(String epcTag, String itemId) {
-        // Logika untuk menyimpan ke database (SQLite/Room/Retrofit) taruh di sini bre
+        // Nanti logic API tembak sini
     }
 }

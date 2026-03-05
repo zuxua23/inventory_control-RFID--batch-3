@@ -83,7 +83,7 @@ public class HomeActivity extends BaseScannerActivity {
         View.OnClickListener menuClickListener = v -> {
             // 👇 CEK INTERNET PAS KLIK MENU (Logic Mobile Flow) 👇
             if (!isNetworkConnected()) {
-                showSagaFeedback("Peringatan: Lu lagi Offline bre! Cek koneksi.", false);
+                showSagaFeedback("Warning: You're offline, bro! Check your connection..", false);
             }
 
             int id = v.getId();
@@ -111,7 +111,7 @@ public class HomeActivity extends BaseScannerActivity {
             @Override
             public void handleOnBackPressed() {
                 new AlertDialog.Builder(HomeActivity.this)
-                        .setTitle("Keluar Aplikasi")
+                        .setTitle("Exit Application")
                         .setMessage("Are you sure you want to exit Inventory Control Application?")
                         .setPositiveButton("Yes", (dialog, which) -> finish())
                         .setNegativeButton("No", null)

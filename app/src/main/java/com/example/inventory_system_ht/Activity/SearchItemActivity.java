@@ -72,7 +72,7 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
 
         // Cek koneksi di awal sebagai peringatan halus
         if (!isNetworkConnected()) {
-            showSagaFeedback("Mode Offline: Pencarian hanya menggunakan data lokal.", false);
+            showSagaFeedback("Offline Mode: Search uses only local data.", false);
         }
 
         // Focus ke search bar otomatis biar operator gak usah ngeklik box-nya

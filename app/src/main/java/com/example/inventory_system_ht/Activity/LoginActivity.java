@@ -70,13 +70,13 @@ public class LoginActivity extends BaseScannerActivity {
 
         // 1. Validasi Input Kosong
         if (username.isEmpty() || password.isEmpty()) {
-            showSagaFeedback("Username & Password wajib diisi, bre!", false);
+            showSagaFeedback("Username & Password are required, bro!", false);
             return;
         }
 
         // 2. Cek Koneksi Internet (Pake fungsi sakti dari BaseScannerActivity)
         if (!isNetworkConnected()) {
-            showSagaFeedback("Gagal Login: Internet lu mati, cek WiFi/Data dulu!", false);
+            showSagaFeedback("Login Failed: Your internet is down, check WiFi/Data first!", false);
             return;
         }
 
@@ -94,21 +94,21 @@ public class LoginActivity extends BaseScannerActivity {
                 Log.d(TAG, "onResponse: HTTP Code " + response.code());
 
                 if (response.isSuccessful() && response.body() != null) {
-                    Log.d(TAG, "onResponse: Login Sukses!");
+                    Log.d(TAG, "Login Success!");
 
                     // Simpan Token JWT
                     prefManager.saveToken(response.body().getToken());
 
-                    showSagaFeedback("Login Berhasil! Selamat bekerja, Jan.", true);
+                    showSagaFeedback("Login Successful!", true);
 
                     // Pindah ke HomeActivity
                     startActivity(new Intent(LoginActivity.this, HomeActivity.class));
                     finish();
                 } else {
                     Log.e(TAG, "onResponse: Login Gagal.");
-                    String errorMsg = "Login Gagal: User/Pass salah atau server bermasalah.";
+                    String errorMsg = "Login Failed: Wrong User/Pass or server problem.";
                     if (response.code() == 401) {
-                        errorMsg = "Unauthorized: Akun lu gak terdaftar, bre!";
+                        errorMsg = "Unauthorized: Your account is not registered, bro!";
                     }
                     showSagaFeedback(errorMsg, false);
                 }
@@ -117,7 +117,7 @@ public class LoginActivity extends BaseScannerActivity {
             @Override
             public void onFailure(Call<LoginResponse> call, Throwable t) {
                 Log.e(TAG, "onFailure: Koneksi Gagal/Timeout!", t);
-                showSagaFeedback("Server Timeout: API Backend gak ngerespon!", false);
+                showSagaFeedback("Server Timeout: Backend API is not responding!", false);
             }
         });
     }
@@ -146,16 +146,16 @@ public class LoginActivity extends BaseScannerActivity {
             String ipAddress = etIpAPI.getText().toString().trim();
 
             if (ipAddress.isEmpty()) {
-                Snackbar.make(dialog.findViewById(android.R.id.content), "Isi IP-nya dulu, bre", Snackbar.LENGTH_SHORT).show();
+                Snackbar.make(dialog.findViewById(android.R.id.content), "Fill in the IP first, bro", Snackbar.LENGTH_SHORT).show();
                 return;
             }
 
             if (ipAddress.startsWith("http://") || ipAddress.startsWith("https://")) {
-                Snackbar.make(dialog.findViewById(android.R.id.content), "Format URL bener! Silahkan Apply.", Snackbar.LENGTH_SHORT)
+                Snackbar.make(dialog.findViewById(android.R.id.content), "The URL format is correct! Please apply..", Snackbar.LENGTH_SHORT)
                         .setBackgroundTint(Color.parseColor("#01C470"))
                         .show();
             } else {
-                Snackbar.make(dialog.findViewById(android.R.id.content), "Format Salah! Wajib pake http:// atau https://", Snackbar.LENGTH_SHORT)
+                Snackbar.make(dialog.findViewById(android.R.id.content), "Wrong Format! Must use http:// or https://", Snackbar.LENGTH_SHORT)
                         .setBackgroundTint(Color.parseColor("#C62828"))
                         .show();
             }
@@ -171,7 +171,7 @@ public class LoginActivity extends BaseScannerActivity {
                 showSagaFeedback("API saved successfully: " + ipAddress, true);
                 dialog.dismiss();
             } else {
-                Snackbar.make(dialog.findViewById(android.R.id.content), "API Gak boleh kosong!", Snackbar.LENGTH_SHORT).show();
+                Snackbar.make(dialog.findViewById(android.R.id.content), "API cannot be empty!", Snackbar.LENGTH_SHORT).show();
             }
         });
 

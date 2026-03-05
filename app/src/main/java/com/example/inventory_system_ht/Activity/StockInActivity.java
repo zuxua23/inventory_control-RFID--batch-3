@@ -111,7 +111,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
             scanCount = 0;
             tvScanned.setText("Scanned: 0");
             resultScan.requestFocus();
-            showSagaFeedback("List dibersihkan bre!", true);
+            showSagaFeedback("List cleared bro!", true);
         });
 
         // ==========================================
@@ -119,25 +119,25 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         // ==========================================
         btnSave.setOnClickListener(v -> {
             if (scannedItemsList.isEmpty()) {
-                showSagaFeedback("Belum ada barang yang di-scan bre!", false);
+                showSagaFeedback("No items have been scanned yet, bro!", false);
                 return;
             }
 
             // 1. CEK INTERNET (Pake fungsi dari BaseScannerActivity)
             if (!isNetworkConnected()) {
-                showSagaFeedback("KONEKSI PUTUS! Cek WiFi/Data lu sebelum simpan.", false);
+                showSagaFeedback("CONNECTION LOOSE! Check your WiFi/Data before saving.", false);
                 return;
             }
 
             // 2. SIMULASI KIRIM KE BACKEND (SAGA FLOW)
-            showSagaFeedback("Menyimpan ke server (Saga Process)...", true);
+            showSagaFeedback("Saving to server (Saga Process)...", true);
 
             handler.postDelayed(() -> {
                 // Simulasi Response: 1=Sukses, 2=Rollback (Gagal di Tengah)
                 int skenarioSaga = 2;
 
                 if (skenarioSaga == 1) {
-                    showSagaFeedback("SUKSES: Data tersimpan permanen!", true);
+                    showSagaFeedback("SUCCESS: Data is saved permanently!", true);
 
                     // Clear list hanya jika benar-benar sukses (Saga Completed)
                     scannedItemsList.clear();
@@ -147,7 +147,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
                 }
                 else if (skenarioSaga == 2) {
                     // SERVER BALIKIN STATUS ROLLBACK
-                    String errorMsg = "SAGA ROLLBACK: Transaksi dibatalkan server (Redis Stream Timeout)!";
+                    String errorMsg = "SAGA ROLLBACK: Transaction aborted by server (Redis Stream Timeout)!";
                     showSagaFeedback(errorMsg, false);
 
                     // LIST TIDAK DIHAPUS (Biar operator tinggal coba Save lagi nanti)
@@ -208,7 +208,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         ItemModel foundItem = lookupDummyData(scanData, switchRfid.isChecked());
         if (foundItem == null) {
             playBeep(false);
-            showSagaFeedback("Tag/Barcode tidak dikenali!", false);
+            showSagaFeedback("Tag/Barcode not recognized!", false);
             return;
         }
 

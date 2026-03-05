@@ -61,7 +61,7 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
         setupScanner();
 
         if (!isNetworkConnected()) {
-            showSagaFeedback("Offline Mode: Membaca data DO dari penyimpanan lokal HT.", false);
+            showSagaFeedback("Offline Mode: Read DO data from HT local storage.", false);
         }
 
         // 2. Langsung tarik data dari SQLite pas halaman dibuka
@@ -69,7 +69,7 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
 
         // 3. Tombol Refresh disulap jadi "Penyuntik Data" ke Database
         findViewById(R.id.btnRefresh).setOnClickListener(v -> {
-            showSagaFeedback("Menyuntikkan data DO ke Database Lokal...", true);
+            showSagaFeedback("Injecting DO data into Local Database...", true);
             seedDummyData();
             loadDataFromLocalDB(); // Habis disuntik, langsung baca ulang biar muncul di layar
         });
@@ -84,7 +84,7 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
         if (dataDariDB != null && !dataDariDB.isEmpty()) {
             doList.addAll(dataDariDB); // Masukin data dari DB ke layar
         } else {
-            showSagaFeedback("Database lokal kosong, klik refresh buat nyuntik data dummy.", false);
+            showSagaFeedback("Local database is empty, click refresh to inject dummy data.", false);
         }
 
         adapter.notifyDataSetChanged(); // Refresh adapter UI
@@ -130,7 +130,7 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
                 boolean found = false;
                 for (DOModel doItem : doList) {
                     if (doItem.getDoNo().equalsIgnoreCase(scannedDo)) {
-                        showSagaFeedback("DO Ketemu: Membuka detail " + scannedDo, true);
+                        showSagaFeedback("DO Meet: Opening details " + scannedDo, true);
                         openDetailDO(doItem.getDoNo(), doItem.getCreatedAt());
                         found = true;
                         break;
@@ -138,7 +138,7 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
                 }
 
                 if (!found) {
-                    showSagaFeedback("DO " + scannedDo + " gak ada di list bre!", false);
+                    showSagaFeedback("DO " + scannedDo + " it's not on the list bro!", false);
                 }
             });
         }

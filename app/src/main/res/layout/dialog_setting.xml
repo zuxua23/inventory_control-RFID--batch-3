@@ -37,7 +37,7 @@
 
             <EditText
                 android:id="@+id/etIpAPI"
-                android:layout_width="170dp"
+                android:layout_width="190dp"
                 android:layout_height="35dp"
                 android:background="@color/white"
                 android:hint="http://1.2.3.4:1234/"

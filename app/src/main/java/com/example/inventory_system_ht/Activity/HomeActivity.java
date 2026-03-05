@@ -203,10 +203,14 @@ public class HomeActivity extends AppCompatActivity {
             public void onClick(View v) {
                 dialog.dismiss();
 
+                // Hapus data UserSession (Nama & Role)
                 SharedPreferences sharedPreferences = getSharedPreferences("UserSession", MODE_PRIVATE);
                 SharedPreferences.Editor editor = sharedPreferences.edit();
                 editor.clear();
                 editor.apply();
+
+                // 👇 INI YANG KURANG: Hapus Token JWT & Session 8 Jam 👇
+                prefManager.clearSession();
 
                 Intent intent = new Intent(HomeActivity.this, LoginActivity.class);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

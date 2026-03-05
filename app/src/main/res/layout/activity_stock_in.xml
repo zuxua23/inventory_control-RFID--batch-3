@@ -201,7 +201,7 @@
                 android:layout_height="wrap_content"
                 android:text="List Product:"
                 android:textColor="@color/blue_theme"
-                android:textSize="18sp"
+                android:textSize="15sp"
                 android:fontFamily="@font/raleway_bold"
                 android:textStyle="bold"
                 app:layout_constraintStart_toStartOf="parent"

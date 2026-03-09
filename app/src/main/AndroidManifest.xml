@@ -9,52 +9,75 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@drawable/ic_box_24"
+        android:icon="@mipmap/logo_apk"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/ic_box_24"
+        android:roundIcon="@mipmap/logo_apk"
         android:supportsRtl="true"
         android:theme="@style/Theme.Inventory_system_HT"
         android:usesCleartextTraffic="true">
 
-    <activity
+        <activity
         android:name=".MainActivity"
         android:exported="true"
         android:noHistory="true"
-        android:windowSoftInputMode="adjustResize">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-    </activity>
-    <activity android:name=".Activity.LoginActivity" android:exported="false" />
-    <activity android:name=".Activity.HomeActivity" android:exported="false" />
-    <activity
-        android:name=".Activity.StockInActivity"
-        android:exported="false"
-        android:windowSoftInputMode="stateAlwaysHidden" />
+        android:windowSoftInputMode="adjustResize"
+        android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
-    <activity android:name=".Activity.StockPrepActivity" android:exported="false" />
-    <activity
-        android:name=".Activity.StockPrepProductActivity"
-        android:exported="false"
-        android:windowSoftInputMode="stateAlwaysHidden" />
 
-    <activity
-        android:name=".Activity.StockTakingActivity"
-        android:exported="false"
-        android:windowSoftInputMode="stateAlwaysHidden" />
-
-    <activity
-        android:name=".Activity.TagRegisActivity"
-        android:exported="false"
-        android:windowSoftInputMode="stateAlwaysHidden" />
-
-    <activity
-        android:name=".Activity.SearchItemActivity"
-        android:exported="false"
-        android:windowSoftInputMode="stateAlwaysHidden" />
-        <activity android:name=".Activity.SearchSignalActivity"
+        <activity
+            android:name=".Activity.LoginActivity"
             android:exported="false"
-            android:windowSoftInputMode="stateAlwaysHidden"/>
+            android:screenOrientation="portrait"/>
+
+        <activity
+            android:name=".Activity.HomeActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"/>
+
+        <activity
+            android:name=".Activity.StockInActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateAlwaysHidden"
+            android:screenOrientation="portrait"/>
+
+        <activity
+            android:name=".Activity.StockPrepActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".Activity.StockPrepProductActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateAlwaysHidden"
+            android:screenOrientation="portrait"/>
+
+        <activity
+            android:name=".Activity.StockTakingActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateAlwaysHidden"
+            android:screenOrientation="portrait"/>
+
+        <activity
+            android:name=".Activity.TagRegisActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateAlwaysHidden"
+            android:screenOrientation="portrait"/>
+
+        <activity
+            android:name=".Activity.SearchItemActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateAlwaysHidden"
+            android:screenOrientation="portrait"/>
+
+        <activity
+            android:name=".Activity.SearchSignalActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateAlwaysHidden"
+            android:screenOrientation="portrait"/>
 </application>
     </manifest>

@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
+import com.google.gson.annotations.SerializedName;
 
 import java.io.Serializable;
 
@@ -12,13 +13,20 @@ public class TagModel implements Serializable {
 
     @PrimaryKey
     @NonNull
+    @SerializedName("epcTag")
     @ColumnInfo(name = "epc_tag")
     private String epcTag;
 
+    // 👇 INI YANG BIKIN ERROR TADI: ID UNIK FISIK TAG 👇
+    @SerializedName("id") // Sesuaiin sama nama properti ID di tb_Tag C# lu (biasanya "Id")
+    @ColumnInfo(name = "tag_id")
+    private String tagId;
+
+    @SerializedName("itemId")
     @ColumnInfo(name = "itm_id")
     private String itmId;
 
-    // 👇 GW BALIKIN BIAR UI ACTIVITY LU AMAN 👇
+    @SerializedName("itemName") // Opsional buat mapping API
     @ColumnInfo(name = "product_name")
     private String productName;
 
@@ -28,9 +36,10 @@ public class TagModel implements Serializable {
     @ColumnInfo(name = "sync_status")
     private int syncStatus;
 
-    // Constructor Update
-    public TagModel(@NonNull String epcTag, String itmId, String productName, String doIdRef, int syncStatus) {
+    // Constructor Update (Sekarang minta 6 isian)
+    public TagModel(@NonNull String epcTag, String tagId, String itmId, String productName, String doIdRef, int syncStatus) {
         this.epcTag = epcTag;
+        this.tagId = tagId;
         this.itmId = itmId;
         this.productName = productName;
         this.doIdRef = doIdRef;
@@ -38,10 +47,13 @@ public class TagModel implements Serializable {
     }
 
     // --- GETTER ---
-    @NonNull
-    public String getEpcTag() { return epcTag; }
+    @NonNull public String getEpcTag() { return epcTag; }
+
+    // 👇 FUNGSI PENYELAMAT NYA 👇
+    public String getTagId() { return tagId; }
+
     public String getItmId() { return itmId; }
-    public String getProductName() { return productName; } // Getter UI balek lagi
+    public String getProductName() { return productName; }
     public String getDoIdRef() { return doIdRef; }
     public int getSyncStatus() { return syncStatus; }
 

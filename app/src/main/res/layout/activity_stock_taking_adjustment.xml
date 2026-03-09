@@ -74,7 +74,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Stock Taking &amp;\nAdjustment"
+                android:text="Stock Taking &amp;Adjustment"
                 android:textColor="@color/white"
                 android:textSize="22sp"
                 android:textAlignment="center"
@@ -138,7 +138,7 @@
             <EditText
                 android:id="@+id/etAdjustmentNote"
                 android:layout_width="match_parent"
-                android:layout_height="80dp"
+                android:layout_height="60dp"
                 android:layout_marginHorizontal="8dp"
                 android:background="@drawable/bg_note_text"
                 android:padding="12dp"
@@ -256,8 +256,7 @@
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
         app:cardCornerRadius="20dp"
-        app:cardElevation="6dp"
-        app:cardBackgroundColor="@color/white"
+        app:cardElevation="12dp" app:cardBackgroundColor="@color/white"
         android:clickable="true"
         android:focusable="true"
         android:foreground="?android:attr/selectableItemBackground"

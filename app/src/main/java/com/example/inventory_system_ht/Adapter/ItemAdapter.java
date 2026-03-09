@@ -13,9 +13,19 @@ import com.example.inventory_system_ht.R;
 
 import java.util.List;
 
-public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ItemViewHolder> {
+public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
 
     private List<ItemModel> itemList;
+    private OnItemClickListener listener;
+
+    // Buat fitur hapus item kalau di-klik
+    public interface OnItemClickListener {
+        void onItemClick(ItemModel item);
+    }
+
+    public void setOnItemClickListener(OnItemClickListener listener) {
+        this.listener = listener;
+    }
 
     public ItemAdapter(List<ItemModel> itemList) {
         this.itemList = itemList;
@@ -23,17 +33,30 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ItemViewHolder
 
     @NonNull
     @Override
-    public ItemViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        // Pastiin nama layout XML lu sesuai ya bre, misal: item_product.xml
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_product, parent, false);
-        return new ItemViewHolder(view);
+        return new ViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ItemViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         ItemModel item = itemList.get(position);
-        holder.tvProductId.setText(item.getItemId());
+
+        // 1. TAMPILIN TAG ID / EPC DI ATAS (Sesuai ID XML lu yang baru)
+        holder.tvTagId.setText(item.getEpcTag());
+
+        // 2. TAMPILIN NAMA BARANG DI BAWAH
         holder.tvProductName.setText(item.getItemName());
+
+        // 3. TAMPILIN QTY
         holder.tvQty.setText("Qty: " + item.getQty());
+
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onItemClick(item);
+            }
+        });
     }
 
     @Override
@@ -41,12 +64,13 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ItemViewHolder
         return itemList.size();
     }
 
-    public static class ItemViewHolder extends RecyclerView.ViewHolder {
-        TextView tvProductId, tvProductName, tvQty;
+    public static class ViewHolder extends RecyclerView.ViewHolder {
+        TextView tvTagId, tvProductName, tvQty;
 
-        public ItemViewHolder(@NonNull View itemView) {
+        public ViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvProductId = itemView.findViewById(R.id.tvProductId);
+            // Binding ID dari XML ke Java
+            tvTagId = itemView.findViewById(R.id.tvTagId);
             tvProductName = itemView.findViewById(R.id.tvProductName);
             tvQty = itemView.findViewById(R.id.tvQty);
         }

@@ -57,10 +57,10 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
         allItemList = new ArrayList<>();
         filteredList = new ArrayList<>();
 
-        allItemList.add(new TagModel("EPC001", "ITM-001", "Kemeja Anti Kusut", "DO-001", 0));
-        allItemList.add(new TagModel("EPC002", "ITM-002", "Vans Japan Edition", "DO-001", 0));
-        allItemList.add(new TagModel("EPC003", "ITM-003", "Trucker Hat Custom", "DO-002", 0));
-        allItemList.add(new TagModel("EPC004", "ITM-004", "RFID Tag Sample", "DO-002", 0));
+        allItemList.add(new TagModel("EPC001", "TAG-001", "ITM-001", "Kemeja Anti Kusut", "DO-001", 0));
+        allItemList.add(new TagModel("EPC002", "TAG-002", "ITM-002", "Vans Japan Edition", "DO-001", 0));
+        allItemList.add(new TagModel("EPC003", "TAG-003", "ITM-003", "Trucker Hat Custom", "DO-002", 0));
+        allItemList.add(new TagModel("EPC004", "TAG-004", "ITM-004", "RFID Tag Sample", "DO-002", 0));
         filteredList.addAll(allItemList);
 
         adapter = new TagAdapter(filteredList);

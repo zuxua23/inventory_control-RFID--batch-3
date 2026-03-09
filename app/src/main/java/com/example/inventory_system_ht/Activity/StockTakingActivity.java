@@ -8,7 +8,6 @@ import android.media.ToneGenerator;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.Button;
@@ -17,9 +16,10 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.Switch;
-import android.widget.TextView;
 
 import androidx.cardview.widget.CardView;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.densowave.scannersdk.Barcode.BarcodeData;
 import com.densowave.scannersdk.Barcode.BarcodeDataReceivedEvent;
@@ -29,124 +29,268 @@ import com.densowave.scannersdk.Listener.RFIDDataDelegate;
 import com.densowave.scannersdk.RFID.RFIDData;
 import com.densowave.scannersdk.RFID.RFIDDataReceivedEvent;
 
+import com.example.inventory_system_ht.Adapter.TagAdapter;
+import com.example.inventory_system_ht.Helper.ApiClient;
+import com.example.inventory_system_ht.Helper.ApiService;
+import com.example.inventory_system_ht.Helper.PrefManager;
+import com.example.inventory_system_ht.Models.GeneralResponse;
+import com.example.inventory_system_ht.Models.StockTakingModels;
+import com.example.inventory_system_ht.Models.TagModel;
 import com.example.inventory_system_ht.R;
 
+import java.util.ArrayList;
 import java.util.List;
 
-/**
- * StockTakingActivity: Handles stock adjustments.
- * Integrated with BaseScannerActivity & Saga Pattern Logic.
- */
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 public class StockTakingActivity extends BaseScannerActivity implements BarcodeDataDelegate, RFIDDataDelegate {
 
     private ImageView btnBack;
     private Switch switchRfid;
-    private CardView cardlistTag, btnRefresh;
+    private CardView btnRefresh;
     private EditText resultScan;
+    private RecyclerView rvTags;
 
     // SDK & UTILS GLOBAL
     private CommScanner mCommScanner;
     private ToneGenerator toneGen;
     private Handler handler = new Handler(Looper.getMainLooper());
 
+    // ADAPTER & DATA
+    private TagAdapter adapter;
+    private List<TagModel> masterStockList;
+
+    // BACKEND TOOLS
+    private ApiService api;
+    private String token;
+    private String activeSttId = ""; // Nyimpen Session ID dari Backend
+    private TagModel selectedTag = null; // Tag yang dipilih buat di-remove
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_stock_taking_adjustment);
 
-        // Initialize Beep Sound
-        try {
-            toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
-        } catch (Exception e) { e.printStackTrace(); }
+        // 1. INIT BACKEND
+        PrefManager pref = new PrefManager(this);
+        token = "Bearer " + pref.getToken();
+        api = ApiClient.getClient(this).create(ApiService.class);
 
-        // Initialize UI
+        // 2. INIT UI
+        try { toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100); } catch (Exception e) {}
         btnBack = findViewById(R.id.btnBack);
         switchRfid = findViewById(R.id.switchRfid);
-        cardlistTag = findViewById(R.id.cardlistTag);
         btnRefresh = findViewById(R.id.btnRefresh);
         resultScan = findViewById(R.id.resultScan);
+        rvTags = findViewById(R.id.rvTags);
 
-        // Default to Barcode Mode
+        // Setup RecyclerView
+        masterStockList = new ArrayList<>();
+        adapter = new TagAdapter(masterStockList);
+        rvTags.setLayoutManager(new LinearLayoutManager(this));
+
+        // 👇 INI DIA KABELNYA BRE, JANGAN SAMPE KELUPAAN LAGI 👇
+        adapter.setOnItemClickListener(item -> {
+            showAdjustmentDialog(item);
+        });
+
+        rvTags.setAdapter(adapter); // Pastiin ini tetep ditaruh di paling bawah
+
         switchRfid.setChecked(false);
-
         setupScanner();
+        setupListeners();
+    }
 
+    private void setupListeners() {
         btnBack.setOnClickListener(v -> finish());
 
         // SMART SWITCH LOGIC
-        switchRfid.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if (isChecked) {
-                    // Check Hardware: Is the Reader connected?
-                    boolean isRfidReady = (mCommScanner != null && mCommScanner.getRFIDScanner() != null);
-
-                    if (!isRfidReady) {
-                        showSagaFeedback("Failed: HT is not connected to the RFID Reader yet!", false);
-
-                        switchRfid.setOnCheckedChangeListener(null);
-                        switchRfid.setChecked(false);
-                        switchRfid.setOnCheckedChangeListener(this);
-                        return;
-                    }
+        switchRfid.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                boolean isRfidReady = (mCommScanner != null && mCommScanner.getRFIDScanner() != null);
+                if (!isRfidReady) {
+                    showSagaFeedback("Failed: HT is not connected to the RFID Reader yet!", false);
+                    switchRfid.setChecked(false);
+                    return;
                 }
-
-                String msg = isChecked ? "RFID Mode Active" : "Barcode Mode Active";
-                showSagaFeedback(msg, true);
-                resultScan.requestFocus();
             }
+            showSagaFeedback(isChecked ? "RFID Mode Active" : "Barcode Mode Active", true);
+            resultScan.requestFocus();
         });
 
-        // REFRESH DATA (WITH INTERNET CHECK)
+        // REFRESH DATA -> BUKA SESI & TARIK DATA MASTER
         btnRefresh.setOnClickListener(v -> {
             if (!isNetworkConnected()) {
                 showSagaFeedback("Refresh Failed: You are offline, bro!", false);
-            } else {
-                showSagaFeedback("Updating stock data from server...", true);
-                // TODO: Hit API GET Stock here
+                return;
             }
+            startStockTakingSession();
         });
 
-        // TextWatcher for Laser Scanner (Keyboard Wedge)
-        resultScan.setShowSoftInputOnFocus(false);
-        resultScan.postDelayed(() -> resultScan.requestFocus(), 100);
-        resultScan.addTextChangedListener(new android.text.TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                handler.removeCallbacksAndMessages(null);
+        // WEDGE SCANNER (LASER MANUAL)
+        resultScan.setOnEditorActionListener((v, actionId, event) -> {
+            String data = resultScan.getText().toString().trim();
+            if (!data.isEmpty()) {
+                processScanResult(data);
+                resultScan.setText("");
             }
-            @Override
-            public void afterTextChanged(android.text.Editable s) {
-                String data = s.toString().trim();
-                if (data.isEmpty()) return;
-
-                handler.postDelayed(() -> {
-                    processScanResult(data);
-                    resultScan.removeTextChangedListener(this);
-                    resultScan.setText("");
-                    resultScan.addTextChangedListener(this);
-                    resultScan.requestFocus();
-                }, 500);
-            }
+            return true;
         });
-
-        cardlistTag.setOnClickListener(v -> showAdjustmentDialog());
     }
 
     // ==========================================
-    // SCAN PROCESS LOGIC (BARCODE/RFID)
+    // API LOGIC: SIKLUS STOCK TAKING
     // ==========================================
 
+    private void startStockTakingSession() {
+        showSagaFeedback("Membuka Sesi Stock Taking...", true);
+
+        StockTakingModels.CreateReq req = new StockTakingModels.CreateReq("Opname Rutin PT Sato");
+        api.createStockTaking(token, req).enqueue(new Callback<StockTakingModels.CreateRes>() {
+            @Override
+            public void onResponse(Call<StockTakingModels.CreateRes> call, Response<StockTakingModels.CreateRes> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    activeSttId = response.body().stockTakingId;
+                    fetchMasterStock(); // Lanjut narik data IN_STOCK
+                } else {
+                    showSagaFeedback("Gagal bikin sesi di Server!", false);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<StockTakingModels.CreateRes> call, Throwable t) {
+                showSagaFeedback("RTO: " + t.getMessage(), false);
+            }
+        });
+    }
+
+    private void fetchMasterStock() {
+        showSagaFeedback("Menarik data master IN_STOCK...", true);
+
+        api.getStockData(token).enqueue(new Callback<List<TagModel>>() {
+            @Override
+            public void onResponse(Call<List<TagModel>> call, Response<List<TagModel>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    masterStockList.clear();
+                    masterStockList.addAll(response.body());
+                    adapter.notifyDataSetChanged();
+                    showSagaFeedback("Berhasil narik " + masterStockList.size() + " data!", true);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<TagModel>> call, Throwable t) {
+                showSagaFeedback("Gagal narik data master!", false);
+            }
+        });
+    }
+
     private void processScanResult(String data) {
-        // Play Success Beep
-        if (toneGen != null) toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 150);
+        if (activeSttId.isEmpty()) {
+            showSagaFeedback("Klik Refresh dulu buat buka sesi bre!", false);
+            playBeep(false);
+            return;
+        }
 
-        // Show feedback for incoming data
-        showSagaFeedback("Item detected: " + data, true);
+        StockTakingModels.ScanReq req = new StockTakingModels.ScanReq(activeSttId, data);
+        api.scanStockTaking(token, req).enqueue(new Callback<GeneralResponse>() {
+            @Override
+            public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
+                if (response.isSuccessful()) {
+                    playBeep(true);
+                    showSagaFeedback("FOUND: " + data, true);
 
-        // TODO: Add to adjustment list or check local DB
+                    // TODO: Update UI di list (Misal ganti warna background item di RecyclerView jadi Hijau)
+                } else {
+                    playBeep(false);
+                    showSagaFeedback("Barang aneh/Unregistered!", false);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<GeneralResponse> call, Throwable t) {
+                showSagaFeedback("Koneksi ampas bre: " + t.getMessage(), false);
+            }
+        });
+    }
+
+    // ==========================================
+    // DIALOGS & ADJUSTMENT (REMOVE)
+    // ==========================================
+
+    // Panggil fungsi ini dari Adapter pas item di RecyclerView diklik
+    public void showAdjustmentDialog(TagModel tagToAdjust) {
+        this.selectedTag = tagToAdjust;
+
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_adj);
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        ImageButton btnFaq = dialog.findViewById(R.id.btnFaq);
+        Button btnRemove = dialog.findViewById(R.id.btnRemove);
+        Button btnAddManual = dialog.findViewById(R.id.btnAddManual);
+
+        btnFaq.setOnClickListener(v -> showFaqDialog());
+
+        // EXECUTE REMOVE KE BACKEND
+        btnRemove.setOnClickListener(v -> {
+            if (!isNetworkConnected()) {
+                showSagaFeedback("Adjustment Failed: Internet mati!", false);
+                return;
+            }
+            if (activeSttId.isEmpty() || selectedTag == null) {
+                showSagaFeedback("Pilih item dan pastiin sesi aktif!", false);
+                return;
+            }
+
+            showSagaFeedback("Menghapus barang dari sistem...", true);
+
+            StockTakingModels.RemoveReq req = new StockTakingModels.RemoveReq(activeSttId, selectedTag.getTagId());
+            api.removeStockTaking(token, req).enqueue(new Callback<GeneralResponse>() {
+                @Override
+                public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
+                    if (response.isSuccessful()) {
+                        showSagaFeedback("Barang berhasil di-Remove (Ditandai Kurang)!", true);
+                        // TODO: Update UI list (Ganti warna item jadi Merah)
+                        dialog.dismiss();
+                    } else {
+                        showSagaFeedback("Gagal Remove di Server!", false);
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<GeneralResponse> call, Throwable t) {
+                    showSagaFeedback("RTO pas Remove: " + t.getMessage(), false);
+                }
+            });
+        });
+
+        btnAddManual.setOnClickListener(v -> {
+            showSagaFeedback("Add Manual feature is coming soon, bro!", true);
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    private void showFaqDialog() {
+        Dialog faqDialog = new Dialog(this);
+        faqDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        faqDialog.setContentView(R.layout.dialog_faq);
+
+        if (faqDialog.getWindow() != null) {
+            faqDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            int width = (int)(getResources().getDisplayMetrics().widthPixels * 0.90);
+            faqDialog.getWindow().setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+        faqDialog.show();
     }
 
     // ==========================================
@@ -158,7 +302,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
             try {
                 mCommScanner.getRFIDScanner().setDataDelegate(this);
                 mCommScanner.getBarcodeScanner().setDataDelegate(this);
-            } catch (Exception e) { e.printStackTrace(); }
+            } catch (Exception e) {}
         }
     }
 
@@ -187,88 +331,21 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
         return sb.toString();
     }
 
-    // ==========================================
-    // DIALOGS & SAGA LOGIC FLOW
-    // ==========================================
-
-    private void showAdjustmentDialog() {
-        Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_adj);
-
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-
-        ImageButton btnFaq = dialog.findViewById(R.id.btnFaq);
-        Button btnRemove = dialog.findViewById(R.id.btnRemove);
-        Button btnAddManual = dialog.findViewById(R.id.btnAddManual);
-
-        btnFaq.setOnClickListener(v -> showFaqDialog());
-
-        // SAGA IMPLEMENTATION ON REMOVE BUTTON
-        btnRemove.setOnClickListener(v -> {
-            if (!isNetworkConnected()) {
-                showSagaFeedback("Adjustment Failed: Internet connection lost!", false);
-                return;
-            }
-
-            showSagaFeedback("Processing Adjustment (Saga)...", true);
-
-            // Simulate API Rollback
-            handler.postDelayed(() -> {
-                boolean sagaSuccess = false; // Set to false to test Rollback
-
-                if (sagaSuccess) {
-                    showSagaFeedback("Adjustment Synchronized Successfully!", true);
-                    dialog.dismiss();
-                } else {
-                    showSagaFeedback("SAGA ROLLBACK: Database Update Failed. Stock remains unchanged!", false);
-                }
-            }, 1500);
-        });
-
-        btnAddManual.setOnClickListener(v -> {
-            showSagaFeedback("Add Manual feature is coming soon, bro!", true);
-            dialog.dismiss();
-        });
-
-        dialog.show();
+    private void playBeep(boolean success) {
+        if (toneGen != null) toneGen.startTone(success ? ToneGenerator.TONE_PROP_BEEP : ToneGenerator.TONE_CDMA_HIGH_L, 150);
     }
 
-    private void showFaqDialog() {
-        Dialog faqDialog = new Dialog(this);
-        faqDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        faqDialog.setContentView(R.layout.dialog_faq);
-
-        if (faqDialog.getWindow() != null) {
-            faqDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            int width = (int)(getResources().getDisplayMetrics().widthPixels * 0.90);
-            faqDialog.getWindow().setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-        faqDialog.show();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        setupScanner();
-    }
-
-    @Override
-    protected void onPause() {
+    @Override protected void onResume() { super.onResume(); setupScanner(); }
+    @Override protected void onPause() {
         super.onPause();
         if (mCommScanner != null) {
             try {
                 mCommScanner.getRFIDScanner().setDataDelegate(null);
                 mCommScanner.getBarcodeScanner().setDataDelegate(null);
-            } catch (Exception e) { e.printStackTrace(); }
+            } catch (Exception e) {}
         }
     }
-
-    @Override
-    protected void onDestroy() {
+    @Override protected void onDestroy() {
         super.onDestroy();
         if (toneGen != null) { toneGen.release(); toneGen = null; }
     }

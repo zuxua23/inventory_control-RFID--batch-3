@@ -214,7 +214,6 @@
                             android:textColor="@color/white"
                             android:textSize="13sp"        android:fontFamily="@font/raleway_semi_bold"/>
                     </LinearLayout>
-
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -223,16 +222,18 @@
                         android:gravity="center">
 
                         <ImageButton
-                            android:id="@+id/ButtonStockTaking"
-                            android:layout_width="90dp"    android:layout_height="85dp"   android:background="@drawable/bg_badge_card_menu"
+                            android:id="@+id/ButtonStockOut"
+                            android:layout_width="90dp"
+                            android:layout_height="85dp"
+                            android:background="@drawable/bg_badge_card_menu"
                             android:foreground="@drawable/bg_menu_selector"
                             android:padding="8dp"
-                            android:src="@drawable/stock_taking_icon" />
+                            android:src="@drawable/stock_out_ic" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Stock Taking And Adjutment"
+                            android:text="Stock Out"
                             android:layout_marginTop="8dp"
                             android:gravity="center"
                             android:textAlignment="center"
@@ -270,6 +271,31 @@
                         android:layout_height="wrap_content"
                         android:layout_columnWeight="1"
                         android:orientation="vertical"
+                        android:gravity="center">
+
+                        <ImageButton
+                            android:id="@+id/ButtonStockTaking"
+                            android:layout_width="90dp"    android:layout_height="85dp"   android:background="@drawable/bg_badge_card_menu"
+                            android:foreground="@drawable/bg_menu_selector"
+                            android:padding="8dp"
+                            android:src="@drawable/stock_taking_icon" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Stock Taking and Adjustment"
+                            android:layout_marginTop="8dp"
+                            android:gravity="center"
+                            android:textAlignment="center"
+                            android:textColor="@color/white"
+                            android:textSize="13sp"        android:fontFamily="@font/raleway_semi_bold"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_columnWeight="1"
+                        android:orientation="vertical"
                         android:gravity="center"
                         android:paddingBottom="20dp">
 
@@ -289,6 +315,8 @@
                             android:textColor="@color/white"
                             android:textSize="13sp"        android:fontFamily="@font/raleway_semi_bold"/>
                     </LinearLayout>
+
+
                 </GridLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>

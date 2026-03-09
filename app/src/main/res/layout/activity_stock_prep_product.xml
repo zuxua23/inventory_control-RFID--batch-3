@@ -160,17 +160,17 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="6dp"
-                    android:fontFamily="@font/raleway_bold"
+                    android:fontFamily="@font/raleway_extra_bold"
                     android:text="Scanned : 0"
                     android:textColor="@color/white"
-                    android:textSize="18sp" />
+                    android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/tvNoDo"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="4dp"
-                    android:fontFamily="@font/raleway_bold"
+                    android:fontFamily="@font/raleway_regular"
                     android:text="No : DO-1234-123"
                     android:textColor="@color/white"
                     android:textSize="14sp" />
@@ -179,7 +179,7 @@
                     android:id="@+id/tvDateDo"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/raleway_bold"
+                    android:fontFamily="@font/raleway_regular"
                     android:text="Date : 12-12-2012"
                     android:textColor="@color/white"
                     android:textSize="14sp" />

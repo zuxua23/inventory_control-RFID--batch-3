@@ -26,10 +26,10 @@
             android:orientation="vertical">
 
             <TextView
-                android:id="@+id/tvProductId"
+                android:id="@+id/tvTagId"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="[Product ID]"
+                android:text="[Tag Id]"
                 android:textColor="@color/white"
                 android:textSize="12sp"
                 android:fontFamily="@font/raleway_bold" />

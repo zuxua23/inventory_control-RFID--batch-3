@@ -8,15 +8,15 @@ import android.os.Looper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-// 👇 SDK DENSO 👇
 import com.densowave.scannersdk.Barcode.BarcodeData;
 import com.densowave.scannersdk.Barcode.BarcodeDataReceivedEvent;
 import com.densowave.scannersdk.Common.CommScanner;
 import com.densowave.scannersdk.Listener.BarcodeDataDelegate;
-
 import com.example.inventory_system_ht.Adapter.DOAdapter;
+import com.example.inventory_system_ht.Helper.ApiClient;
+import com.example.inventory_system_ht.Helper.ApiService;
+import com.example.inventory_system_ht.Helper.PrefManager;
 import com.example.inventory_system_ht.Models.DOModel;
-// 👇 IMPORT ROOM DATABASE LU 👇
 import com.example.inventory_system_ht.Helper.AppDatabase;
 import com.example.inventory_system_ht.Helper.AppDao;
 import com.example.inventory_system_ht.R;
@@ -24,10 +24,8 @@ import com.example.inventory_system_ht.R;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * StockPrepActivity: Menampilkan daftar Delivery Order (DO).
- * Mendukung scan barcode surat jalan untuk langsung membuka detail DO.
- */
+import retrofit2.Call;
+
 public class StockPrepActivity extends BaseScannerActivity implements BarcodeDataDelegate {
 
     private RecyclerView rvTags;
@@ -35,9 +33,6 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
     private List<DOModel> doList;
     private CommScanner mCommScanner;
     private Handler handler = new Handler(Looper.getMainLooper());
-
-    // Variabel Mesin Database
-    private AppDatabase appDb;
     private AppDao appDao;
 
     @Override
@@ -45,73 +40,86 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_stock_prep_delivery_order);
 
-        // 1. Nyalain Mesin Database Lokal
-        appDb = AppDatabase.getDatabase(this);
-        appDao = appDb.appDao();
-
+        appDao = AppDatabase.getDatabase(this).appDao();
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
 
         rvTags = findViewById(R.id.rvTags);
         doList = new ArrayList<>();
 
-        adapter = new DOAdapter(doList, doItem -> openDetailDO(doItem.getDoNo(), doItem.getCreatedAt()));
+        // 1. UPDATE: Klik list sekarang lempar object DOModel biar dapet ID-nya
+        adapter = new DOAdapter(doList, this::openDetailDO);
         rvTags.setLayoutManager(new LinearLayoutManager(this));
         rvTags.setAdapter(adapter);
 
         setupScanner();
-
-        if (!isNetworkConnected()) {
-            showSagaFeedback("Offline Mode: Read DO data from HT local storage.", false);
-        }
-
-        // 2. Langsung tarik data dari SQLite pas halaman dibuka
         loadDataFromLocalDB();
 
-        // 3. Tombol Refresh disulap jadi "Penyuntik Data" ke Database
-        findViewById(R.id.btnRefresh).setOnClickListener(v -> {
-            showSagaFeedback("Injecting DO data into Local Database...", true);
-            seedDummyData();
-            loadDataFromLocalDB(); // Habis disuntik, langsung baca ulang biar muncul di layar
+        // 2. Refresh sekarang nembak API asli, bukan cuma dummy
+        findViewById(R.id.btnRefresh).setOnClickListener(v -> fetchDOFromServer());
+    }
+
+    private void loadDataFromLocalDB() {
+        new Thread(() -> {
+            List<DOModel> dataDariDB = appDao.getAllDO();
+            runOnUiThread(() -> {
+                doList.clear();
+                if (dataDariDB != null && !dataDariDB.isEmpty()) {
+                    doList.addAll(dataDariDB);
+                } else {
+                    showSagaFeedback("DB Kosong, silakan Refresh bre!", false);
+                }
+                adapter.notifyDataSetChanged();
+            });
+        }).start();
+    }
+
+    // Fungsi tarik data asli dari BE SATO
+    private void fetchDOFromServer() {
+        if (!isNetworkConnected()) {
+            showSagaFeedback("Offline! Baca data lokal aja.", false);
+            loadDataFromLocalDB();
+            return;
+        }
+
+        showSagaFeedback("Syncing DO List...", true);
+        PrefManager pref = new PrefManager(this);
+        String token = "Bearer " + pref.getToken();
+
+        ApiService apiService = ApiClient.getClient(this).create(ApiService.class);
+        apiService.getAllDO(token).enqueue(new retrofit2.Callback<List<DOModel>>() {
+            @Override
+            public void onResponse(Call<List<DOModel>> call, retrofit2.Response<List<DOModel>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    List<DOModel> remoteDOs = response.body();
+                    new Thread(() -> {
+                        appDao.insertDOList(remoteDOs);
+                        runOnUiThread(() -> {
+                            showSagaFeedback("DO List Updated!", true);
+                            loadDataFromLocalDB();
+                        });
+                    }).start();
+                } else {
+                    showSagaFeedback("Server Error: " + response.code(), false);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<DOModel>> call, Throwable t) {
+                showSagaFeedback("Gagal konek server bre!", false);
+            }
         });
     }
 
-    // Fungsi narik data dari SQLite (Gak pake internet sama sekali)
-    private void loadDataFromLocalDB() {
-        List<DOModel> dataDariDB = appDao.getAllDO();
-
-        doList.clear(); // Bersihin list layar
-
-        if (dataDariDB != null && !dataDariDB.isEmpty()) {
-            doList.addAll(dataDariDB); // Masukin data dari DB ke layar
-        } else {
-            showSagaFeedback("Local database is empty, click refresh to inject dummy data.", false);
-        }
-
-        adapter.notifyDataSetChanged(); // Refresh adapter UI
-    }
-
-    // Fungsi masukin data ke SQLite (Simulasi narik API)
-    private void seedDummyData() {
-        List<DOModel> dummyList = new ArrayList<>();
-        dummyList.add(new DOModel("1", "DO-2026-001", "PENDING", "2026-03-02"));
-        dummyList.add(new DOModel("2", "DO-2026-002", "IN PROGRESS", "2026-03-03"));
-        dummyList.add(new DOModel("3", "DO-2026-003", "PENDING", "2026-03-05"));
-
-        // Insert ke Room (Aman kalau di-klik berkali-kali karena kita pake REPLACE di DAO)
-        appDao.insertDOList(dummyList);
-    }
-
-    private void openDetailDO(String noDo, String dateDo) {
+    // 3. UPDATE: Pindah halaman bawa GUID (DO_ID) buat verifikasi di BE
+    private void openDetailDO(DOModel item) {
         Intent intent = new Intent(this, StockPrepProductActivity.class);
-        intent.putExtra("NO_DO", noDo);
-        intent.putExtra("DATE_DO", dateDo);
+        intent.putExtra("DO_ID", item.getDoId()); // GUID (Penting buat API)
+        intent.putExtra("NO_DO", item.getDoNo()); // Buat tampilan Header
+        intent.putExtra("DATE_DO", item.getCreatedAt());
         startActivity(intent);
     }
 
-    // ==========================================
-    // SDK INTEGRATION (AUTO-OPEN BY SCAN)
-    // ==========================================
-
+    // --- SDK SCANNER ---
     private void setupScanner() {
         if (mCommScanner != null) {
             try {
@@ -125,38 +133,29 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
         List<BarcodeData> dataList = event.getBarcodeData();
         if (!dataList.isEmpty()) {
             String scannedDo = new String(dataList.get(0).getData());
-
             handler.post(() -> {
-                boolean found = false;
+                DOModel match = null;
                 for (DOModel doItem : doList) {
                     if (doItem.getDoNo().equalsIgnoreCase(scannedDo)) {
-                        showSagaFeedback("DO Meet: Opening details " + scannedDo, true);
-                        openDetailDO(doItem.getDoNo(), doItem.getCreatedAt());
-                        found = true;
+                        match = doItem;
                         break;
                     }
                 }
-
-                if (!found) {
-                    showSagaFeedback("DO " + scannedDo + " it's not on the list bro!", false);
+                if (match != null) {
+                    showSagaFeedback("DO Ketemu: " + scannedDo, true);
+                    openDetailDO(match); // Langsung buka detail pake GUID
+                } else {
+                    showSagaFeedback("DO " + scannedDo + " gak ada di list!", false);
                 }
             });
         }
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        setupScanner();
-    }
-
-    @Override
-    protected void onPause() {
+    @Override protected void onResume() { super.onResume(); setupScanner(); }
+    @Override protected void onPause() {
         super.onPause();
         if (mCommScanner != null) {
-            try {
-                mCommScanner.getBarcodeScanner().setDataDelegate(null);
-            } catch (Exception e) { e.printStackTrace(); }
+            try { mCommScanner.getBarcodeScanner().setDataDelegate(null); } catch (Exception e) {}
         }
     }
 }

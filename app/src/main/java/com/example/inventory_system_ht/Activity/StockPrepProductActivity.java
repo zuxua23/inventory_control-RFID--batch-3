@@ -1,14 +1,10 @@
 package com.example.inventory_system_ht.Activity;
 
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -29,11 +25,9 @@ import com.example.inventory_system_ht.Helper.ApiService;
 import com.example.inventory_system_ht.Helper.AppDao;
 import com.example.inventory_system_ht.Helper.AppDatabase;
 import com.example.inventory_system_ht.Helper.PrefManager;
-import com.example.inventory_system_ht.Models.DODetailResponseDto;
 import com.example.inventory_system_ht.Models.GeneralResponse;
 import com.example.inventory_system_ht.Models.StockPrepBulkRequest;
-import com.example.inventory_system_ht.Models.TagInfoDto;
-import com.example.inventory_system_ht.Models.TagModel;
+import com.example.inventory_system_ht.Models.TagModels;
 import com.example.inventory_system_ht.R;
 
 import java.text.SimpleDateFormat;
@@ -51,7 +45,7 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
     private TextView tvScanned, tvNoDo, tvDateDo;
     private int scanCount = 0;
     private TagAdapter adapter;
-    private List<TagModel> scannedList;
+    private List<TagModels.TagModel> scannedList;
     private Switch switchRfid;
     private RecyclerView rvTags;
 
@@ -152,61 +146,58 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
             adapter.notifyDataSetChanged();
             scanCount = 0;
             tvScanned.setText("Scanned : 0");
-            showSagaFeedback("Layar dibersihkan!", true);
+            showSagaFeedback("The screen is cleared!", true);
         });
     }
 
-    // FUNGSI UTAMA: VALIDASI & MATCHING
     private void processScan(String scannedData) {
-        // A. Cek duplikasi di list layar
-        for (TagModel item : scannedList) {
+        for (TagModels.TagModel item : scannedList) {
             if (item.getEpcTag().equalsIgnoreCase(scannedData)) {
-                showSagaFeedback("Barang sudah di-scan!", false);
+                playScanFeedback(1);
+                showSagaFeedback("The item has been scanned!", false);
                 return;
             }
         }
 
         if (!isNetworkConnected()) {
-            showSagaFeedback("Offline! Data akan disimpan lokal.", false);
-            // Kalo offline, kita asumsikan barang bener dulu, nanti validasi pas Save
-            saveToLocalDB(new TagInfoDto(scannedData, scannedData, "Pending Sync", "Unknown", "STANDBY"));
+            showSagaFeedback("Offline! Data will be saved locally.", false);
+            saveToLocalDB(new TagModels.TagInfoDto(scannedData, scannedData, "Pending Sync", "Unknown", "STANDBY"));
             return;
         }
 
-        // B. Nanya ke Server: Ini barang apa?
-        api.getTagInfo(token, scannedData).enqueue(new Callback<TagInfoDto>() {
+        showLoading();
+        api.getTagInfo(token, scannedData).enqueue(new Callback<TagModels.TagInfoDto>() {
             @Override
-            public void onResponse(Call<TagInfoDto> call, Response<TagInfoDto> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    TagInfoDto info = response.body();
+            public void onResponse(Call<TagModels.TagInfoDto> call, Response<TagModels.TagInfoDto> response) {
+                hideLoading();
 
-                    // C. VALIDASI STATUS (Harus IN_STOCK baru bisa di-Prep)
+                if (response.isSuccessful() && response.body() != null) {
+                    TagModels.TagInfoDto info = response.body();
                     if (!info.getStatus().equals("IN_STOCK")) {
-                        showSagaFeedback("Tag " + info.getStatus() + ", harus IN_STOCK!", false);
-                        playBeep(false);
+                        showSagaFeedback("Tag " + info.getStatus() + ", must be IN_STOCK!", false);
+                        playScanFeedback(2);
                         return;
                     }
-
-                    // D. Simpan ke SQLite & Update UI
                     saveToLocalDB(info);
                 } else {
-                    showSagaFeedback("Tag tidak terdaftar di sistem!", false);
-                    playBeep(false);
+                    handleApiError(response.code());
+                    playScanFeedback(2);
                 }
             }
 
             @Override
-            public void onFailure(Call<TagInfoDto> call, Throwable t) {
-                showSagaFeedback("Gagal cek tag: " + t.getMessage(), false);
+            public void onFailure(Call<TagModels.TagInfoDto> call, Throwable t) {
+                handleFailure(t);
+                playScanFeedback(2);
             }
         });
     }
 
-    private void saveToLocalDB(TagInfoDto tag) {
-        TagModel newScan = new TagModel(
+    private void saveToLocalDB(TagModels.TagInfoDto tag) {
+        TagModels.TagModel newScan = new TagModels.TagModel(
                 tag.getEpcTag(),
                 tag.getTagId(),
-                tag.getItemId(), // 👇 INI YANG KELUPAAN BRE! (ID Produk misal: ITM-001) 👇
+                tag.getItemId(),
                 tag.getItemName(),
                 currentDoNo,
                 0
@@ -215,12 +206,16 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         new Thread(() -> {
             appDao.insertScannedTag(newScan);
             runOnUiThread(() -> {
-                scannedList.add(newScan);
-                adapter.notifyItemInserted(scannedList.size() - 1);
-                rvTags.scrollToPosition(scannedList.size() - 1);
+                // 👇 SMART SORTING: Masuk ke index 0
+                scannedList.add(0, newScan);
+                if (adapter != null) adapter.setLastScannedPosition(0); // Highlight biru
+
+                adapter.notifyItemInserted(0);
+                rvTags.scrollToPosition(0);
+
                 scanCount++;
                 tvScanned.setText("Scanned : " + scanCount);
-                playBeep(true);
+                playScanFeedback(0);
             });
         }).start();
     }
@@ -228,22 +223,32 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
     private void submitToBackend() {
         if (scannedList.isEmpty()) return;
 
+        // 👇 CEK INTERNET SEBELUM SUBMIT
+        if (!isNetworkConnected()) {
+            showSagaFeedback("Offline! Find connection to submit.", false);
+            playScanFeedback(2);
+            return;
+        }
+
+        showLoading();
         List<String> codes = new ArrayList<>();
-        for (TagModel t : scannedList) codes.add(t.getEpcTag());
+        for (TagModels.TagModel t : scannedList) codes.add(t.getEpcTag());
 
         String scannerType = switchRfid.isChecked() ? "RFID" : "QR";
         StockPrepBulkRequest request = new StockPrepBulkRequest(currentDoId, codes, scannerType);
 
-        showSagaFeedback("Mengirim data ke server...", true);
+        showSagaFeedback("Sending data to the server...", true);
 
         api.submitStockPrep(token, request).enqueue(new Callback<GeneralResponse>() {
             @Override
             public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
+                hideLoading();
                 if (response.isSuccessful()) {
                     new Thread(() -> {
-                        for (TagModel t : scannedList) appDao.markTagAsSynced(t.getEpcTag());
+                        for (TagModels.TagModel t : scannedList) appDao.markTagAsSynced(t.getEpcTag());
                         runOnUiThread(() -> {
-                            showSagaFeedback("SUCCESS: Barang Berhasil di-Prepare!", true);
+                            showSagaFeedback("SUCCESS: Goods successfully prepared!", true);
+                            playScanFeedback(0); // 👈 TIPE 0: SUKSES SUBMIT KE C#
                             scannedList.clear();
                             adapter.notifyDataSetChanged();
                             scanCount = 0;
@@ -251,22 +256,27 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
                         });
                     }).start();
                 } else {
-                    showSagaFeedback("Gagal: Cek kembali daftar DO lu Jan.", false);
+                    handleApiError(response.code());
+                    playScanFeedback(2); // 👈 TIPE 2: GAGAL SUBMIT
                 }
             }
 
             @Override
             public void onFailure(Call<GeneralResponse> call, Throwable t) {
-                showSagaFeedback("Error Koneksi: " + t.getMessage(), false);
+                hideLoading();
+                handleFailure(t);
+                playScanFeedback(2); // 👈 TIPE 2: RTO PAS SUBMIT
             }
         });
     }
 
     private void loadPendingScans() {
+        showLoading();
         new Thread(() -> {
-            List<TagModel> pending = appDao.getPendingTags();
+            List<TagModels.TagModel> pending = appDao.getPendingTags();
             runOnUiThread(() -> {
-                for (TagModel t : pending) {
+                hideLoading();
+                for (TagModels.TagModel t : pending) {
                     if (t.getDoIdRef().equalsIgnoreCase(currentDoNo)) {
                         scannedList.add(t);
                         scanCount++;
@@ -313,33 +323,45 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         }
     }
 
-    private void playBeep(boolean success) {
-        if (toneGen != null) toneGen.startTone(success ? ToneGenerator.TONE_PROP_BEEP : ToneGenerator.TONE_CDMA_HIGH_L, 150);
+    @Override
+    protected void onResume() {
+        super.onResume();
+        setupScanner();
+
+        if (getHTBatteryLevel() <= 15) {
+            showSagaFeedback("Baterai HT sisa " + getHTBatteryLevel() + "%, waktunya ngecas bre!", false);
+            playScanFeedback(2);
+        }
     }
 
-    @Override protected void onResume() { super.onResume(); setupScanner(); }
-    @Override protected void onPause() {
+    @Override
+    protected void onPause() {
         super.onPause();
+        // MATIIN LISTENER SCANNER PAS KELUAR HALAMAN BIAR GAK BOCOR BATRE
         if (mCommScanner != null) {
-            try { mCommScanner.getRFIDScanner().setDataDelegate(null); mCommScanner.getBarcodeScanner().setDataDelegate(null); } catch (Exception e) {}
+            try {
+                if (mCommScanner.getRFIDScanner() != null) {
+                    mCommScanner.getRFIDScanner().setDataDelegate(null);
+                }
+                if (mCommScanner.getBarcodeScanner() != null) {
+                    mCommScanner.getBarcodeScanner().setDataDelegate(null);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
     private String formatToEnglishDate(String rawDate) {
         try {
-            // 1. Definisikan format asal (sesuai kiriman BE/Database lu)
-            // Kalau dari BE biasanya: 2026-03-09T11:11:31 atau 2026-03-09
             SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
-
-            // 2. Definisikan format tujuan (24 May 2025)
-            // "dd" untuk tanggal, "MMMM" untuk nama bulan penuh, "yyyy" untuk tahun
             SimpleDateFormat outputFormat = new SimpleDateFormat("dd MMMM yyyy", Locale.ENGLISH);
 
-            // 3. Eksekusi
             java.util.Date date = inputFormat.parse(rawDate);
             return outputFormat.format(date);
         } catch (Exception e) {
-            // Kalau error (misal format gak cocok), balikin string aslinya aja biar gak crash
             return rawDate;
         }
     }
+
+
 }

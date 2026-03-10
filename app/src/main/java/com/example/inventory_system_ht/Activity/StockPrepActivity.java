@@ -16,7 +16,7 @@ import com.example.inventory_system_ht.Adapter.DOAdapter;
 import com.example.inventory_system_ht.Helper.ApiClient;
 import com.example.inventory_system_ht.Helper.ApiService;
 import com.example.inventory_system_ht.Helper.PrefManager;
-import com.example.inventory_system_ht.Models.DOModel;
+import com.example.inventory_system_ht.Models.DOModels;
 import com.example.inventory_system_ht.Helper.AppDatabase;
 import com.example.inventory_system_ht.Helper.AppDao;
 import com.example.inventory_system_ht.R;
@@ -30,7 +30,7 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
 
     private RecyclerView rvTags;
     private DOAdapter adapter;
-    private List<DOModel> doList;
+    private List<DOModels.DOModel> doList;
     private CommScanner mCommScanner;
     private Handler handler = new Handler(Looper.getMainLooper());
     private AppDao appDao;
@@ -59,59 +59,66 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
     }
 
     private void loadDataFromLocalDB() {
+        showLoading();
         new Thread(() -> {
-            List<DOModel> dataDariDB = appDao.getAllDO();
+            List<DOModels.DOModel> dataDariDB = appDao.getAllDO();
             runOnUiThread(() -> {
+                hideLoading();
                 doList.clear();
                 if (dataDariDB != null && !dataDariDB.isEmpty()) {
                     doList.addAll(dataDariDB);
                 } else {
-                    showSagaFeedback("DB Kosong, silakan Refresh bre!", false);
+                    showSagaFeedback("DB is empty, please refresh it!", false);
                 }
                 adapter.notifyDataSetChanged();
             });
         }).start();
     }
 
-    // Fungsi tarik data asli dari BE SATO
     private void fetchDOFromServer() {
         if (!isNetworkConnected()) {
-            showSagaFeedback("Offline! Baca data lokal aja.", false);
+            showSagaFeedback("Offline! Read local data only.", false);
+            playScanFeedback(2); // 👈 TIPE 2: Bunyi warning karena offline
             loadDataFromLocalDB();
             return;
         }
 
+        showLoading();
         showSagaFeedback("Syncing DO List...", true);
+
         PrefManager pref = new PrefManager(this);
         String token = "Bearer " + pref.getToken();
 
         ApiService apiService = ApiClient.getClient(this).create(ApiService.class);
-        apiService.getAllDO(token).enqueue(new retrofit2.Callback<List<DOModel>>() {
+        apiService.getAllDO(token).enqueue(new retrofit2.Callback<List<DOModels.DOModel>>() {
             @Override
-            public void onResponse(Call<List<DOModel>> call, retrofit2.Response<List<DOModel>> response) {
+            public void onResponse(Call<List<DOModels.DOModel>> call, retrofit2.Response<List<DOModels.DOModel>> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    List<DOModel> remoteDOs = response.body();
+                    List<DOModels.DOModel> remoteDOs = response.body();
                     new Thread(() -> {
                         appDao.insertDOList(remoteDOs);
                         runOnUiThread(() -> {
+                            hideLoading();
                             showSagaFeedback("DO List Updated!", true);
+                            playScanFeedback(0); // 👈 TIPE 0: BUNYI SUKSES REFRESH
                             loadDataFromLocalDB();
                         });
                     }).start();
                 } else {
-                    showSagaFeedback("Server Error: " + response.code(), false);
+                    handleApiError(response.code());
+                    playScanFeedback(2); // 👈 TIPE 2: BUNYI ERROR API + GETAR
                 }
             }
 
             @Override
-            public void onFailure(Call<List<DOModel>> call, Throwable t) {
-                showSagaFeedback("Gagal konek server bre!", false);
+            public void onFailure(Call<List<DOModels.DOModel>> call, Throwable t) {
+                handleFailure(t);
+                playScanFeedback(2); // 👈 TIPE 2: BUNYI TIMEOUT + GETAR
             }
         });
     }
 
-    // 3. UPDATE: Pindah halaman bawa GUID (DO_ID) buat verifikasi di BE
-    private void openDetailDO(DOModel item) {
+    private void openDetailDO(DOModels.DOModel item) {
         Intent intent = new Intent(this, StockPrepProductActivity.class);
         intent.putExtra("DO_ID", item.getDoId()); // GUID (Penting buat API)
         intent.putExtra("NO_DO", item.getDoNo()); // Buat tampilan Header
@@ -134,28 +141,51 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
         if (!dataList.isEmpty()) {
             String scannedDo = new String(dataList.get(0).getData());
             handler.post(() -> {
-                DOModel match = null;
-                for (DOModel doItem : doList) {
+                DOModels.DOModel match = null;
+                for (DOModels.DOModel doItem : doList) {
                     if (doItem.getDoNo().equalsIgnoreCase(scannedDo)) {
                         match = doItem;
                         break;
                     }
                 }
                 if (match != null) {
-                    showSagaFeedback("DO Ketemu: " + scannedDo, true);
+                    playScanFeedback(0); // 👈 TIPE 0: Suara SUKSES (Nemu DO)
+                    showSagaFeedback("DO Founded: " + scannedDo, true);
                     openDetailDO(match); // Langsung buka detail pake GUID
                 } else {
-                    showSagaFeedback("DO " + scannedDo + " gak ada di list!", false);
+                    playScanFeedback(2); // 👈 TIPE 2: Suara ERROR + GETAR (DO Gak Ada)
+                    showSagaFeedback("DO " + scannedDo + " it's not on the list!", false);
                 }
             });
         }
     }
 
-    @Override protected void onResume() { super.onResume(); setupScanner(); }
-    @Override protected void onPause() {
+    @Override
+    protected void onResume() {
+        super.onResume();
+        setupScanner();
+
+        if (getHTBatteryLevel() <= 15) {
+            showSagaFeedback("Baterai HT sisa " + getHTBatteryLevel() + "%, waktunya ngecas bre!", false);
+            playScanFeedback(2); // Kasih bunyi error biar operator nyadar
+        }
+    }
+
+    @Override
+    protected void onPause() {
         super.onPause();
+        // MATIIN LISTENER SCANNER PAS KELUAR HALAMAN BIAR GAK BOCOR BATRE
         if (mCommScanner != null) {
-            try { mCommScanner.getBarcodeScanner().setDataDelegate(null); } catch (Exception e) {}
+            try {
+                if (mCommScanner.getRFIDScanner() != null) {
+                    mCommScanner.getRFIDScanner().setDataDelegate(null);
+                }
+                if (mCommScanner.getBarcodeScanner() != null) {
+                    mCommScanner.getBarcodeScanner().setDataDelegate(null);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 }

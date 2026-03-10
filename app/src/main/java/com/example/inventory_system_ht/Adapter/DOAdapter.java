@@ -8,20 +8,20 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.inventory_system_ht.Models.DOModel;
+import com.example.inventory_system_ht.Models.DOModels;
 import com.example.inventory_system_ht.R;
 
 import java.util.List;
 
 public class DOAdapter extends RecyclerView.Adapter<DOAdapter.DOViewHolder> {
-    private List<DOModel> doList;
+    private List<DOModels.DOModel> doList;
     private OnItemClickListener listener;
 
     public interface OnItemClickListener {
-        void onItemClick(DOModel doModel);
+        void onItemClick(DOModels.DOModel doModel);
     }
 
-    public DOAdapter(List<DOModel> doList, OnItemClickListener listener) {
+    public DOAdapter(List<DOModels.DOModel> doList, OnItemClickListener listener) {
         this.doList = doList;
         this.listener = listener;
     }
@@ -38,7 +38,7 @@ public class DOAdapter extends RecyclerView.Adapter<DOAdapter.DOViewHolder> {
 
     @Override
     public void onBindViewHolder(@NonNull DOViewHolder holder, int position) {
-        DOModel doItem = doList.get(position);
+        DOModels.DOModel doItem = doList.get(position);
 
         holder.tvDoNo.setText(doItem.getDoNo());
 

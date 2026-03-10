@@ -1,55 +1,64 @@
 package com.example.inventory_system_ht.Adapter;
 
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.inventory_system_ht.Models.ItemModel;
+import com.example.inventory_system_ht.Models.ItemModels;
 import com.example.inventory_system_ht.R;
 
 import java.util.List;
 
 public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
 
-    private List<ItemModel> itemList;
+    private List<ItemModels.ItemModel> itemList;
     private OnItemClickListener listener;
 
-    // Buat fitur hapus item kalau di-klik
+    private int lastScannedPosition = -1;
+
     public interface OnItemClickListener {
-        void onItemClick(ItemModel item);
+        void onItemClick(ItemModels.ItemModel item);
     }
 
     public void setOnItemClickListener(OnItemClickListener listener) {
         this.listener = listener;
     }
 
-    public ItemAdapter(List<ItemModel> itemList) {
+    public void setLastScannedPosition(int position) {
+        this.lastScannedPosition = position;
+    }
+
+    public ItemAdapter(List<ItemModels.ItemModel> itemList) {
         this.itemList = itemList;
     }
 
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // Pastiin nama layout XML lu sesuai ya bre, misal: item_product.xml
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_product, parent, false);
         return new ViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        ItemModel item = itemList.get(position);
+        ItemModels.ItemModel item = itemList.get(position);
+        CardView cardView = (CardView) holder.itemView;
 
-        // 1. TAMPILIN TAG ID / EPC DI ATAS (Sesuai ID XML lu yang baru)
+        if (position == lastScannedPosition) {
+            holder.itemView.setBackgroundColor(Color.parseColor("#E3F2FD"));
+        } else {
+            cardView.setCardBackgroundColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.blue_theme));
+        }
+
         holder.tvTagId.setText(item.getEpcTag());
-
-        // 2. TAMPILIN NAMA BARANG DI BAWAH
         holder.tvProductName.setText(item.getItemName());
-
-        // 3. TAMPILIN QTY
         holder.tvQty.setText("Qty: " + item.getQty());
 
         holder.itemView.setOnClickListener(v -> {
@@ -69,7 +78,6 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
-            // Binding ID dari XML ke Java
             tvTagId = itemView.findViewById(R.id.tvTagId);
             tvProductName = itemView.findViewById(R.id.tvProductName);
             tvQty = itemView.findViewById(R.id.tvQty);

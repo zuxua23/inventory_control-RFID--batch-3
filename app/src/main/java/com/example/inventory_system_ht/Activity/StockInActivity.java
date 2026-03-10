@@ -13,7 +13,6 @@ import android.text.TextWatcher;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Switch;
@@ -33,15 +32,12 @@ import com.example.inventory_system_ht.Helper.ApiClient;
 import com.example.inventory_system_ht.Helper.ApiService;
 import com.example.inventory_system_ht.Helper.PrefManager;
 import com.example.inventory_system_ht.Models.GeneralResponse;
-import com.example.inventory_system_ht.Models.ItemModel;
-import com.example.inventory_system_ht.Models.ItemResponseDto;
+import com.example.inventory_system_ht.Models.ItemModels;
 import com.example.inventory_system_ht.Models.StockInRequest;
-import com.example.inventory_system_ht.Models.TagInfoDto;
-import com.example.inventory_system_ht.Models.TagModel;
+import com.example.inventory_system_ht.Models.TagModels;
 import com.example.inventory_system_ht.R;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import retrofit2.Call;
@@ -55,10 +51,10 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     private TextView tvScanned;
     private RecyclerView rvTags;
     private ItemAdapter adapter;
-    private List<ItemModel> scannedItemsList;
+    private List<ItemModels.ItemModel> scannedItemsList;
 
     // Kumpulan Master Item dari BE
-    private List<ItemResponseDto> masterItemList = new ArrayList<>();
+    private List<ItemModels.ItemResponseDto> masterItemList = new ArrayList<>();
 
     private ToneGenerator toneGen;
     private Handler handler = new Handler(Looper.getMainLooper());
@@ -120,7 +116,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
 
         btnSave.setOnClickListener(v -> {
             if (scannedItemsList.isEmpty()) {
-                showSagaFeedback("Belum ada barang yang di-scan!", false);
+                showSagaFeedback("No items have been scanned yet!", false);
                 return;
             }
             showBulkConfirmDialog();
@@ -143,25 +139,28 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     // AMBIL DATA MASTER DARI BACKEND
     private void fetchMasterItems() {
         if (!isNetworkConnected()) return;
+        showLoading();
         PrefManager pref = new PrefManager(this);
         String token = "Bearer " + pref.getToken();
 
         ApiService api = ApiClient.getClient(this).create(ApiService.class);
-        api.getAllItems(token).enqueue(new retrofit2.Callback<List<ItemResponseDto>>() {
+        api.getAllItems(token).enqueue(new retrofit2.Callback<List<ItemModels.ItemResponseDto>>() {
             @Override
-            public void onResponse(Call<List<ItemResponseDto>> call, retrofit2.Response<List<ItemResponseDto>> response) {
+            public void onResponse(Call<List<ItemModels.ItemResponseDto>> call, retrofit2.Response<List<ItemModels.ItemResponseDto>> response) {
+                hideLoading();
                 if (response.isSuccessful() && response.body() != null) {
                     masterItemList = response.body();
+                }else {
+                    handleApiError(response.code());
                 }
             }
             @Override
-            public void onFailure(Call<List<ItemResponseDto>> call, Throwable t) {}
+            public void onFailure(Call<List<ItemModels.ItemResponseDto>> call, Throwable t) { hideLoading(); handleFailure(t); }
         });
     }
 
-    // CARI NAMA BARANG DARI LIST LOKAL
     private String findItemName(String itemId) {
-        for (ItemResponseDto item : masterItemList) {
+        for (ItemModels.ItemResponseDto item : masterItemList) {
             if (item.getItemId().equals(itemId)) {
                 return item.getItemName();
             }
@@ -169,8 +168,6 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         return "Unknown Item"; // Kalau datanya ga ketemu
     }
 
-    // EKSTRAK ITEM ID DARI EPC ATAU TAG ID
-    // EKSTRAK ITEM ID DARI EPC ATAU TAG ID
     private String extractItemId(String scannedData, boolean isRfid) {
         // 1. BYPASS BUAT DATA DUMMY SATO (Biar namanya langsung keluar "Produk SATO Dummy")
         if (scannedData.startsWith("TAG0000") || scannedData.startsWith("EPC-SATO")) {
@@ -190,60 +187,80 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     }
 
     private void processScannedData(String scannedData) {
-        // Kita bandingkan scannedData dengan EpcTag (karena scannedData bisa TagId atau EPC)
-        for (ItemModel t : scannedItemsList) {
+        for (ItemModels.ItemModel t : scannedItemsList) {
             if (t.getEpcTag().equals(scannedData) || t.getItemId().equals(scannedData)) {
-                showSagaFeedback("Barang sudah ada di list!", false);
+                playScanFeedback(1); // 👈 TIPE 1: SUARA DUPLIKAT
+                showSagaFeedback("The item is already on the list!", false);
                 return;
             }
         }
 
+        // 👇 OFFLINE MODE: Kalo internet mati, tetep bolehin masuk list 👇
         if (!isNetworkConnected()) {
-            showSagaFeedback("Koneksi terputus!", false);
+            playScanFeedback(0); // Bunyi sukses lokal
+            showSagaFeedback("Offline! Item added locally.", false);
+
+            // Masukin data dummy offline (nanti divalidasi server pas Save)
+            ItemModels.ItemModel offlineItem = new ItemModels.ItemModel(scannedData, scannedData, "Offline Scanned Item", 1);
+
+            scannedItemsList.add(0, offlineItem); // 👈 SMART SORTING
+
+            // Asumsi di ItemAdapter lu udah ditambahin logic ini juga ya blay
+            if (adapter != null) adapter.setLastScannedPosition(0);
+
+            adapter.notifyItemInserted(0);
+            rvTags.scrollToPosition(0);
+            totalScanCount++;
+            updateScanCount();
             return;
         }
 
+        // --- KALAU ONLINE, TEMBAK API NORMAL ---
         PrefManager pref = new PrefManager(this);
         String token = "Bearer " + pref.getToken();
 
+        showLoading();
+
         ApiService api = ApiClient.getClient(this).create(ApiService.class);
-        api.getTagInfo(token, scannedData).enqueue(new retrofit2.Callback<TagInfoDto>() {
+        api.getTagInfo(token, scannedData).enqueue(new retrofit2.Callback<TagModels.TagInfoDto>() {
             @Override
-            public void onResponse(Call<TagInfoDto> call, retrofit2.Response<TagInfoDto> response) {
+            public void onResponse(Call<TagModels.TagInfoDto> call, retrofit2.Response<TagModels.TagInfoDto> response) {
+                hideLoading();
                 if (response.isSuccessful() && response.body() != null) {
-                    TagInfoDto info = response.body();
+                    TagModels.TagInfoDto info = response.body();
 
                     if (!info.getStatus().equals("STANDBY") && !info.getStatus().equals("PRINTED")) {
                         showSagaFeedback("Tag " + info.getTagId() + " status " + info.getStatus() + "!", false);
-                        playBeep(false);
+                        playScanFeedback(2); // 👈 TIPE 2: ERROR SERVER
                         return;
                     }
 
-                    // PAKAI ITEMMODEL: (epcTag, itemId, itemName, qty)
-                    // Kita simpen scannedData (bisa EPC atau TagId) ke epcTag biar gampang di-submit ke BE
-                    scannedItemsList.add(new ItemModel(
+                    playScanFeedback(0); // 👈 TIPE 0: SUKSES
+
+                    scannedItemsList.add(0, new ItemModels.ItemModel(
                             scannedData,
-                            info.getTagId(), // Muncul di tvTagId
-                            info.getItemName(), // Muncul di tvProductName
-                            1 // Qty default 1
+                            info.getTagId(),
+                            info.getItemName(),
+                            1
                     ));
 
-                    adapter.notifyItemInserted(scannedItemsList.size() - 1);
-                    rvTags.scrollToPosition(scannedItemsList.size() - 1);
+                    if (adapter != null) adapter.setLastScannedPosition(0);
+                    adapter.notifyItemInserted(0);
+                    rvTags.scrollToPosition(0);
 
-                    totalScanCount++; // Update counter total
+                    totalScanCount++;
                     updateScanCount();
-                    playBeep(true);
 
                 } else {
-                    showSagaFeedback("Tag tidak ditemukan!", false);
-                    playBeep(false);
+                    handleApiError(response.code());
+                    playScanFeedback(2);
                 }
             }
 
             @Override
-            public void onFailure(Call<TagInfoDto> call, Throwable t) {
-                showSagaFeedback("Gagal server!", false);
+            public void onFailure(Call<TagModels.TagInfoDto> call, Throwable t) {
+                handleFailure(t);
+                playScanFeedback(2);
             }
         });
     }
@@ -269,7 +286,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         }
 
         TextView tvTitle = dialog.findViewById(R.id.tvTitle);
-        tvTitle.setText("Stock In " + totalScanCount + " Fisik?");
+        tvTitle.setText("Stock In " + totalScanCount + " Physique?");
         Button btnYes = dialog.findViewById(R.id.btnYes);
         btnYes.setText("Stock In");
 
@@ -277,8 +294,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         btnYes.setOnClickListener(v -> {
             dialog.dismiss();
             List<String> codesToSubmit = new ArrayList<>();
-            // Ambil semua EPC / TAG ID
-            for(ItemModel item : scannedItemsList) codesToSubmit.add(item.getEpcTag());
+            for(ItemModels.ItemModel item : scannedItemsList) codesToSubmit.add(item.getEpcTag());
 
             String currentType = switchRfid.isChecked() ? "RFID" : "QR";
             hitApiStockIn(codesToSubmit, currentType);
@@ -286,12 +302,13 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         dialog.show();
     }
 
-    // RETROFIT API CALL TETAP SAMA KAYA SEBELUMNYA
     private void hitApiStockIn(List<String> codes, String scannerType) {
         if (!isNetworkConnected()) {
-            showSagaFeedback("Koneksi Error! Cek WiFi/Data.", false);
+            showSagaFeedback("Connection Error! Cari sinyal dulu bre buat Stock In.", false);
+            playScanFeedback(2); // Kasih warning kalo offline pas klik Save
             return;
         }
+        showLoading();
 
         PrefManager pref = new PrefManager(this);
         String token = "Bearer " + pref.getToken();
@@ -301,26 +318,26 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         api.stockIn(token, request).enqueue(new retrofit2.Callback<GeneralResponse>() {
             @Override
             public void onResponse(Call<GeneralResponse> call, retrofit2.Response<GeneralResponse> response) {
+                hideLoading();
                 if (response.isSuccessful() && response.body() != null) {
-                    showSagaFeedback("Success: " + response.body().getMessage() + " (" + codes.size() + " Fisik)", true);
+                    showSagaFeedback("Success: " + response.body().getMessage() + " (" + codes.size() + " Physique)", true);
+                    playScanFeedback(0); // 👈 TIPE 0: SUKSES SUBMIT API
                     clearAllData();
                 } else {
-                    showSagaFeedback("Gagal Stock In! Pastikan tag terdaftar.", false);
+                    handleApiError(response.code());
+                    playScanFeedback(2); // 👈 TIPE 2: ERROR SUBMIT
                 }
                 resultScan.requestFocus();
             }
 
             @Override
             public void onFailure(Call<GeneralResponse> call, Throwable t) {
-                showSagaFeedback("Koneksi Gagal: " + t.getMessage(), false);
+                hideLoading();
+                handleFailure(t);
+                playScanFeedback(2); // 👈 TIPE 2: RTO / TIMEOUT
                 resultScan.requestFocus();
             }
         });
-    }
-
-    // ... FUNGSI LAINNYA (playBeep, setupScanner, onRFIDDataReceived) TETAP SAMA KAYAK SEBELUMNYA
-    private void playBeep(boolean isSuccess) {
-        if (toneGen != null) toneGen.startTone(isSuccess ? ToneGenerator.TONE_PROP_BEEP : ToneGenerator.TONE_CDMA_HIGH_L, 150);
     }
 
     private String bytesToHexString(byte[] bytes) {
@@ -356,13 +373,32 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     }
 
     @Override
-    protected void onResume() { super.onResume(); setupScanner(); }
+    protected void onResume() {
+        super.onResume();
+        setupScanner();
+
+        // Cek batre HP/HT-nya
+        if (getHTBatteryLevel() <= 15) {
+            showSagaFeedback("Baterai HT sisa " + getHTBatteryLevel() + "%, waktunya ngecas bre!", false);
+            playScanFeedback(2);
+        }
+    }
 
     @Override
     protected void onPause() {
         super.onPause();
+        // MATIIN LISTENER SCANNER PAS KELUAR HALAMAN BIAR GAK BOCOR BATRE
         if (mCommScanner != null) {
-            try { mCommScanner.getRFIDScanner().setDataDelegate(null); mCommScanner.getBarcodeScanner().setDataDelegate(null); } catch (Exception e) {}
+            try {
+                if (mCommScanner.getRFIDScanner() != null) {
+                    mCommScanner.getRFIDScanner().setDataDelegate(null);
+                }
+                if (mCommScanner.getBarcodeScanner() != null) {
+                    mCommScanner.getBarcodeScanner().setDataDelegate(null);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 

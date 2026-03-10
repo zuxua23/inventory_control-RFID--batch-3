@@ -22,17 +22,31 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.cardview.widget.CardView;
 import androidx.core.content.res.ResourcesCompat;
 
+import com.example.inventory_system_ht.Helper.ApiClient;
+import com.example.inventory_system_ht.Helper.ApiService;
+import com.example.inventory_system_ht.Helper.AppDao;
+import com.example.inventory_system_ht.Helper.AppDatabase;
 import com.example.inventory_system_ht.Helper.PrefManager;
+import com.example.inventory_system_ht.Models.AuthModels;
+import com.example.inventory_system_ht.Models.GeneralResponse;
+import com.example.inventory_system_ht.Models.TagModels;
 import com.example.inventory_system_ht.R;
 
-// 👇 EXTENDS KE BASE BIAR BISA PAKE showSagaFeedback & isNetworkConnected 👇
-public class HomeActivity extends BaseScannerActivity {
+import java.util.ArrayList;
+import java.util.List;
 
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
+public class HomeActivity extends BaseScannerActivity {
     private ImageView ivProfile;
-    private ImageButton btnStockIn, btnStockPrep, btnStockTaking, btnTagRegis, btnSearchItem;
+    private ImageButton btnStockIn, btnStockPrep, btnStockTaking, btnTagRegis, btnSearchItem, btnStockOut;
     private TextView tvNamaOperator, tvRoleOperator, textViewStatusReader;
     private CardView cardStatus;
     private PrefManager prefManager;
+    private ImageButton btnSyncData;
+    private AppDao appDao;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,13 +56,13 @@ public class HomeActivity extends BaseScannerActivity {
         // Inisialisasi PrefManager
         prefManager = new PrefManager(this);
 
-        // Init Views
         ivProfile = findViewById(R.id.ivProfile);
         btnStockIn = findViewById(R.id.ButtonStockIn);
         btnStockPrep = findViewById(R.id.ButtonStockPreparation);
         btnStockTaking = findViewById(R.id.ButtonStockTaking);
         btnTagRegis = findViewById(R.id.ButtonTagRegis);
         btnSearchItem = findViewById(R.id.ButtonSearchItem);
+        btnStockOut = findViewById(R.id.ButtonStockOut);
         cardStatus = findViewById(R.id.cardStatus);
         textViewStatusReader = findViewById(R.id.textViewStatusReader);
         tvNamaOperator = findViewById(R.id.textViewNamaOperator);
@@ -60,6 +74,7 @@ public class HomeActivity extends BaseScannerActivity {
         int roleId = sharedPreferences.getInt("ROLE_ID", 2);
         String roleName = (roleId == 1) ? "Administrator" : "Operator IT";
 
+        appDao = AppDatabase.getDatabase(this).appDao();
         // Set UI Data
         tvNamaOperator.setText("Welcome " + fullName);
         tvRoleOperator.setText(roleName);
@@ -81,9 +96,8 @@ public class HomeActivity extends BaseScannerActivity {
 
         // Listener Menu
         View.OnClickListener menuClickListener = v -> {
-            // 👇 CEK INTERNET PAS KLIK MENU (Logic Mobile Flow) 👇
             if (!isNetworkConnected()) {
-                showSagaFeedback("Warning: You're offline, bro! Check your connection..", false);
+                showSagaFeedback("Warning: You're offline! Check your connection..", false);
             }
 
             int id = v.getId();
@@ -93,6 +107,8 @@ public class HomeActivity extends BaseScannerActivity {
                 intent = new Intent(HomeActivity.this, StockInActivity.class);
             } else if (id == R.id.ButtonStockPreparation) {
                 intent = new Intent(HomeActivity.this, StockPrepActivity.class);
+            } else if (id == R.id.ButtonStockOut) {
+                intent = new Intent(HomeActivity.this, StockOutActivity.class);
             } else if (id == R.id.ButtonStockTaking) {
                 intent = new Intent(HomeActivity.this, StockTakingActivity.class);
             } else if (id == R.id.ButtonTagRegis) {
@@ -122,6 +138,7 @@ public class HomeActivity extends BaseScannerActivity {
         btnStockIn.setOnClickListener(menuClickListener);
         btnStockPrep.setOnClickListener(menuClickListener);
         btnStockTaking.setOnClickListener(menuClickListener);
+        btnStockOut.setOnClickListener(menuClickListener);
         btnTagRegis.setOnClickListener(menuClickListener);
         btnSearchItem.setOnClickListener(menuClickListener);
     }
@@ -166,6 +183,12 @@ public class HomeActivity extends BaseScannerActivity {
             popupWindow.dismiss();
             showLogoutConfirmationDialog();
         });
+        btnSyncData = findViewById(R.id.btnSyncData);
+
+        // Kasih listener biar pas diklik, dia ngejalanin fungsi sync-nya
+        if (btnSyncData != null) {
+            btnSyncData.setOnClickListener(v -> syncOfflineData());
+        }
     }
 
     private void showLogoutConfirmationDialog() {
@@ -207,5 +230,74 @@ public class HomeActivity extends BaseScannerActivity {
             textViewStatusReader.setText("Reader Status : Not Connected");
             cardStatus.setCardBackgroundColor(Color.parseColor("#9E9E9E"));
         }
+    }
+    private void syncOfflineData() {
+        if (!isNetworkConnected()) {
+            showSagaFeedback("Masih Offline bre! Cari Wi-Fi dulu gih.", false);
+            playScanFeedback(2);
+            return;
+        }
+
+        showLoading();
+        showSagaFeedback("Mencari data offline...", true);
+
+        // Jalankan query Room di Background Thread biar UI gak nge-freeze
+        new Thread(() -> {
+            // Narik data yang statusnya masih 0 (Belum Sinkron)
+            List<TagModels.TagModel> pendingTags = appDao.getPendingTags();
+
+            runOnUiThread(() -> {
+                if (pendingTags == null || pendingTags.isEmpty()) {
+                    hideLoading();
+                    showSagaFeedback("Semua data udah tersinkron bre, aman!", true);
+                    playScanFeedback(0);
+                    return;
+                }
+
+                // Kalau ada data, ekstrak cuma EPC/TagID-nya aja buat dikirim ke API
+                List<String> tagsToSync = new ArrayList<>();
+                for (TagModels.TagModel tag : pendingTags) {
+                    tagsToSync.add(tag.getEpcTag());
+                }
+
+                showSagaFeedback("Menyinkronkan " + tagsToSync.size() + " data ke server...", true);
+
+                // Tembak API
+                ApiService api = ApiClient.getClient(HomeActivity.this).create(ApiService.class);
+                String token = "Bearer " + prefManager.getToken();
+
+                // Asumsi gw lu pake endpoint RegisterTags buat nge-sync data baru
+                api.registerTags(token, new AuthModels.RegisterRequest(tagsToSync)).enqueue(new Callback<GeneralResponse>() {
+                    @Override
+                    public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
+                        if (response.isSuccessful()) {
+                            // Kalau sukses di server, update status lokal HP jadi 1
+                            new Thread(() -> {
+                                for (String epc : tagsToSync) {
+                                    appDao.markTagAsSynced(epc);
+                                }
+                                // Opsional: Hapus yang udah kesinkron biar HP gak penuh
+                                // appDao.clearSyncedTags();
+
+                                runOnUiThread(() -> {
+                                    hideLoading();
+                                    showSagaFeedback("Sinkronisasi Selesai! Data aman di C#.", true);
+                                    playScanFeedback(0);
+                                });
+                            }).start();
+                        } else {
+                            handleApiError(response.code());
+                            playScanFeedback(2);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<GeneralResponse> call, Throwable t) {
+                        handleFailure(t);
+                        playScanFeedback(2);
+                    }
+                });
+            });
+        }).start();
     }
 }

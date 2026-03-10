@@ -27,10 +27,12 @@ import com.densowave.scannersdk.RFID.RFIDDataReceivedEvent;
 import com.example.inventory_system_ht.Adapter.TagAdapter;
 import com.example.inventory_system_ht.Helper.ApiClient;
 import com.example.inventory_system_ht.Helper.ApiService;
+import com.example.inventory_system_ht.Helper.AppDao;
+import com.example.inventory_system_ht.Helper.AppDatabase;
 import com.example.inventory_system_ht.Helper.PrefManager;
+import com.example.inventory_system_ht.Models.AuthModels;
 import com.example.inventory_system_ht.Models.GeneralResponse;
-import com.example.inventory_system_ht.Models.RegisterRequest;
-import com.example.inventory_system_ht.Models.TagModel;
+import com.example.inventory_system_ht.Models.TagModels;
 import com.example.inventory_system_ht.R;
 
 import java.util.ArrayList;
@@ -38,6 +40,8 @@ import java.util.Collections;
 import java.util.List;
 
 import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class TagRegisActivity extends BaseScannerActivity implements BarcodeDataDelegate, RFIDDataDelegate {
 
@@ -49,7 +53,7 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
     private Button btnClear, btnSubmitRegis;
     private RecyclerView rvTags;
     private TagAdapter adapter;
-    private List<TagModel> registeredTagList;
+    private List<TagModels.TagModel> registeredTagList;
     private Handler handler = new Handler();
     private boolean isProcessing = false; // Guard biar gak double scan
 
@@ -91,8 +95,6 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
             }
         });
 
-        // INPUT MANUAL / KEYBOARD WEDGE HANDLING
-        // Pakai TextWatcher biar pas lu ngetik TAG00001 langsung ke-detect
         resultScan.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -101,11 +103,10 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
             @Override
             public void afterTextChanged(Editable s) {
                 String data = s.toString().trim();
-                // Asumsi ID Tag standar 8 karakter (misal TAG0001) atau lebih
                 if (data.length() >= 7 && !isProcessing && !switchRfid.isChecked()) {
                     isProcessing = true;
                     processScannedData(data, false);
-                    resultScan.setText(""); // Bersihin kolom
+                    resultScan.setText("");
                     isProcessing = false;
                 }
             }
@@ -117,23 +118,31 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
 
     private void processScannedData(String scannedData, boolean isFromRfid) {
         if (isFromRfid) {
-            // MODE RFID: Langsung masuk list (Bulk)
             boolean exists = false;
-            for (TagModel t : registeredTagList) {
+            for (TagModels.TagModel t : registeredTagList) {
                 if (t.getEpcTag().equals(scannedData)) {
-                    exists = true; break;
+                    exists = true;
+                    playScanFeedback(1); // 👈 TIPE 1: SUARA DUPLIKAT
+                    break;
                 }
             }
             if (!exists) {
-// Urutannya: epcTag, tagId, itmId, productName, doIdRef, syncStatus
-                registeredTagList.add(new TagModel(scannedData, scannedData, "TAG", "Scanned Item", "STAGING", 0));                runOnUiThread(() -> {
-                    adapter.notifyItemInserted(registeredTagList.size() - 1);
-                    rvTags.scrollToPosition(registeredTagList.size() - 1);
+                // 👇 SMART SORTING: Masukin ke index 0 biar paling atas
+                registeredTagList.add(0, new TagModels.TagModel(scannedData, scannedData, "TAG", "Scanned Item", "STAGING", 0));
+
+                runOnUiThread(() -> {
+                    // 👇 Kasih tau adapter kalo index 0 yang baru (Highlight Biru)
+                    if(adapter != null) adapter.setLastScannedPosition(0);
+
+                    adapter.notifyItemInserted(0);
+                    rvTags.scrollToPosition(0);
                     updateScanCount();
+                    playScanFeedback(0); // 👈 TIPE 0: SUARA SUKSES
                 });
             }
         } else {
             // MODE BARCODE: Langsung munculin dialog satu-satu
+            playScanFeedback(0); // 👈 TIPE 0: Bunyi pas barcode kebaca
             runOnUiThread(() -> showSingleConfirmDialog(scannedData));
         }
     }
@@ -177,32 +186,58 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
         dialog.findViewById(R.id.btnYes).setOnClickListener(v -> {
             dialog.dismiss();
             List<String> ids = new ArrayList<>();
-            for(TagModel t : registeredTagList) ids.add(t.getEpcTag());
+            for(TagModels.TagModel t : registeredTagList) ids.add(t.getEpcTag());
             hitApiRegisterTags(ids);
         });
         dialog.show();
     }
 
     private void hitApiRegisterTags(List<String> tagIds) {
+        if (!isNetworkConnected()) {
+            showSagaFeedback("Offline Mode! Data disimpen di HP dulu ya bre.", false);
+            playScanFeedback(1);
+
+            new Thread(() -> {
+                AppDao localDao = AppDatabase.getDatabase(TagRegisActivity.this).appDao();
+                for (String epc : tagIds) {
+                    localDao.insertScannedTag(new TagModels.TagModel(epc, epc, "TAG", "Scanned Offline", "STAGING", 0));
+                }
+
+                runOnUiThread(() -> {
+                    registeredTagList.clear();
+                    adapter.notifyDataSetChanged();
+                    updateScanCount();
+                });
+            }).start();
+
+            return;
+        }
+
+        showLoading();
         PrefManager pref = new PrefManager(this);
         String token = "Bearer " + pref.getToken();
 
         ApiService api = ApiClient.getClient(this).create(ApiService.class);
-        api.registerTags(token, new RegisterRequest(tagIds)).enqueue(new retrofit2.Callback<GeneralResponse>() {
+        api.registerTags(token, new AuthModels.RegisterRequest(tagIds)).enqueue(new retrofit2.Callback<GeneralResponse>() {
             @Override
             public void onResponse(Call<GeneralResponse> call, retrofit2.Response<GeneralResponse> response) {
+                hideLoading();
                 if (response.isSuccessful()) {
                     showSagaFeedback("Success: " + response.body().getMessage(), true);
+                    playScanFeedback(0);
                     registeredTagList.clear();
                     adapter.notifyDataSetChanged();
                     updateScanCount();
                 } else {
-                    showSagaFeedback("Gagal! Status Tag mungkin tidak valid.", false);
+                    handleApiError(response.code());
+                    playScanFeedback(2);
                 }
             }
+
             @Override
             public void onFailure(Call<GeneralResponse> call, Throwable t) {
-                showSagaFeedback("Error: " + t.getMessage(), false);
+                handleFailure(t);
+                playScanFeedback(2);
             }
         });
     }
@@ -246,5 +281,27 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
         super.onResume();
         setupScanner();
         resultScan.requestFocus();
+
+        // 👇 CEK BATERAI HT
+        if (getHTBatteryLevel() <= 15) {
+            showSagaFeedback("Baterai HT sisa " + getHTBatteryLevel() + "%, waktunya ngecas bre!", false);
+            playScanFeedback(2); // Bunyi warning
+        }
+    }
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (mCommScanner != null) {
+            try {
+                if (mCommScanner.getRFIDScanner() != null) {
+                    mCommScanner.getRFIDScanner().setDataDelegate(null);
+                }
+                if (mCommScanner.getBarcodeScanner() != null) {
+                    mCommScanner.getBarcodeScanner().setDataDelegate(null);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

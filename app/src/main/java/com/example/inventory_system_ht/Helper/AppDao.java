@@ -5,34 +5,31 @@ import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 
-import com.example.inventory_system_ht.Models.DOModel;
-import com.example.inventory_system_ht.Models.TagModel;
+import com.example.inventory_system_ht.Models.DOModels;
+import com.example.inventory_system_ht.Models.TagModels;
 
 import java.util.List;
 
 @Dao
 public interface AppDao {
-
-    // --- OPERASI UNTUK DELIVERY ORDER (DO) ---
-
     // Masukin list DO dari API ke dalam Database Lokal HP
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertDOList(List<DOModel> doList);
+    void insertDOList(List<DOModels.DOModel> doList);
 
     // Narik semua data DO buat ditampilin di layar (Offline Mode)
     @Query("SELECT * FROM tb_DO ORDER BY created_at DESC")
-    List<DOModel> getAllDO();
+    List<DOModels.DOModel> getAllDO();
 
 
     // --- OPERASI UNTUK TAG/BARANG YANG DI-SCAN ---
 
     // Tiap kali laser HT nyala dan dapet EPC Tag, simpen ke SQLite biar aman kalau internet mati
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertScannedTag(TagModel tag);
+    void insertScannedTag(TagModels.TagModel tag);
 
     // Buat nangkep barang yang belum kesinkron ke server ASP.NET lu
     @Query("SELECT * FROM tb_Tag_Local WHERE sync_status = 0")
-    List<TagModel> getPendingTags();
+    List<TagModels.TagModel> getPendingTags();
 
     // Kalau tombol SAVE sukses tembus ke Backend, panggil ini buat tandain barang udah sinkron
     @Query("UPDATE tb_Tag_Local SET sync_status = 1 WHERE epc_tag = :epc")

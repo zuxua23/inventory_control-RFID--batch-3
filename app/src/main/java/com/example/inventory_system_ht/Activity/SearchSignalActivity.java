@@ -18,7 +18,7 @@ import com.densowave.scannersdk.Listener.RFIDDataDelegate;
 import com.densowave.scannersdk.RFID.RFIDData;
 import com.densowave.scannersdk.RFID.RFIDDataReceivedEvent;
 
-import com.example.inventory_system_ht.Models.TagModel;
+import com.example.inventory_system_ht.Models.TagModels;
 import com.example.inventory_system_ht.R;
 
 import java.util.List;
@@ -29,7 +29,7 @@ import java.util.List;
  */
 public class SearchSignalActivity extends BaseScannerActivity implements RFIDDataDelegate {
 
-    private TagModel selectedItem;
+    private TagModels.TagModel selectedItem;
     private boolean isRfidMode;
     private LinearLayout containerSignalBars;
     private TextView tvItemTitle, tvRssiValue;
@@ -46,7 +46,7 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search_signal);
 
-        selectedItem = (TagModel) getIntent().getSerializableExtra("SELECTED_ITEM");
+        selectedItem = (TagModels.TagModel) getIntent().getSerializableExtra("SELECTED_ITEM");
 
         // Default to Barcode mode for safety
         isRfidMode = false;
@@ -114,6 +114,8 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         if (mCommScanner != null) {
             try {
                 mCommScanner.getRFIDScanner().setDataDelegate(this);
+                // Set barcode delegate juga buat jaga-jaga kalau mau manual scan
+//                 mCommScanner.getBarcodeScanner().setDataDelegate(this);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -128,10 +130,14 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         for (RFIDData data : dataList) {
             String epc = bytesToHexString(data.getUII());
 
-            // Filtering based on selected Tag EPC
             if (selectedItem != null && epc.equalsIgnoreCase(selectedItem.getEpcTag())) {
                 float rssi = data.getRSSI();
-                updateSignalBars(rssi);
+
+                handler.post(() -> {
+                    playScanFeedback(0);
+
+                    updateSignalBars(rssi);
+                });
             }
         }
     }
@@ -177,18 +183,28 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
     @Override
     protected void onResume() {
         super.onResume();
-        if (!isNetworkConnected()) {
-            showSagaFeedback("Offline Mode: Using local signal tracking.", false);
-        }
         setupScanner();
+
+        // 👇 1. CEK BATERAI (Sangat krusial di mode search karena boros power)
+        if (getHTBatteryLevel() <= 15) {
+            showSagaFeedback("Baterai HT sisa " + getHTBatteryLevel() + "%, mode search bakal bikin cepet mati bre!", false);
+            playScanFeedback(2);
+        }
+
+        if (selectedItem != null) {
+            showSagaFeedback("Ready. Turn on RFID and pull trigger to locate item.", true);
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+        // MATIIN LISTENER BIAR GAK BOCOR BATRE (Udah bener ini bre)
         if (mCommScanner != null) {
             try {
-                mCommScanner.getRFIDScanner().setDataDelegate(null);
+                if (mCommScanner.getRFIDScanner() != null) {
+                    mCommScanner.getRFIDScanner().setDataDelegate(null);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }

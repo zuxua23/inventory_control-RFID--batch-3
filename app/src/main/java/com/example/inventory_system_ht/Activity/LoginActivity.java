@@ -5,22 +5,17 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
-import android.util.Log; // <-- IMPORT LOG DI SINI
-import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import com.example.inventory_system_ht.Helper.ApiClient;
 import com.example.inventory_system_ht.Helper.ApiService;
 import com.example.inventory_system_ht.Helper.PrefManager;
-import com.example.inventory_system_ht.Models.LoginRequest;
-import com.example.inventory_system_ht.Models.LoginResponse;
 import com.example.inventory_system_ht.R;
+import com.example.inventory_system_ht.Models.*;
 import com.google.android.material.snackbar.Snackbar;
 
 import retrofit2.Call;
@@ -28,7 +23,6 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 public class LoginActivity extends BaseScannerActivity {
-    private static final String TAG = "LoginActivity_DEBUG";
 
     private ImageButton btnSetting;
     private Button btnLogin;
@@ -48,19 +42,14 @@ public class LoginActivity extends BaseScannerActivity {
         etPassword = findViewById(R.id.etPassword);
         prefManager = new PrefManager(this);
 
-        Log.d(TAG, "onCreate: Aplikasi dibuka. IP tersimpan saat ini: " + prefManager.getIp());
 
         // Cek apakah session masih valid (8 jam), kalau iya langsung ke Home
         if (prefManager.isSessionValid()) {
-            Log.d(TAG, "onCreate: Session masih valid, redirect ke HomeActivity");
             startActivity(new Intent(LoginActivity.this, HomeActivity.class));
             finish();
         }
 
-        // Listener tombol Login
         btnLogin.setOnClickListener(v -> performLogin());
-
-        // Listener tombol Setting IP
         btnSetting.setOnClickListener(v -> showSettingDialog());
     }
 
@@ -79,23 +68,19 @@ public class LoginActivity extends BaseScannerActivity {
             showSagaFeedback("Login Failed: Your internet is down, check WiFi/Data first!", false);
             return;
         }
-
-        Log.d(TAG, "performLogin: Menembak API ke -> " + prefManager.getIp());
+        showLoading();
         showSagaFeedback("Authenticating with server...", true);
 
         // Setup Retrofit
         ApiService apiService = ApiClient.getClient(this).create(ApiService.class);
-        LoginRequest loginRequest = new LoginRequest(username, password);
+        AuthModels.LoginRequest loginRequest = new AuthModels.LoginRequest(username, password);
 
         // Hit API Login
-        apiService.login(loginRequest).enqueue(new Callback<LoginResponse>() {
+        apiService.login(loginRequest).enqueue(new Callback<AuthModels.LoginResponse>() {
             @Override
-            public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
-                Log.d(TAG, "onResponse: HTTP Code " + response.code());
-
+            public void onResponse(Call<AuthModels.LoginResponse> call, Response<AuthModels.LoginResponse> response) {
+                hideLoading();
                 if (response.isSuccessful() && response.body() != null) {
-                    Log.d(TAG, "Login Success!");
-
                     // Simpan Token JWT
                     prefManager.saveToken(response.body().getToken());
 
@@ -105,7 +90,7 @@ public class LoginActivity extends BaseScannerActivity {
                     startActivity(new Intent(LoginActivity.this, HomeActivity.class));
                     finish();
                 } else {
-                    Log.e(TAG, "onResponse: Login Gagal.");
+                    handleApiError(response.code());
                     String errorMsg = "Login Failed: Wrong User/Pass or server problem.";
                     if (response.code() == 401) {
                         errorMsg = "Unauthorized: Your account is not registered, bro!";
@@ -115,8 +100,9 @@ public class LoginActivity extends BaseScannerActivity {
             }
 
             @Override
-            public void onFailure(Call<LoginResponse> call, Throwable t) {
-                Log.e(TAG, "onFailure: Koneksi Gagal/Timeout!", t);
+            public void onFailure(Call<AuthModels.LoginResponse> call, Throwable t) {
+                hideLoading();
+                handleFailure(t);
                 showSagaFeedback("Server Timeout: Backend API is not responding!", false);
             }
         });
@@ -165,7 +151,6 @@ public class LoginActivity extends BaseScannerActivity {
             String ipAddress = etIpAPI.getText().toString().trim();
 
             if (!ipAddress.isEmpty()) {
-                Log.d(TAG, "Setting: IP diubah ke -> " + ipAddress);
                 prefManager.saveIp(ipAddress);
 
                 showSagaFeedback("API saved successfully: " + ipAddress, true);

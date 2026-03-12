@@ -13,13 +13,14 @@ import android.os.BatteryManager;
 import android.os.Build;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.widget.FrameLayout;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.densowave.scannersdk.Common.CommScanner;
 import com.example.inventory_system_ht.Helper.PrefManager;
 import com.example.inventory_system_ht.R;
 import com.google.android.material.snackbar.Snackbar;
@@ -30,8 +31,6 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
     private ToneGenerator toneGen;
     private Vibrator vibrator;
 
-
-    // --- UTILS KONEKSI ---
     public boolean isNetworkConnected() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         if (cm != null) {
@@ -42,16 +41,34 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
         return false;
     }
 
-    // --- UI FEEDBACK (SNACKBAR) ---
     public void showSagaFeedback(String pesan, boolean isSuccess) {
         View rootView = findViewById(android.R.id.content);
-        Snackbar snackbar = Snackbar.make(rootView, pesan, Snackbar.LENGTH_LONG);
+        Snackbar snackbar = Snackbar.make(rootView, pesan, Snackbar.LENGTH_SHORT);
         snackbar.setBackgroundTint(isSuccess ? Color.parseColor("#2E7D32") : Color.parseColor("#C62828"));
         snackbar.setTextColor(Color.WHITE);
+
+        snackbar.setAnimationMode(Snackbar.ANIMATION_MODE_FADE);
+
+        View snackbarView = snackbar.getView();
+
+        // 3. Atur Layout ke ATAS
+        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) snackbarView.getLayoutParams();
+        params.gravity = Gravity.TOP;
+        params.setMargins(30, 80, 30, 0);
+        snackbarView.setLayoutParams(params);
+
+        // 4. EFEK DROP DARI ATAS (Real Drop)
+        snackbarView.setTranslationY(-250f);
+
+        snackbarView.animate()
+                .translationY(0f)
+                .setInterpolator(new android.view.animation.OvershootInterpolator(1.5f))
+                .setDuration(400)
+                .start();
+
         snackbar.show();
     }
 
-    // --- LOADING DIALOG ---
     public void showLoading() {
         if (loadingDialog == null) {
             loadingDialog = new Dialog(this);
@@ -70,7 +87,6 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
         if (loadingDialog != null && loadingDialog.isShowing()) loadingDialog.dismiss();
     }
 
-    // --- API ERROR HANDLER ---
     public void handleApiError(int statusCode) {
         hideLoading();
         if (statusCode == 401) {
@@ -82,7 +98,7 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
             startActivity(intent);
             finish();
         } else if (statusCode >= 500) {
-            showSagaFeedback("Server Error (500): Backend C# is crashing, contact IT!", false);
+            showSagaFeedback("Server Error (500): API is crashing, contact IT!", false);
         } else {
             showSagaFeedback("Error: " + statusCode + ". Check your data/request.", false);
         }

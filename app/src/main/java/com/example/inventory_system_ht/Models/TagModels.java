@@ -18,7 +18,6 @@ public class TagModels {
         @SerializedName("itemId") private String itemId;
         @SerializedName("status") private String status;
 
-        // --- TAMBAHKAN CONSTRUCTOR INI BRE ---
         public TagInfoDto(String tagId, String epcTag, String itemName, String itemId, String status) {
             this.tagId = tagId;
             this.epcTag = epcTag;
@@ -27,7 +26,6 @@ public class TagModels {
             this.status = status;
         }
 
-        // Tetep jaga Getter-nya biar gak error di tempat lain
         public String getTagId() { return tagId; }
         public String getEpcTag() { return epcTag; }
         public String getItemName() { return itemName; }
@@ -44,8 +42,7 @@ public class TagModels {
         @ColumnInfo(name = "epc_tag")
         private String epcTag;
 
-        // 👇 INI YANG BIKIN ERROR TADI: ID UNIK FISIK TAG 👇
-        @SerializedName("id") // Sesuaiin sama nama properti ID di tb_Tag C# lu (biasanya "Id")
+        @SerializedName("id")
         @ColumnInfo(name = "tag_id")
         private String tagId;
 
@@ -53,7 +50,7 @@ public class TagModels {
         @ColumnInfo(name = "itm_id")
         private String itmId;
 
-        @SerializedName("itemName") // Opsional buat mapping API
+        @SerializedName("itemName")
         @ColumnInfo(name = "product_name")
         private String productName;
 
@@ -63,7 +60,6 @@ public class TagModels {
         @ColumnInfo(name = "sync_status")
         private int syncStatus;
 
-        // Constructor Update (Sekarang minta 6 isian)
         public TagModel(@NonNull String epcTag, String tagId, String itmId, String productName, String doIdRef, int syncStatus) {
             this.epcTag = epcTag;
             this.tagId = tagId;
@@ -73,10 +69,8 @@ public class TagModels {
             this.syncStatus = syncStatus;
         }
 
-        // --- GETTER ---
         @NonNull public String getEpcTag() { return epcTag; }
 
-        // 👇 FUNGSI PENYELAMAT NYA 👇
         public String getTagId() { return tagId; }
 
         public String getItmId() { return itmId; }

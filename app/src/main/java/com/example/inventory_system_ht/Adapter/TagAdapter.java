@@ -16,14 +16,12 @@ import java.util.List;
 
 public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
     private List<TagModels.TagModel> tagList;
-    private OnItemClickListener listener; // Kabel penghubung
+    private OnItemClickListener listener;
     private int lastScannedPosition = -1;
-    // 1. Buat Interface
     public interface OnItemClickListener {
         void onItemClick(TagModels.TagModel item);
     }
 
-    // 2. Buat Setter-nya
     public void setOnItemClickListener(OnItemClickListener listener) {
         this.listener = listener;
     }

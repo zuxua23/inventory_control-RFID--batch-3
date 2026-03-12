@@ -46,7 +46,6 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
         rvTags = findViewById(R.id.rvTags);
         doList = new ArrayList<>();
 
-        // 1. UPDATE: Klik list sekarang lempar object DOModel biar dapet ID-nya
         adapter = new DOAdapter(doList, this::openDetailDO);
         rvTags.setLayoutManager(new LinearLayoutManager(this));
         rvTags.setAdapter(adapter);
@@ -54,7 +53,6 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
         setupScanner();
         loadDataFromLocalDB();
 
-        // 2. Refresh sekarang nembak API asli, bukan cuma dummy
         findViewById(R.id.btnRefresh).setOnClickListener(v -> fetchDOFromServer());
     }
 
@@ -78,7 +76,7 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
     private void fetchDOFromServer() {
         if (!isNetworkConnected()) {
             showSagaFeedback("Offline! Read local data only.", false);
-            playScanFeedback(2); // 👈 TIPE 2: Bunyi warning karena offline
+            playScanFeedback(2);
             loadDataFromLocalDB();
             return;
         }
@@ -100,33 +98,32 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
                         runOnUiThread(() -> {
                             hideLoading();
                             showSagaFeedback("DO List Updated!", true);
-                            playScanFeedback(0); // 👈 TIPE 0: BUNYI SUKSES REFRESH
+                            playScanFeedback(0);
                             loadDataFromLocalDB();
                         });
                     }).start();
                 } else {
                     handleApiError(response.code());
-                    playScanFeedback(2); // 👈 TIPE 2: BUNYI ERROR API + GETAR
+                    playScanFeedback(2);
                 }
             }
 
             @Override
             public void onFailure(Call<List<DOModels.DOModel>> call, Throwable t) {
                 handleFailure(t);
-                playScanFeedback(2); // 👈 TIPE 2: BUNYI TIMEOUT + GETAR
+                playScanFeedback(2);
             }
         });
     }
 
     private void openDetailDO(DOModels.DOModel item) {
         Intent intent = new Intent(this, StockPrepProductActivity.class);
-        intent.putExtra("DO_ID", item.getDoId()); // GUID (Penting buat API)
-        intent.putExtra("NO_DO", item.getDoNo()); // Buat tampilan Header
+        intent.putExtra("DO_ID", item.getDoId());
+        intent.putExtra("NO_DO", item.getDoNo());
         intent.putExtra("DATE_DO", item.getCreatedAt());
         startActivity(intent);
     }
 
-    // --- SDK SCANNER ---
     private void setupScanner() {
         if (mCommScanner != null) {
             try {
@@ -149,11 +146,11 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
                     }
                 }
                 if (match != null) {
-                    playScanFeedback(0); // 👈 TIPE 0: Suara SUKSES (Nemu DO)
+                    playScanFeedback(0);
                     showSagaFeedback("DO Founded: " + scannedDo, true);
-                    openDetailDO(match); // Langsung buka detail pake GUID
+                    openDetailDO(match);
                 } else {
-                    playScanFeedback(2); // 👈 TIPE 2: Suara ERROR + GETAR (DO Gak Ada)
+                    playScanFeedback(2);
                     showSagaFeedback("DO " + scannedDo + " it's not on the list!", false);
                 }
             });
@@ -166,15 +163,14 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
         setupScanner();
 
         if (getHTBatteryLevel() <= 15) {
-            showSagaFeedback("Baterai HT sisa " + getHTBatteryLevel() + "%, waktunya ngecas bre!", false);
-            playScanFeedback(2); // Kasih bunyi error biar operator nyadar
+            showSagaFeedback("Leftover HT battery " + getHTBatteryLevel() + "%, time to charge!", false);
+            playScanFeedback(2);
         }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        // MATIIN LISTENER SCANNER PAS KELUAR HALAMAN BIAR GAK BOCOR BATRE
         if (mCommScanner != null) {
             try {
                 if (mCommScanner.getRFIDScanner() != null) {

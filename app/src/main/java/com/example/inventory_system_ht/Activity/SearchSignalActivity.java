@@ -12,7 +12,6 @@ import android.widget.LinearLayout;
 import android.widget.Switch;
 import android.widget.TextView;
 
-// SDK DENSO IMPORT
 import com.densowave.scannersdk.Common.CommScanner;
 import com.densowave.scannersdk.Listener.RFIDDataDelegate;
 import com.densowave.scannersdk.RFID.RFIDData;
@@ -23,10 +22,6 @@ import com.example.inventory_system_ht.R;
 
 import java.util.List;
 
-/**
- * SearchSignalActivity: Locates items based on RFID signal strength (RSSI).
- * Integrated with BaseScannerActivity for Saga Pattern consistency.
- */
 public class SearchSignalActivity extends BaseScannerActivity implements RFIDDataDelegate {
 
     private TagModels.TagModel selectedItem;
@@ -36,8 +31,6 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
     private Switch switchRfid;
     private Button btnStopSearch;
     private ImageView btnBack;
-
-    // SDK & Handler
     private CommScanner mCommScanner;
     private Handler handler = new Handler(Looper.getMainLooper());
 
@@ -48,7 +41,6 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
 
         selectedItem = (TagModels.TagModel) getIntent().getSerializableExtra("SELECTED_ITEM");
 
-        // Default to Barcode mode for safety
         isRfidMode = false;
 
         initUI();
@@ -57,18 +49,14 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
             tvItemTitle.setText("Locating: " + selectedItem.getProductName());
         }
 
-        // Setup Scanner Hardware
         setupScanner();
 
-        // Initial UI State: Overwriting XML default text
         switchRfid.setChecked(false);
 
-        // SMART SWITCH LOGIC
         CompoundButton.OnCheckedChangeListener switchListener = new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
-                    // Check if RFID hardware is actually attached
                     boolean isRfidReady = (mCommScanner != null && mCommScanner.getRFIDScanner() != null);
 
                     if (!isRfidReady) {
@@ -81,7 +69,6 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
                     }
                 }
 
-                // Update UI & State based on Switch
                 isRfidMode = isChecked;
 
                 String msg = isChecked ? "Search Mode: RFID ON" : "Search Mode: BARCODE (Manual)";
@@ -185,9 +172,8 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         super.onResume();
         setupScanner();
 
-        // 👇 1. CEK BATERAI (Sangat krusial di mode search karena boros power)
         if (getHTBatteryLevel() <= 15) {
-            showSagaFeedback("Baterai HT sisa " + getHTBatteryLevel() + "%, mode search bakal bikin cepet mati bre!", false);
+            showSagaFeedback("Leftover HT battery " + getHTBatteryLevel() + "%, time to charge!", false);
             playScanFeedback(2);
         }
 
@@ -199,7 +185,6 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
     @Override
     protected void onPause() {
         super.onPause();
-        // MATIIN LISTENER BIAR GAK BOCOR BATRE (Udah bener ini bre)
         if (mCommScanner != null) {
             try {
                 if (mCommScanner.getRFIDScanner() != null) {

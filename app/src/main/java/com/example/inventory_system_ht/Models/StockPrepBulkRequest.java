@@ -20,7 +20,6 @@ public class StockPrepBulkRequest {
         this.scannerType = scannerType;
     }
 
-    // Getter & Setter (Opsional kalau cuma buat dikirim via Retrofit)
     public String getDoId() { return doId; }
     public String getScannerType() { return scannerType; }
     public List<String> getScannedCodes() { return scannedCodes; }

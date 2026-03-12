@@ -16,7 +16,6 @@ import com.example.inventory_system_ht.Helper.ApiService;
 import com.example.inventory_system_ht.Helper.PrefManager;
 import com.example.inventory_system_ht.R;
 import com.example.inventory_system_ht.Models.*;
-import com.google.android.material.snackbar.Snackbar;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -35,15 +34,12 @@ public class LoginActivity extends BaseScannerActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        // Inisialisasi View & PrefManager
         btnSetting = findViewById(R.id.btnSetting);
         btnLogin = findViewById(R.id.btnLogin);
         etUsername = findViewById(R.id.etUsername);
         etPassword = findViewById(R.id.etPassword);
         prefManager = new PrefManager(this);
 
-
-        // Cek apakah session masih valid (8 jam), kalau iya langsung ke Home
         if (prefManager.isSessionValid()) {
             startActivity(new Intent(LoginActivity.this, HomeActivity.class));
             finish();
@@ -57,13 +53,11 @@ public class LoginActivity extends BaseScannerActivity {
         String username = etUsername.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
 
-        // 1. Validasi Input Kosong
         if (username.isEmpty() || password.isEmpty()) {
             showSagaFeedback("Username & Password are required, bro!", false);
             return;
         }
 
-        // 2. Cek Koneksi Internet (Pake fungsi sakti dari BaseScannerActivity)
         if (!isNetworkConnected()) {
             showSagaFeedback("Login Failed: Your internet is down, check WiFi/Data first!", false);
             return;
@@ -71,11 +65,9 @@ public class LoginActivity extends BaseScannerActivity {
         showLoading();
         showSagaFeedback("Authenticating with server...", true);
 
-        // Setup Retrofit
         ApiService apiService = ApiClient.getClient(this).create(ApiService.class);
         AuthModels.LoginRequest loginRequest = new AuthModels.LoginRequest(username, password);
 
-        // Hit API Login
         apiService.login(loginRequest).enqueue(new Callback<AuthModels.LoginResponse>() {
             @Override
             public void onResponse(Call<AuthModels.LoginResponse> call, Response<AuthModels.LoginResponse> response) {
@@ -123,7 +115,6 @@ public class LoginActivity extends BaseScannerActivity {
         EditText etIpAPI = dialog.findViewById(R.id.etIpAPI);
         ImageButton buttonCekIpInside = dialog.findViewById(R.id.buttonCekIp);
 
-        // Load IP lama
         etIpAPI.setText(prefManager.getIp());
 
         btnCancel.setOnClickListener(v -> dialog.dismiss());
@@ -132,18 +123,14 @@ public class LoginActivity extends BaseScannerActivity {
             String ipAddress = etIpAPI.getText().toString().trim();
 
             if (ipAddress.isEmpty()) {
-                Snackbar.make(dialog.findViewById(android.R.id.content), "Fill in the IP first, bro", Snackbar.LENGTH_SHORT).show();
+                showSagaFeedback("Fill in the IP first, bro", false);
                 return;
             }
 
             if (ipAddress.startsWith("http://") || ipAddress.startsWith("https://")) {
-                Snackbar.make(dialog.findViewById(android.R.id.content), "The URL format is correct! Please apply..", Snackbar.LENGTH_SHORT)
-                        .setBackgroundTint(Color.parseColor("#01C470"))
-                        .show();
+                showSagaFeedback("The URL format is correct! Please apply..", true);
             } else {
-                Snackbar.make(dialog.findViewById(android.R.id.content), "Wrong Format! Must use http:// or https://", Snackbar.LENGTH_SHORT)
-                        .setBackgroundTint(Color.parseColor("#C62828"))
-                        .show();
+                showSagaFeedback("Wrong Format! Must use http:// or https://", false);
             }
         });
 
@@ -156,7 +143,7 @@ public class LoginActivity extends BaseScannerActivity {
                 showSagaFeedback("API saved successfully: " + ipAddress, true);
                 dialog.dismiss();
             } else {
-                Snackbar.make(dialog.findViewById(android.R.id.content), "API cannot be empty!", Snackbar.LENGTH_SHORT).show();
+                showSagaFeedback("API cannot be empty", false);
             }
         });
 

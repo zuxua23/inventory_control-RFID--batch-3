@@ -49,15 +49,13 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
     private Switch switchRfid;
     private RecyclerView rvTags;
 
-    private String currentDoId = ""; // GUID dari server
-    private String currentDoNo = ""; // Nomor tampilan
+    private String currentDoId = "";
+    private String currentDoNo = "";
 
-    // UTILS & SDK
     private CommScanner mCommScanner;
     private ToneGenerator toneGen;
     private Handler handler = new Handler(Looper.getMainLooper());
 
-    // BACKEND TOOLS
     private ApiService api;
     private String token;
     private AppDao appDao;
@@ -67,7 +65,6 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_stock_prep_product);
 
-        // 1. Inisialisasi Database & Retrofit
         appDao = AppDatabase.getDatabase(this).appDao();
         PrefManager pref = new PrefManager(this);
         token = "Bearer " + pref.getToken();
@@ -76,13 +73,11 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         initUI();
         setupScanner();
 
-        // Di dalam onCreate, ganti bagian ini:
         if (getIntent() != null) {
             currentDoId = getIntent().getStringExtra("DO_ID");
             currentDoNo = getIntent().getStringExtra("NO_DO");
             tvNoDo.setText("No : " + currentDoNo);
 
-            // 👇 UPDATE BAGIAN INI BRE 👇
             String rawDate = getIntent().getStringExtra("DATE_DO");
             tvDateDo.setText("Date : " + formatToEnglishDate(rawDate));
         }
@@ -112,7 +107,6 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
     private void setupListeners() {
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
 
-        // Laser Barcode Wedge Handler
         resultScan.addTextChangedListener(new android.text.TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -128,7 +122,6 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
             }
         });
 
-        // Toggle RFID
         switchRfid.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked && (mCommScanner == null || mCommScanner.getRFIDScanner() == null)) {
                 showSagaFeedback("HT not Connected to Reader RFID", false);
@@ -138,7 +131,6 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
             showSagaFeedback(isChecked ? "Mode RFID: ON" : "Mode RFID: OFF", true);
         });
 
-        // BULK SAVE TO SERVER
         findViewById(R.id.btnSave).setOnClickListener(v -> submitToBackend());
 
         findViewById(R.id.btnClear).setOnClickListener(v -> {
@@ -206,7 +198,6 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         new Thread(() -> {
             appDao.insertScannedTag(newScan);
             runOnUiThread(() -> {
-                // 👇 SMART SORTING: Masuk ke index 0
                 scannedList.add(0, newScan);
                 if (adapter != null) adapter.setLastScannedPosition(0); // Highlight biru
 
@@ -223,7 +214,6 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
     private void submitToBackend() {
         if (scannedList.isEmpty()) return;
 
-        // 👇 CEK INTERNET SEBELUM SUBMIT
         if (!isNetworkConnected()) {
             showSagaFeedback("Offline! Find connection to submit.", false);
             playScanFeedback(2);
@@ -248,7 +238,7 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
                         for (TagModels.TagModel t : scannedList) appDao.markTagAsSynced(t.getEpcTag());
                         runOnUiThread(() -> {
                             showSagaFeedback("SUCCESS: Goods successfully prepared!", true);
-                            playScanFeedback(0); // 👈 TIPE 0: SUKSES SUBMIT KE C#
+                            playScanFeedback(0);
                             scannedList.clear();
                             adapter.notifyDataSetChanged();
                             scanCount = 0;
@@ -257,7 +247,7 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
                     }).start();
                 } else {
                     handleApiError(response.code());
-                    playScanFeedback(2); // 👈 TIPE 2: GAGAL SUBMIT
+                    playScanFeedback(2);
                 }
             }
 
@@ -265,7 +255,7 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
             public void onFailure(Call<GeneralResponse> call, Throwable t) {
                 hideLoading();
                 handleFailure(t);
-                playScanFeedback(2); // 👈 TIPE 2: RTO PAS SUBMIT
+                playScanFeedback(2);
             }
         });
     }
@@ -288,7 +278,6 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         }).start();
     }
 
-    // --- SDK DENSO INTEGRATION ---
     @Override
     public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
         if (!switchRfid.isChecked()) return;
@@ -329,7 +318,7 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         setupScanner();
 
         if (getHTBatteryLevel() <= 15) {
-            showSagaFeedback("Baterai HT sisa " + getHTBatteryLevel() + "%, waktunya ngecas bre!", false);
+            showSagaFeedback("Leftover HT battery " + getHTBatteryLevel() + "%, time to charge!", false);
             playScanFeedback(2);
         }
     }
@@ -337,7 +326,6 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
     @Override
     protected void onPause() {
         super.onPause();
-        // MATIIN LISTENER SCANNER PAS KELUAR HALAMAN BIAR GAK BOCOR BATRE
         if (mCommScanner != null) {
             try {
                 if (mCommScanner.getRFIDScanner() != null) {

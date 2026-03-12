@@ -43,7 +43,7 @@ import retrofit2.Response;
 public class StockOutActivity extends BaseScannerActivity implements BarcodeDataDelegate, RFIDDataDelegate {
     private String doId = "";
     private String doNumber = "";
-    private String readerId = "BHT-1800QWB-1-A7"; // ID Hardware HT lu
+    private String readerId = "BHT-1800QWB-1-A7";
     private ImageView btnBack;
     private TextView tvScanned;
     private Switch switchRfid;
@@ -97,7 +97,7 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
 
     private void setupRecyclerView() {
         scannedItemList = new ArrayList<>();
-        // Asumsi lu pake TagAdapter yang sama kayak di halaman Stock Taking
+
         adapter = new TagAdapter(scannedItemList);
         rvTags.setLayoutManager(new LinearLayoutManager(this));
         rvTags.setAdapter(adapter);
@@ -106,7 +106,6 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
     private void setupListeners() {
         btnBack.setOnClickListener(v -> finish());
 
-        // Toggle Scanner Mode
         switchRfid.setOnCheckedChangeListener((buttonView, isChecked) -> {
             boolean isRfidReady = (mCommScanner != null && mCommScanner.getRFIDScanner() != null);
             if (isChecked && !isRfidReady) {
@@ -114,7 +113,7 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
                 switchRfid.setChecked(false);
             } else {
                 showSagaFeedback(isChecked ? "RFID Mode ON" : "Barcode Mode ON", true);
-                resultScan.requestFocus(); // Fokusin kursor buat jaga-jaga
+                resultScan.requestFocus();
             }
         });
 
@@ -127,7 +126,6 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
             return true;
         });
 
-        // Tombol Clear (Reset UI)
         btnClear.setOnClickListener(v -> {
             scannedItemList.clear();
             scanCount = 0;
@@ -144,7 +142,7 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
     }
 
     private void processScanResult(String epcOrBarcode) {
-        // Cek biar gak dobel nampil di UI
+
         for (TagModels.TagModel item : scannedItemList) {
             if (item.getEpcTag().equalsIgnoreCase(epcOrBarcode) || item.getTagId().equalsIgnoreCase(epcOrBarcode)) {
                 playScanFeedback(1);
@@ -152,13 +150,12 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
             }
         }
 
-        // 👇 OFFLINE MODE: Kalo internet mati, simpen di HP 👇
         if (!isNetworkConnected()) {
-            playScanFeedback(0); // Bunyi sukses lokal
+            playScanFeedback(0);
             showSagaFeedback("Offline! Data disimpen di HP dulu bre.", false);
 
             new Thread(() -> {
-                // Simpen ke SQLite, doId kita jadiin referensi biar gak nyasar
+
                 TagModels.TagModel offlineTag = new TagModels.TagModel(
                         epcOrBarcode, epcOrBarcode, "", "Scanned Offline", doId, 0
                 );
@@ -173,10 +170,9 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
                     updateCounterUI();
                 });
             }).start();
-            return; // Berhenti di sini, jangan lanjut nembak API
+            return;
         }
 
-        // --- KALAU ONLINE, TEMBAK API NORMAL ---
         showLoading();
         StockOutModels.ScanReq req = new StockOutModels.ScanReq(doId, readerId, epcOrBarcode);
 
@@ -185,7 +181,7 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
             public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
                 hideLoading();
                 if (response.isSuccessful()) {
-                    playScanFeedback(0); // TIPE 0: Suara sukses
+                    playScanFeedback(0);
                     showSagaFeedback("Tag " + epcOrBarcode + " marked OUT!", true);
 
                     TagModels.TagModel newItem = new TagModels.TagModel(
@@ -220,9 +216,8 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
             return;
         }
 
-        // Kalo mau Finalize / nutup DO, WAJIB ONLINE!
         if (!isNetworkConnected()) {
-            showSagaFeedback("Masih Offline! Cari sinyal dulu buat Finalize DO.", false);
+            showSagaFeedback("Still Offline! Find a signal first to finalize the DO.", false);
             playScanFeedback(2);
             return;
         }
@@ -230,13 +225,11 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
         showLoading();
         showSagaFeedback("Checking offline data...", true);
 
-        // 👇 CEK DATA OFFLINE DULU SEBELUM FINALIZE 👇
         new Thread(() -> {
             List<TagModels.TagModel> pendingTags = appDao.getPendingTags();
             List<String> tagsToSync = new ArrayList<>();
 
             for (TagModels.TagModel tag : pendingTags) {
-                // Pastikan yang di-sync cuma tag milik DO yang lagi dibuka ini
                 if (doId.equals(tag.getDoIdRef())) {
                     tagsToSync.add(tag.getEpcTag());
                 }
@@ -245,20 +238,19 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
             runOnUiThread(() -> {
                 if (!tagsToSync.isEmpty()) {
                     showSagaFeedback("Syncing " + tagsToSync.size() + " data offline...", true);
-                    syncStockOutData(tagsToSync, 0); // Lempar ke fungsi sync
+                    syncStockOutData(tagsToSync, 0);
                 } else {
-                    executeFinalizeAPI(); // Kalau kosong, langsung tutup DO
+                    executeFinalizeAPI();
                 }
             });
         }).start();
     }
 
-    // --- FUNGSI TAMBAHAN BUAT SYNC SATU-SATU (Kaya di Stock Taking) ---
     private void syncStockOutData(List<String> tags, int currentIndex) {
         if (currentIndex >= tags.size()) {
             new Thread(() -> {
-                for (String epc : tags) appDao.markTagAsSynced(epc); // Tandain udah ke-sync
-                runOnUiThread(this::executeFinalizeAPI); // Lanjut Finalize
+                for (String epc : tags) appDao.markTagAsSynced(epc);
+                runOnUiThread(this::executeFinalizeAPI);
             }).start();
             return;
         }
@@ -267,7 +259,7 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
         api.scanStockOut(token, req).enqueue(new Callback<GeneralResponse>() {
             @Override
             public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
-                syncStockOutData(tags, currentIndex + 1); // Lanjut item berikutnya
+                syncStockOutData(tags, currentIndex + 1);
             }
             @Override
             public void onFailure(Call<GeneralResponse> call, Throwable t) {
@@ -276,7 +268,7 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
         });
     }
 
-    // --- FUNGSI FINALIZE ASLI LU ---
+
     private void executeFinalizeAPI() {
         showSagaFeedback("Saving & Finalizing DO...", true);
         StockOutModels.FinalizeReq req = new StockOutModels.FinalizeReq(doId, readerId);
@@ -287,7 +279,7 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
                 hideLoading();
                 if (response.isSuccessful()) {
                     showSagaFeedback("Stock Out Successfully Stored!", true);
-                    playScanFeedback(0); // 👈 TIPE 0: Sukses nutup DO
+                    playScanFeedback(0);
                     finish();
                 } else {
                     handleApiError(response.code());
@@ -345,7 +337,7 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
         if (resultScan != null) resultScan.postDelayed(() -> resultScan.requestFocus(), 200);
 
         if (getHTBatteryLevel() <= 15) {
-            showSagaFeedback("Baterai HT sisa " + getHTBatteryLevel() + "%, waktunya ngecas bre!", false);
+            showSagaFeedback("Leftover HT battery " + getHTBatteryLevel() + "%, time to charge!", false);
             playScanFeedback(2);
         }
     }
@@ -353,7 +345,7 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
     @Override
     protected void onPause() {
         super.onPause();
-        // MATIIN LISTENER SCANNER PAS KELUAR HALAMAN BIAR GAK BOCOR BATRE
+
         if (mCommScanner != null) {
             try {
                 if (mCommScanner.getRFIDScanner() != null) {

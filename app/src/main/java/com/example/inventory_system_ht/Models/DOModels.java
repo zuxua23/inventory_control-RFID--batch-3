@@ -34,7 +34,6 @@ public class DOModels {
         @ColumnInfo(name = "scanner_type")
         private String scannerType;
 
-        // Constructor
         public DOModel(@NonNull String doId, String doNo, String status, String createdAt, String scannerType) {
             this.doId = doId;
             this.doNo = doNo;
@@ -43,17 +42,14 @@ public class DOModels {
             this.scannerType = scannerType;
         }
 
-        // --- GETTER ---
         @NonNull public String getDoId() { return doId; }
         public String getDoNo() { return doNo; }
         public String getStatus() { return status; }
         public String getCreatedAt() { return createdAt; }
 
-        // 👇 TADI ERROR GARA-GARA KURUNG INI KELUPAAN
         public String getScannerType() { return scannerType; }
     }
 
-    // 👇 SEKARANG DODetailResponseDto ADA DI LUAR DOModel (Tapi tetep di dalam DOModels)
     public static class DODetailResponseDto {
         private String itemId;
         private String itemName;

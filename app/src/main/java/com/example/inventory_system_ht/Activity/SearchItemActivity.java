@@ -23,7 +23,6 @@ import com.densowave.scannersdk.RFID.RFIDDataReceivedEvent;
 import com.example.inventory_system_ht.Adapter.TagAdapter;
 import com.example.inventory_system_ht.Helper.ApiClient;
 import com.example.inventory_system_ht.Helper.ApiService;
-import com.example.inventory_system_ht.Helper.AppDao;
 import com.example.inventory_system_ht.Helper.PrefManager;
 import com.example.inventory_system_ht.Models.TagModels;
 import com.example.inventory_system_ht.R;
@@ -44,11 +43,9 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
     private List<TagModels.TagModel> allItemList;
     private List<TagModels.TagModel> filteredList;
 
-    // Integrasi SDK Denso
     private CommScanner mCommScanner;
     private Handler handler = new Handler(Looper.getMainLooper());
 
-    // API Tools
     private ApiService api;
     private String token;
     @Override

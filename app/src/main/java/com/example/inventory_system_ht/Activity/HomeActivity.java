@@ -2,7 +2,6 @@ package com.example.inventory_system_ht.Activity;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
@@ -79,7 +78,6 @@ public class HomeActivity extends BaseScannerActivity {
         tvNamaOperator.setText("Welcome " + fullName);
         tvRoleOperator.setText(roleName);
 
-        // Status Reader (Default False karena belum ada Sled)
         updateReaderStatus(false);
 
         // Cek Session Validitas
@@ -94,7 +92,6 @@ public class HomeActivity extends BaseScannerActivity {
 
         ivProfile.setOnClickListener(v -> showLogoutPopup(v));
 
-        // Listener Menu
         View.OnClickListener menuClickListener = v -> {
             if (!isNetworkConnected()) {
                 showSagaFeedback("Warning: You're offline! Check your connection..", false);
@@ -241,9 +238,7 @@ public class HomeActivity extends BaseScannerActivity {
         showLoading();
         showSagaFeedback("Mencari data offline...", true);
 
-        // Jalankan query Room di Background Thread biar UI gak nge-freeze
         new Thread(() -> {
-            // Narik data yang statusnya masih 0 (Belum Sinkron)
             List<TagModels.TagModel> pendingTags = appDao.getPendingTags();
 
             runOnUiThread(() -> {
@@ -254,7 +249,6 @@ public class HomeActivity extends BaseScannerActivity {
                     return;
                 }
 
-                // Kalau ada data, ekstrak cuma EPC/TagID-nya aja buat dikirim ke API
                 List<String> tagsToSync = new ArrayList<>();
                 for (TagModels.TagModel tag : pendingTags) {
                     tagsToSync.add(tag.getEpcTag());
@@ -276,8 +270,7 @@ public class HomeActivity extends BaseScannerActivity {
                                 for (String epc : tagsToSync) {
                                     appDao.markTagAsSynced(epc);
                                 }
-                                // Opsional: Hapus yang udah kesinkron biar HP gak penuh
-                                // appDao.clearSyncedTags();
+                                 appDao.clearSyncedTags();
 
                                 runOnUiThread(() -> {
                                     hideLoading();

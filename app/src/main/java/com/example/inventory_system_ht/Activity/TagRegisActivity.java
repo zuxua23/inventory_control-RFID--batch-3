@@ -40,11 +40,9 @@ import java.util.Collections;
 import java.util.List;
 
 import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+
 
 public class TagRegisActivity extends BaseScannerActivity implements BarcodeDataDelegate, RFIDDataDelegate {
-
     private CommScanner mCommScanner;
     private ImageView btnBack;
     private EditText resultScan;
@@ -55,14 +53,13 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
     private TagAdapter adapter;
     private List<TagModels.TagModel> registeredTagList;
     private Handler handler = new Handler();
-    private boolean isProcessing = false; // Guard biar gak double scan
+    private boolean isProcessing = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_regist);
 
-        // Inisialisasi UI
         btnBack = findViewById(R.id.btnBack);
         resultScan = findViewById(R.id.resultScan);
         tvScanned = findViewById(R.id.tvScanned);
@@ -71,13 +68,11 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
         btnSubmitRegis = findViewById(R.id.btnSubmitRegis);
         rvTags = findViewById(R.id.rvTags);
 
-        // Setup RecyclerView
         registeredTagList = new ArrayList<>();
         adapter = new TagAdapter(registeredTagList);
         rvTags.setLayoutManager(new LinearLayoutManager(this));
         rvTags.setAdapter(adapter);
 
-        // Event Listeners
         btnBack.setOnClickListener(v -> finish());
 
         btnClear.setOnClickListener(v -> {
@@ -122,27 +117,24 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
             for (TagModels.TagModel t : registeredTagList) {
                 if (t.getEpcTag().equals(scannedData)) {
                     exists = true;
-                    playScanFeedback(1); // 👈 TIPE 1: SUARA DUPLIKAT
+                    playScanFeedback(1);
                     break;
                 }
             }
             if (!exists) {
-                // 👇 SMART SORTING: Masukin ke index 0 biar paling atas
                 registeredTagList.add(0, new TagModels.TagModel(scannedData, scannedData, "TAG", "Scanned Item", "STAGING", 0));
 
                 runOnUiThread(() -> {
-                    // 👇 Kasih tau adapter kalo index 0 yang baru (Highlight Biru)
                     if(adapter != null) adapter.setLastScannedPosition(0);
 
                     adapter.notifyItemInserted(0);
                     rvTags.scrollToPosition(0);
                     updateScanCount();
-                    playScanFeedback(0); // 👈 TIPE 0: SUARA SUKSES
+                    playScanFeedback(0);
                 });
             }
         } else {
-            // MODE BARCODE: Langsung munculin dialog satu-satu
-            playScanFeedback(0); // 👈 TIPE 0: Bunyi pas barcode kebaca
+            playScanFeedback(0);
             runOnUiThread(() -> showSingleConfirmDialog(scannedData));
         }
     }
@@ -194,7 +186,7 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
 
     private void hitApiRegisterTags(List<String> tagIds) {
         if (!isNetworkConnected()) {
-            showSagaFeedback("Offline Mode! Data disimpen di HP dulu ya bre.", false);
+            showSagaFeedback("Offline Mode! Save your data on your phone first.", false);
             playScanFeedback(1);
 
             new Thread(() -> {
@@ -260,7 +252,6 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
         }
     }
 
-    // Helper conversion
     private String bytesToHexString(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
         for (byte b : bytes) sb.append(String.format("%02X", b));
@@ -282,10 +273,9 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
         setupScanner();
         resultScan.requestFocus();
 
-        // 👇 CEK BATERAI HT
         if (getHTBatteryLevel() <= 15) {
-            showSagaFeedback("Baterai HT sisa " + getHTBatteryLevel() + "%, waktunya ngecas bre!", false);
-            playScanFeedback(2); // Bunyi warning
+            showSagaFeedback("Leftover HT battery " + getHTBatteryLevel() + "%, time to charge!", false);
+            playScanFeedback(2);
         }
     }
     @Override

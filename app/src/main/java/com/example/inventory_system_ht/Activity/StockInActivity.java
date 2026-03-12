@@ -53,14 +53,14 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     private ItemAdapter adapter;
     private List<ItemModels.ItemModel> scannedItemsList;
 
-    // Kumpulan Master Item dari BE
+
     private List<ItemModels.ItemResponseDto> masterItemList = new ArrayList<>();
 
     private ToneGenerator toneGen;
     private Handler handler = new Handler(Looper.getMainLooper());
     private CommScanner mCommScanner;
     private boolean isProcessing = false;
-    private int totalScanCount = 0; // Buat ngitung total fisik
+    private int totalScanCount = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,14 +80,12 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         switchRfid.setChecked(false);
         scannedItemsList = new ArrayList<>();
 
-        // Pake ItemAdapter buat nampilin format ID, NAMA, dan QTY
         adapter = new ItemAdapter(scannedItemsList);
         rvTags.setLayoutManager(new LinearLayoutManager(this));
         rvTags.setAdapter(adapter);
 
         setupScanner();
 
-        // 1. DOWNLOAD MASTER ITEM PAS HALAMAN DIBUKA
         fetchMasterItems();
 
         resultScan.setShowSoftInputOnFocus(false);
@@ -103,7 +101,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
                 String data = s.toString().trim();
                 if (data.length() >= 7 && !isProcessing && !switchRfid.isChecked()) {
                     isProcessing = true;
-                    processScannedData(data); // Cukup satu argumen
+                    processScannedData(data);
                     resultScan.setText("");
                     isProcessing = false;
                 }
@@ -136,7 +134,6 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         });
     }
 
-    // AMBIL DATA MASTER DARI BACKEND
     private void fetchMasterItems() {
         if (!isNetworkConnected()) return;
         showLoading();
@@ -165,16 +162,14 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
                 return item.getItemName();
             }
         }
-        return "Unknown Item"; // Kalau datanya ga ketemu
+        return "Unknown Item";
     }
 
     private String extractItemId(String scannedData, boolean isRfid) {
-        // 1. BYPASS BUAT DATA DUMMY SATO (Biar namanya langsung keluar "Produk SATO Dummy")
         if (scannedData.startsWith("TAG0000") || scannedData.startsWith("EPC-SATO")) {
             return "ITM-001";
         }
 
-        // 2. LOGIC ASLI (Kalo besok-besok format EPC lu dari printer adalah AITM-0010000000001)
         try {
             if (isRfid) {
                 if (scannedData.startsWith("A") && scannedData.length() > 11) {
@@ -189,23 +184,20 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     private void processScannedData(String scannedData) {
         for (ItemModels.ItemModel t : scannedItemsList) {
             if (t.getEpcTag().equals(scannedData) || t.getItemId().equals(scannedData)) {
-                playScanFeedback(1); // 👈 TIPE 1: SUARA DUPLIKAT
+                playScanFeedback(1);
                 showSagaFeedback("The item is already on the list!", false);
                 return;
             }
         }
 
-        // 👇 OFFLINE MODE: Kalo internet mati, tetep bolehin masuk list 👇
         if (!isNetworkConnected()) {
-            playScanFeedback(0); // Bunyi sukses lokal
+            playScanFeedback(0);
             showSagaFeedback("Offline! Item added locally.", false);
 
-            // Masukin data dummy offline (nanti divalidasi server pas Save)
             ItemModels.ItemModel offlineItem = new ItemModels.ItemModel(scannedData, scannedData, "Offline Scanned Item", 1);
 
-            scannedItemsList.add(0, offlineItem); // 👈 SMART SORTING
+            scannedItemsList.add(0, offlineItem);
 
-            // Asumsi di ItemAdapter lu udah ditambahin logic ini juga ya blay
             if (adapter != null) adapter.setLastScannedPosition(0);
 
             adapter.notifyItemInserted(0);
@@ -215,7 +207,6 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
             return;
         }
 
-        // --- KALAU ONLINE, TEMBAK API NORMAL ---
         PrefManager pref = new PrefManager(this);
         String token = "Bearer " + pref.getToken();
 
@@ -231,11 +222,11 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
 
                     if (!info.getStatus().equals("STANDBY") && !info.getStatus().equals("PRINTED")) {
                         showSagaFeedback("Tag " + info.getTagId() + " status " + info.getStatus() + "!", false);
-                        playScanFeedback(2); // 👈 TIPE 2: ERROR SERVER
+                        playScanFeedback(2);
                         return;
                     }
 
-                    playScanFeedback(0); // 👈 TIPE 0: SUKSES
+                    playScanFeedback(0);
 
                     scannedItemsList.add(0, new ItemModels.ItemModel(
                             scannedData,
@@ -305,7 +296,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     private void hitApiStockIn(List<String> codes, String scannerType) {
         if (!isNetworkConnected()) {
             showSagaFeedback("Connection Error! Cari sinyal dulu bre buat Stock In.", false);
-            playScanFeedback(2); // Kasih warning kalo offline pas klik Save
+            playScanFeedback(2);
             return;
         }
         showLoading();
@@ -321,11 +312,11 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
                 hideLoading();
                 if (response.isSuccessful() && response.body() != null) {
                     showSagaFeedback("Success: " + response.body().getMessage() + " (" + codes.size() + " Physique)", true);
-                    playScanFeedback(0); // 👈 TIPE 0: SUKSES SUBMIT API
+                    playScanFeedback(0);
                     clearAllData();
                 } else {
                     handleApiError(response.code());
-                    playScanFeedback(2); // 👈 TIPE 2: ERROR SUBMIT
+                    playScanFeedback(2);
                 }
                 resultScan.requestFocus();
             }
@@ -334,7 +325,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
             public void onFailure(Call<GeneralResponse> call, Throwable t) {
                 hideLoading();
                 handleFailure(t);
-                playScanFeedback(2); // 👈 TIPE 2: RTO / TIMEOUT
+                playScanFeedback(2);
                 resultScan.requestFocus();
             }
         });
@@ -351,7 +342,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         if (!switchRfid.isChecked()) return;
         for (RFIDData data : event.getRFIDData()) {
             String epc = bytesToHexString(data.getUII());
-            handler.post(() -> processScannedData(epc)); // Hapus parameter boolean-nya
+            handler.post(() -> processScannedData(epc));
         }
     }
 
@@ -360,7 +351,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         if (switchRfid.isChecked()) return;
         if (!event.getBarcodeData().isEmpty()) {
             String barcode = new String(event.getBarcodeData().get(0).getData());
-            handler.post(() -> processScannedData(barcode)); // Hapus parameter boolean-nya
+            handler.post(() -> processScannedData(barcode));
         }
     }
     private void setupScanner() {
@@ -377,9 +368,8 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         super.onResume();
         setupScanner();
 
-        // Cek batre HP/HT-nya
         if (getHTBatteryLevel() <= 15) {
-            showSagaFeedback("Baterai HT sisa " + getHTBatteryLevel() + "%, waktunya ngecas bre!", false);
+            showSagaFeedback("Leftover HT battery " + getHTBatteryLevel() + "%, time to charge!", false);
             playScanFeedback(2);
         }
     }
@@ -387,7 +377,6 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     @Override
     protected void onPause() {
         super.onPause();
-        // MATIIN LISTENER SCANNER PAS KELUAR HALAMAN BIAR GAK BOCOR BATRE
         if (mCommScanner != null) {
             try {
                 if (mCommScanner.getRFIDScanner() != null) {

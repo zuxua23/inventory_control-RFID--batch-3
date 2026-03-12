@@ -224,7 +224,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
 
     private void finalizeSession() {
         if (!isNetworkConnected()) {
-            showSagaFeedback("Masih Offline! Cari sinyal dulu buat Finalize.", false);
+            showSagaFeedback("Still Offline! Find a signal first to finalize.", false);
             playScanFeedback(2);
             return;
         }
@@ -270,7 +270,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
         api.scanStockTaking(token, req).enqueue(new Callback<GeneralResponse>() {
             @Override
             public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
-                syncStockTakingData(tags, currentIndex + 1); // Lanjut data berikutnya (sukses/gagal tetep lanjut)
+                syncStockTakingData(tags, currentIndex + 1);
             }
             @Override
             public void onFailure(Call<GeneralResponse> call, Throwable t) {
@@ -483,7 +483,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
         setupScanner();
 
         if (getHTBatteryLevel() <= 15) {
-            showSagaFeedback("Baterai HT sisa " + getHTBatteryLevel() + "%, waktunya ngecas bre!", false);
+            showSagaFeedback("Leftover HT battery " + getHTBatteryLevel() + "%, time to charge!", false);
             playScanFeedback(2);
         }
     }
@@ -491,7 +491,6 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
     @Override
     protected void onPause() {
         super.onPause();
-        // MATIIN LISTENER SCANNER PAS KELUAR HALAMAN BIAR GAK BOCOR BATRE
         if (mCommScanner != null) {
             try {
                 if (mCommScanner.getRFIDScanner() != null) {

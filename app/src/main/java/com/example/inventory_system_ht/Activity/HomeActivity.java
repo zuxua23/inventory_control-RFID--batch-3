@@ -52,7 +52,6 @@ public class HomeActivity extends BaseScannerActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
-        // Inisialisasi PrefManager
         prefManager = new PrefManager(this);
 
         ivProfile = findViewById(R.id.ivProfile);
@@ -67,7 +66,6 @@ public class HomeActivity extends BaseScannerActivity {
         tvNamaOperator = findViewById(R.id.textViewNamaOperator);
         tvRoleOperator = findViewById(R.id.textViewRoleOperator);
 
-        // Ambil data User dari Session
         SharedPreferences sharedPreferences = getSharedPreferences("UserSession", MODE_PRIVATE);
         String fullName = sharedPreferences.getString("USER_FULLNAME", "Guest");
         int roleId = sharedPreferences.getInt("ROLE_ID", 2);
@@ -182,7 +180,6 @@ public class HomeActivity extends BaseScannerActivity {
         });
         btnSyncData = findViewById(R.id.btnSyncData);
 
-        // Kasih listener biar pas diklik, dia ngejalanin fungsi sync-nya
         if (btnSyncData != null) {
             btnSyncData.setOnClickListener(v -> syncOfflineData());
         }
@@ -230,13 +227,13 @@ public class HomeActivity extends BaseScannerActivity {
     }
     private void syncOfflineData() {
         if (!isNetworkConnected()) {
-            showSagaFeedback("Masih Offline bre! Cari Wi-Fi dulu gih.", false);
+            showSagaFeedback("Still offline! Let's find Wi-Fi first.", false);
             playScanFeedback(2);
             return;
         }
 
         showLoading();
-        showSagaFeedback("Mencari data offline...", true);
+        showSagaFeedback("Search for offline data...", true);
 
         new Thread(() -> {
             List<TagModels.TagModel> pendingTags = appDao.getPendingTags();
@@ -244,7 +241,7 @@ public class HomeActivity extends BaseScannerActivity {
             runOnUiThread(() -> {
                 if (pendingTags == null || pendingTags.isEmpty()) {
                     hideLoading();
-                    showSagaFeedback("Semua data udah tersinkron bre, aman!", true);
+                    showSagaFeedback("All data has been synchronized, it's safe.!", true);
                     playScanFeedback(0);
                     return;
                 }
@@ -254,18 +251,15 @@ public class HomeActivity extends BaseScannerActivity {
                     tagsToSync.add(tag.getEpcTag());
                 }
 
-                showSagaFeedback("Menyinkronkan " + tagsToSync.size() + " data ke server...", true);
+                showSagaFeedback("Syncing " + tagsToSync.size() + " data to the server...", true);
 
-                // Tembak API
                 ApiService api = ApiClient.getClient(HomeActivity.this).create(ApiService.class);
                 String token = "Bearer " + prefManager.getToken();
 
-                // Asumsi gw lu pake endpoint RegisterTags buat nge-sync data baru
                 api.registerTags(token, new AuthModels.RegisterRequest(tagsToSync)).enqueue(new Callback<GeneralResponse>() {
                     @Override
                     public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
                         if (response.isSuccessful()) {
-                            // Kalau sukses di server, update status lokal HP jadi 1
                             new Thread(() -> {
                                 for (String epc : tagsToSync) {
                                     appDao.markTagAsSynced(epc);
@@ -274,7 +268,7 @@ public class HomeActivity extends BaseScannerActivity {
 
                                 runOnUiThread(() -> {
                                     hideLoading();
-                                    showSagaFeedback("Sinkronisasi Selesai! Data aman di C#.", true);
+                                    showSagaFeedback("Synchronization Complete! Data is safe on the Server.", true);
                                     playScanFeedback(0);
                                 });
                             }).start();

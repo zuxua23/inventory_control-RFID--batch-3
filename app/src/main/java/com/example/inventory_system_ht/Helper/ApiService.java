@@ -42,7 +42,7 @@ public interface ApiService {
             @Path("code") String code
     );
 
-    @POST("stock/preparation/bulk") // Sesuaikan sama route baru lu
+    @POST("stock/preparation/bulk")
     Call<GeneralResponse> submitStockPrep(
             @Header("Authorization") String token,
             @Body StockPrepBulkRequest request

@@ -54,7 +54,7 @@ public class LoginActivity extends BaseScannerActivity {
         String password = etPassword.getText().toString().trim();
 
         if (username.isEmpty() || password.isEmpty()) {
-            showSagaFeedback("Username & Password are required, bro!", false);
+            showSagaFeedback("Username & Password are required!", false);
             return;
         }
 
@@ -85,7 +85,7 @@ public class LoginActivity extends BaseScannerActivity {
                     handleApiError(response.code());
                     String errorMsg = "Login Failed: Wrong User/Pass or server problem.";
                     if (response.code() == 401) {
-                        errorMsg = "Unauthorized: Your account is not registered, bro!";
+                        errorMsg = "Unauthorized: Your account is not registered!";
                     }
                     showSagaFeedback(errorMsg, false);
                 }
@@ -95,7 +95,7 @@ public class LoginActivity extends BaseScannerActivity {
             public void onFailure(Call<AuthModels.LoginResponse> call, Throwable t) {
                 hideLoading();
                 handleFailure(t);
-                showSagaFeedback("Server Timeout: Backend API is not responding!", false);
+                showSagaFeedback("Server Timeout: API is not responding!", false);
             }
         });
     }
@@ -123,7 +123,7 @@ public class LoginActivity extends BaseScannerActivity {
             String ipAddress = etIpAPI.getText().toString().trim();
 
             if (ipAddress.isEmpty()) {
-                showSagaFeedback("Fill in the IP first, bro", false);
+                showSagaFeedback("Fill in the Server first, bro", false);
                 return;
             }
 
@@ -140,10 +140,10 @@ public class LoginActivity extends BaseScannerActivity {
             if (!ipAddress.isEmpty()) {
                 prefManager.saveIp(ipAddress);
 
-                showSagaFeedback("API saved successfully: " + ipAddress, true);
+                showSagaFeedback("Server saved successfully: " + ipAddress, true);
                 dialog.dismiss();
             } else {
-                showSagaFeedback("API cannot be empty", false);
+                showSagaFeedback("Server cannot be empty", false);
             }
         });
 

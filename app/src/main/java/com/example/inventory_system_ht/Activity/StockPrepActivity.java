@@ -66,7 +66,7 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
                 if (dataDariDB != null && !dataDariDB.isEmpty()) {
                     doList.addAll(dataDariDB);
                 } else {
-                    showSagaFeedback("DB is empty, please refresh it!", false);
+                    showSagaFeedback("Data is empty, please refresh it!", false);
                 }
                 adapter.notifyDataSetChanged();
             });

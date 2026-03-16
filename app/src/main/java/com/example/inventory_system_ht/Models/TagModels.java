@@ -3,6 +3,7 @@ package com.example.inventory_system_ht.Models;
 import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
 import com.google.gson.annotations.SerializedName;
@@ -12,11 +13,11 @@ import java.io.Serializable;
 public class TagModels {
 
     public static class TagInfoDto {
-        @SerializedName("tagId") private String tagId;
-        @SerializedName("epcTag") private String epcTag;
-        @SerializedName("itemName") private String itemName;
-        @SerializedName("itemId") private String itemId;
-        @SerializedName("status") private String status;
+        @SerializedName("tagId") private final String tagId;
+        @SerializedName("epcTag") private final String epcTag;
+        @SerializedName("itemName") private final String itemName;
+        @SerializedName("itemId") private final String itemId;
+        @SerializedName("status") private final String status;
 
         public TagInfoDto(String tagId, String epcTag, String itemName, String itemId, String status) {
             this.tagId = tagId;
@@ -40,25 +41,28 @@ public class TagModels {
         @NonNull
         @SerializedName("epcTag")
         @ColumnInfo(name = "epc_tag")
-        private String epcTag;
+        private final String epcTag;
 
         @SerializedName("id")
         @ColumnInfo(name = "tag_id")
-        private String tagId;
+        private final String tagId;
 
         @SerializedName("itemId")
         @ColumnInfo(name = "itm_id")
-        private String itmId;
+        private final String itmId;
 
         @SerializedName("itemName")
         @ColumnInfo(name = "product_name")
-        private String productName;
+        private final String productName;
 
         @ColumnInfo(name = "do_id_ref")
-        private String doIdRef;
+        private final String doIdRef;
 
         @ColumnInfo(name = "sync_status")
-        private int syncStatus;
+        private final int syncStatus;
+
+        @Ignore
+        private boolean isScanned = false;
 
         public TagModel(@NonNull String epcTag, String tagId, String itmId, String productName, String doIdRef, int syncStatus) {
             this.epcTag = epcTag;
@@ -78,6 +82,7 @@ public class TagModels {
         public String getDoIdRef() { return doIdRef; }
         public int getSyncStatus() { return syncStatus; }
 
-        public void setSyncStatus(int syncStatus) { this.syncStatus = syncStatus; }
+        public boolean isScanned() { return isScanned; }
+        public void setScanned(boolean scanned) { isScanned = scanned; }
     }
 }

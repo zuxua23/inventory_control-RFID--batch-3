@@ -32,12 +32,7 @@ public class PrefManager {
         editor.putLong(KEY_LOGIN_TIME, System.currentTimeMillis());
         editor.apply();
     }
-    public void saveProfile(String userId, String username, String fullName) {
-        editor.putString(KEY_USER_ID, userId);
-        editor.putString(KEY_USERNAME, username);
-        editor.putString(KEY_FULLNAME, fullName);
-        editor.apply();
-    }
+
     public boolean isSessionValid() {
         boolean isLoggedIn = pref.getBoolean(KEY_IS_LOGIN, false);
         String token = pref.getString(KEY_TOKEN, null);
@@ -62,17 +57,6 @@ public class PrefManager {
         return pref.getString(KEY_TOKEN, null);
     }
 
-    public String getUserId() {
-        return pref.getString(KEY_USER_ID, "");
-    }
-
-    public String getUserFullName() {
-        return pref.getString(KEY_FULLNAME, "User Gudang");
-    }
-
-    public String getUserUsername() {
-        return pref.getString(KEY_USERNAME, "-");
-    }
     public void saveIp(String url) {
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
             url = "http://" + url;

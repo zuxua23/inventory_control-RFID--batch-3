@@ -2,13 +2,12 @@ package com.example.inventory_system_ht.Helper;
 
 import android.content.Context;
 
-import java.io.IOException;
+
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okhttp3.Response;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
@@ -27,22 +26,18 @@ public class ApiClient {
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
         loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
 
-        Interceptor authInterceptor = new Interceptor() {
-            @Override
-            public Response intercept(Chain chain) throws IOException {
-                Request originalRequest = chain.request();
+        Interceptor authInterceptor = chain -> {
+            Request originalRequest = chain.request();
+            String token = prefManager.getToken();
 
-                String token = prefManager.getToken();
+            Request.Builder builder = originalRequest.newBuilder()
+                    .header("Accept", "application/json");
 
-                Request.Builder builder = originalRequest.newBuilder()
-                        .header("Accept", "application/json");
-
-                if (token != null && !token.isEmpty()) {
-                    builder.header("Authorization", "Bearer " + token);
-                }
-
-                return chain.proceed(builder.build());
+            if (token != null && !token.isEmpty()) {
+                builder.header("Authorization", "Bearer " + token);
             }
+
+            return chain.proceed(builder.build());
         };
 
         OkHttpClient client = new OkHttpClient.Builder()
@@ -52,7 +47,6 @@ public class ApiClient {
                 .readTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .build();
-
 
         if (retrofit == null || !retrofit.baseUrl().toString().equals(baseUrl)) {
             retrofit = new Retrofit.Builder()

@@ -16,23 +16,23 @@ public class DOModels {
         @NonNull
         @SerializedName("doId")
         @ColumnInfo(name = "do_id")
-        private String doId;
+        private final String doId;
 
         @SerializedName("doNumber")
         @ColumnInfo(name = "do_number")
-        private String doNo;
+        private final String doNo;
 
         @SerializedName("status")
         @ColumnInfo(name = "status")
-        private String status;
+        private final String status;
 
         @SerializedName("createdAt")
         @ColumnInfo(name = "created_at")
-        private String createdAt;
+        private final String createdAt;
 
         @SerializedName("scannerType")
         @ColumnInfo(name = "scanner_type")
-        private String scannerType;
+        private final String scannerType;
 
         public DOModel(@NonNull String doId, String doNo, String status, String createdAt, String scannerType) {
             this.doId = doId;

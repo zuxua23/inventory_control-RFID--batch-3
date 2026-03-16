@@ -192,7 +192,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
 
         if (!isNetworkConnected()) {
             playScanFeedback(0);
-            showSagaFeedback("Offline! Data disimpen di HP dulu bre.", false);
+            showSagaFeedback("Offline! Data is saved on your phone first.", false);
 
             new Thread(() -> {
                 TagModels.TagModel offlineTag = new TagModels.TagModel(data, data, "STT_OFFLINE", "Stock Taking", activeSttId, 0);
@@ -236,7 +236,6 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
             List<TagModels.TagModel> pendingTags = appDao.getPendingTags();
             List<String> tagsToSync = new ArrayList<>();
 
-            // Cari data offline yang emang buat sesi Stock Taking ini
             for (TagModels.TagModel tag : pendingTags) {
                 if (tag.getProductName().equals("Stock Taking") && tag.getDoIdRef().equals(activeSttId)) {
                     tagsToSync.add(tag.getEpcTag());
@@ -250,7 +249,6 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
                     // Disini gw contohin pake loop. Kalau data banyak, disarankan minta API Bulk ke C#.
                     syncStockTakingData(tagsToSync, 0);
                 } else {
-                    // Kalau gak ada data offline, langsung finalize
                     executeFinalizeAPI();
                 }
             });
@@ -307,12 +305,11 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
     }
 
     private void markItemAsScanned(String epcOrBarcode) {
-        // Asumsi di TagModel lu punya field buat nandain background UI (misal isScanned)
-        // Kalo belum ada, tambahin public boolean isScanned = false; di TagModel lu bre.
         for (int i = 0; i < masterStockList.size(); i++) {
             TagModels.TagModel tag = masterStockList.get(i);
             if (tag.getEpcTag().equalsIgnoreCase(epcOrBarcode) || tag.getTagId().equalsIgnoreCase(epcOrBarcode)) {
-                // tag.isScanned = true; // Uncomment kalo lu udah nambahin propertinya
+
+                tag.setScanned(true); // Pake setter-nya
                 adapter.notifyItemChanged(i);
                 rvTags.smoothScrollToPosition(i);
                 break;

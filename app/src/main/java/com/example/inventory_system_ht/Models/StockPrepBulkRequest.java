@@ -6,13 +6,13 @@ import java.util.List;
 public class StockPrepBulkRequest {
 
     @SerializedName("doId")
-    private String doId;
+    private final String doId;
 
     @SerializedName("scannerType")
-    private String scannerType;
+    private final String scannerType;
 
     @SerializedName("scannedCodes")
-    private List<String> scannedCodes;
+    private final List<String> scannedCodes;
 
     public StockPrepBulkRequest(String doId, List<String> scannedCodes, String scannerType) {
         this.doId = doId;

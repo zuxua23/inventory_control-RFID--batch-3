@@ -202,7 +202,7 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
         setupScanner();
 
         if (getHTBatteryLevel() <= 15) {
-            showSagaFeedback("Baterai HT sisa " + getHTBatteryLevel() + "%, waktunya ngecas bre!", false);
+            showSagaFeedback("Leftover HT battery " + getHTBatteryLevel() + "%, time to charge!", false);
             playScanFeedback(2);
         }
 

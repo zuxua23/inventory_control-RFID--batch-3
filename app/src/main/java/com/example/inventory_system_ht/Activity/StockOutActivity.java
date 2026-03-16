@@ -152,7 +152,7 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
 
         if (!isNetworkConnected()) {
             playScanFeedback(0);
-            showSagaFeedback("Offline! Data disimpen di HP dulu bre.", false);
+            showSagaFeedback("Offline! The data is saved on the cellphone first.", false);
 
             new Thread(() -> {
 
@@ -212,7 +212,7 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
 
     private void finalizeStockOut() {
         if (scannedItemList.isEmpty()) {
-            showSagaFeedback("No items have been scanned yet bro!", false);
+            showSagaFeedback("No items have been scanned yet!", false);
             return;
         }
 

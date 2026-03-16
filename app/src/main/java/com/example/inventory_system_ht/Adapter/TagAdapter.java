@@ -18,6 +18,7 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
     private List<TagModels.TagModel> tagList;
     private OnItemClickListener listener;
     private int lastScannedPosition = -1;
+
     public interface OnItemClickListener {
         void onItemClick(TagModels.TagModel item);
     }
@@ -42,17 +43,21 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
         TagModels.TagModel tag = tagList.get(position);
         holder.tvTagId.setText(tag.getEpcTag());
         holder.tvProductName.setText(tag.getProductName());
+
         CardView cardView = (CardView) holder.itemView;
-        if (position == lastScannedPosition) {
+
+        if (tag.isScanned()) {
+            cardView.setCardBackgroundColor(Color.parseColor("#C8E6C9"));
+        } else if (position == lastScannedPosition) {
             cardView.setCardBackgroundColor(Color.parseColor("#E3F2FD"));
         } else {
-            cardView.setCardBackgroundColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.blue_theme));
+            cardView.setCardBackgroundColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.green_button));
         }
+
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onItemClick(tag);
         });
     }
-
 
     @Override
     public int getItemCount() { return tagList.size(); }
@@ -65,6 +70,7 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
             tvProductName = itemView.findViewById(R.id.tvProductName);
         }
     }
+
     public void setLastScannedPosition(int position) {
         this.lastScannedPosition = position;
     }

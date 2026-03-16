@@ -6,8 +6,8 @@ import java.util.List;
 
 public class AuthModels {
     public static class LoginRequest {
-        private String username;
-        private String password;
+        private final String username;
+        private final String password;
 
         public LoginRequest(String username, String password) {
             this.username = username;
@@ -39,11 +39,11 @@ public class AuthModels {
     }
 
     public static class UserModel {
-        private String usr_id;
-        private String usr_name;
-        private String usr_fullname;
-        private String usr_password;
-        private int role_id;
+        private final String usr_id;
+        private final String usr_name;
+        private final String usr_fullname;
+        private final String usr_password;
+        private final int role_id;
         public UserModel(String usr_id, String usr_name, String usr_fullname, String usr_password, int role_id) {
             this.usr_id = usr_id;
             this.usr_name = usr_name;

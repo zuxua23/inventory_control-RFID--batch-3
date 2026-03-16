@@ -5,10 +5,10 @@ import java.util.List;
 
 public class StockInRequest {
     @SerializedName("scannerType")
-    private String scannerType;
+    private final String scannerType;
 
     @SerializedName("scannedCodes")
-    private List<String> scannedCodes;
+    private final List<String> scannedCodes;
 
     public StockInRequest(String scannerType, List<String> scannedCodes) {
         this.scannerType = scannerType;

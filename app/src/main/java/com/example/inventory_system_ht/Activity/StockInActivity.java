@@ -173,7 +173,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         try {
             if (isRfid) {
                 if (scannedData.startsWith("A") && scannedData.length() > 11) {
-                    return scannedData.substring(1, scannedData.length() - 10); // Motong dapet ITM-001
+                    return scannedData.substring(1, scannedData.length() - 10);
                 }
             }
         } catch (Exception e) {}
@@ -295,7 +295,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
 
     private void hitApiStockIn(List<String> codes, String scannerType) {
         if (!isNetworkConnected()) {
-            showSagaFeedback("Connection Error! Cari sinyal dulu bre buat Stock In.", false);
+            showSagaFeedback("Connection Error! Please find a signal first, for Stock In..", false);
             playScanFeedback(2);
             return;
         }

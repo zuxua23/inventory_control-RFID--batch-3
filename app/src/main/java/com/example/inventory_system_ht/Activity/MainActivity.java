@@ -1,4 +1,4 @@
-package com.example.inventory_system_ht;
+package com.example.inventory_system_ht.Activity;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -7,7 +7,7 @@ import android.os.Looper;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.inventory_system_ht.Activity.LoginActivity;
+import com.example.inventory_system_ht.R;
 
 public class MainActivity extends AppCompatActivity {
 

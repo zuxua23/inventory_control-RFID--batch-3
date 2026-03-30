@@ -20,7 +20,7 @@ import retrofit2.http.POST;
 import retrofit2.http.Path;
 
 public interface ApiService {
-    @POST("auth/login")
+    @POST("core/auth/login")
     Call<AuthModels.LoginResponse> login(@Body AuthModels.LoginRequest loginRequest);
     @POST("tag/register")
     Call<GeneralResponse> registerTags(
@@ -32,6 +32,12 @@ public interface ApiService {
             @Header("Authorization") String token,
             @Body StockInRequest request
     );
+
+    @GET("do/get")
+    Call<List<DOModels.DOResponseDto>> getDo(
+            @Header("Authorization") String token
+    );
+
     @GET("item")
     Call<List<ItemModels.ItemResponseDto>> getAllItems(
             @Header("Authorization") String token

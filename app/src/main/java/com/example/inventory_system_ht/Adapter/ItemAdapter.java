@@ -49,13 +49,13 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         ItemModels.ItemModel item = itemList.get(position);
-        CardView cardView = (CardView) holder.itemView;
+//        CardView cardView = (CardView) holder.itemView;
 
-        if (position == lastScannedPosition) {
-            holder.itemView.setBackgroundColor(Color.parseColor("#E3F2FD"));
-        } else {
-            cardView.setCardBackgroundColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.blue_theme));
-        }
+//        if (position == lastScannedPosition) {
+//            holder.itemView.setBackgroundColor(Color.parseColor("#E3F2FD"));
+//        } else {
+//            cardView.setCardBackgroundColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.blue_theme));
+//        }
 
         holder.tvTagId.setText(item.getEpcTag());
         holder.tvProductName.setText(item.getItemName());

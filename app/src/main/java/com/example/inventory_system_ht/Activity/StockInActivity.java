@@ -99,7 +99,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
             @Override
             public void afterTextChanged(Editable s) {
                 String data = s.toString().trim();
-                if (data.length() >= 7 && !isProcessing && !switchRfid.isChecked()) {
+                if (data.length() >= 8 && !isProcessing && !switchRfid.isChecked()) {
                     isProcessing = true;
                     processScannedData(data);
                     resultScan.setText("");
@@ -132,6 +132,19 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
             showSagaFeedback(isChecked ? "Mode RFID: ON" : "Mode RFID: OFF", true);
             resultScan.requestFocus();
         });
+
+
+        switchRfid.setFocusable(false);
+        switchRfid.setFocusableInTouchMode(false);
+
+        resultScan.setOnKeyListener((v, keyCode, event) -> {
+            if (keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
+                return true;
+            }
+            return false;
+        });
+        resultScan.setShowSoftInputOnFocus(false);
+        resultScan.postDelayed(() -> resultScan.requestFocus(), 100);
     }
 
     private void fetchMasterItems() {
@@ -264,7 +277,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     }
 
     private void updateScanCount() {
-        tvScanned.setText("Qty: " + totalScanCount);
+        tvScanned.setText("Scanned: " + totalScanCount);
     }
 
     private void showBulkConfirmDialog() {

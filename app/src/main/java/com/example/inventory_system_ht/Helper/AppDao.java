@@ -15,13 +15,13 @@ public interface AppDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertDOList(List<DOModels.DOModel> doList);
 
-    @Query("SELECT * FROM tb_DO ORDER BY created_at DESC")
+    @Query("SELECT do_id, do_number, status, created_at, scanner_type FROM tb_DO ORDER BY created_at DESC")
     List<DOModels.DOModel> getAllDO();
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertScannedTag(TagModels.TagModel tag);
 
-    @Query("SELECT * FROM tb_Tag_Local WHERE sync_status = 0")
+    @Query("SELECT epc_tag, tag_id, itm_id, product_name, do_id_ref, sync_status FROM tb_Tag_Local WHERE sync_status = 0")
     List<TagModels.TagModel> getPendingTags();
 
     @Query("UPDATE tb_Tag_Local SET sync_status = 1 WHERE epc_tag = :epc")

@@ -36,11 +36,9 @@ import com.example.inventory_system_ht.Models.TagModels;
 import com.example.inventory_system_ht.R;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import retrofit2.Call;
-
 
 public class TagRegisActivity extends BaseScannerActivity implements BarcodeDataDelegate, RFIDDataDelegate {
     private CommScanner mCommScanner;
@@ -68,10 +66,15 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
         btnSubmitRegis = findViewById(R.id.btnSubmitRegis);
         rvTags = findViewById(R.id.rvTags);
 
+        switchRfid.setChecked(false);
         registeredTagList = new ArrayList<>();
         adapter = new TagAdapter(registeredTagList);
         rvTags.setLayoutManager(new LinearLayoutManager(this));
         rvTags.setAdapter(adapter);
+
+        adapter.setOnItemLongClickListener((item, position) -> {
+            showDeleteSingleItemDialog(item, position);
+        });
 
         btnBack.setOnClickListener(v -> finish());
 
@@ -80,6 +83,7 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
             adapter.notifyDataSetChanged();
             updateScanCount();
             showSagaFeedback("List cleared!", true);
+            resultScan.requestFocus();
         });
 
         btnSubmitRegis.setOnClickListener(v -> {
@@ -90,6 +94,19 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
             }
         });
 
+        switchRfid.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                boolean isConnected = (mCommScanner != null && mCommScanner.getRFIDScanner() != null);
+                if (!isConnected) {
+                    showSagaFeedback("HT not Connected to Reader RFID", false);
+                    switchRfid.setChecked(false);
+                    return;
+                }
+            }
+            showSagaFeedback(isChecked ? "Mode RFID: ON" : "Mode RFID: OFF", true);
+            resultScan.requestFocus();
+        });
+
         resultScan.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -98,77 +115,77 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
             @Override
             public void afterTextChanged(Editable s) {
                 String data = s.toString().trim();
-                if (data.length() >= 7 && !isProcessing && !switchRfid.isChecked()) {
+                if (data.length() >= 8 && !isProcessing && !switchRfid.isChecked()) {
                     isProcessing = true;
-                    processScannedData(data, false);
-                    resultScan.setText("");
-                    isProcessing = false;
+
+                    new Thread(() -> {
+                        processScannedData(data, false);
+
+                        runOnUiThread(() -> {
+                            resultScan.setText("");
+                            isProcessing = false;
+                        });
+                    }).start();
                 }
             }
         });
 
         setupScanner();
-        resultScan.requestFocus();
+
+        switchRfid.setFocusable(false);
+        switchRfid.setFocusableInTouchMode(false);
+
+        resultScan.setOnKeyListener((v, keyCode, event) -> {
+            if (keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
+                return true;
+            }
+            return false;
+        });
+        resultScan.setShowSoftInputOnFocus(false);
+        resultScan.postDelayed(() -> resultScan.requestFocus(), 100);
     }
 
     private void processScannedData(String scannedData, boolean isFromRfid) {
-        if (isFromRfid) {
-            boolean exists = false;
-            for (TagModels.TagModel t : registeredTagList) {
-                if (t.getEpcTag().equals(scannedData)) {
-                    exists = true;
-                    playScanFeedback(1);
-                    break;
-                }
+        boolean exists = false;
+        for (TagModels.TagModel t : registeredTagList) {
+            if (t.getEpcTag().equals(scannedData) || t.getTagId().equals(scannedData)) {
+                exists = true;
+                break;
             }
-            if (!exists) {
-                registeredTagList.add(0, new TagModels.TagModel(scannedData, scannedData, "TAG", "Scanned Item", "STAGING", 0));
-
-                runOnUiThread(() -> {
-                    if(adapter != null) adapter.setLastScannedPosition(0);
-
-                    adapter.notifyItemInserted(0);
-                    rvTags.scrollToPosition(0);
-                    updateScanCount();
-                    playScanFeedback(0);
-                });
-            }
-        } else {
-            playScanFeedback(0);
-            runOnUiThread(() -> showSingleConfirmDialog(scannedData));
         }
+
+        if (exists) {
+            runOnUiThread(() -> {
+                playScanFeedback(1);
+                showSagaFeedback("Tag already exists in the list!", false);
+            });
+            return;
+        }
+
+        final TagModels.TagModel newTag = new TagModels.TagModel(scannedData, scannedData, "TAG", "Scanned Item", "STAGING", 0);
+
+        runOnUiThread(() -> {
+            registeredTagList.add(0, newTag);
+            if (adapter != null) adapter.setLastScannedPosition(0);
+            adapter.notifyItemInserted(0);
+            rvTags.scrollToPosition(0);
+            updateScanCount();
+            playScanFeedback(0);
+        });
     }
 
     private void updateScanCount() {
-        tvScanned.setText("Qty: " + registeredTagList.size());
-    }
-
-    private void showSingleConfirmDialog(String scannedData) {
-        Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_regist);
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-
-        TextView tvTitle = dialog.findViewById(R.id.tvTitle);
-        tvTitle.setText("Register Tag:\n" + scannedData);
-
-        dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
-        dialog.findViewById(R.id.btnYes).setOnClickListener(v -> {
-            dialog.dismiss();
-            hitApiRegisterTags(Collections.singletonList(scannedData));
-        });
-        dialog.show();
+        tvScanned.setText("Scanned: " + registeredTagList.size());
     }
 
     private void showBulkConfirmDialog() {
         Dialog dialog = new Dialog(this);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(R.layout.dialog_regist);
+
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
 
         TextView tvTitle = dialog.findViewById(R.id.tvTitle);
@@ -181,6 +198,39 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
             for(TagModels.TagModel t : registeredTagList) ids.add(t.getEpcTag());
             hitApiRegisterTags(ids);
         });
+        dialog.show();
+    }
+
+    private void showDeleteSingleItemDialog(TagModels.TagModel tag, int position) {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_regist);
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        TextView tvTitle = dialog.findViewById(R.id.tvTitle);
+        tvTitle.setText("Remove " + tag.getEpcTag() + " dari list?");
+
+        Button btnYes = dialog.findViewById(R.id.btnYes);
+        btnYes.setText("Remove");
+        btnYes.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.RED));
+
+        dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
+        btnYes.setOnClickListener(v -> {
+            dialog.dismiss();
+
+            registeredTagList.remove(position);
+            adapter.notifyItemRemoved(position);
+            adapter.notifyItemRangeChanged(position, registeredTagList.size());
+
+            updateScanCount();
+            showSagaFeedback("Tag successfully removed from list!", true);
+            resultScan.requestFocus();
+        });
+
         dialog.show();
     }
 
@@ -224,12 +274,15 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
                     handleApiError(response.code());
                     playScanFeedback(2);
                 }
+                resultScan.requestFocus();
             }
 
             @Override
             public void onFailure(Call<GeneralResponse> call, Throwable t) {
+                hideLoading();
                 handleFailure(t);
                 playScanFeedback(2);
+                resultScan.requestFocus();
             }
         });
     }
@@ -239,7 +292,7 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
         if (!switchRfid.isChecked()) return;
         for (RFIDData data : event.getRFIDData()) {
             String epc = bytesToHexString(data.getUII());
-            processScannedData(epc, true);
+            handler.post(() -> processScannedData(epc, true));
         }
     }
 
@@ -248,7 +301,7 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
         if (switchRfid.isChecked()) return;
         if (!event.getBarcodeData().isEmpty()) {
             String barcode = new String(event.getBarcodeData().get(0).getData());
-            processScannedData(barcode, false);
+            handler.post(() -> processScannedData(barcode, false));
         }
     }
 

@@ -1,13 +1,10 @@
 package com.example.inventory_system_ht.Adapter;
 
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
-import androidx.cardview.widget.CardView;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.inventory_system_ht.Models.TagModels;
@@ -44,18 +41,26 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
         holder.tvTagId.setText(tag.getEpcTag());
         holder.tvProductName.setText(tag.getProductName());
 
-        CardView cardView = (CardView) holder.itemView;
-
-        if (tag.isScanned()) {
-            cardView.setCardBackgroundColor(Color.parseColor("#C8E6C9"));
-        } else if (position == lastScannedPosition) {
-            cardView.setCardBackgroundColor(Color.parseColor("#E3F2FD"));
-        } else {
-            cardView.setCardBackgroundColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.green_button));
-        }
+//        CardView cardView = (CardView) holder.itemView;
+//
+//        if (tag.isScanned()) {
+//            cardView.setCardBackgroundColor(Color.parseColor("#C8E6C9"));
+//        } else if (position == lastScannedPosition) {
+//            cardView.setCardBackgroundColor(Color.parseColor("#E3F2FD"));
+//        } else {
+//            cardView.setCardBackgroundColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.green_button));
+//        }
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onItemClick(tag);
+        });
+
+        holder.itemView.setOnLongClickListener(v -> {
+            if (longClickListener != null) {
+                longClickListener.onItemLongClick(tag, position);
+                return true;
+            }
+            return false;
         });
     }
 
@@ -70,7 +75,15 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
             tvProductName = itemView.findViewById(R.id.tvProductName);
         }
     }
+    public interface OnItemLongClickListener {
+        void onItemLongClick(TagModels.TagModel item, int position);
+    }
 
+    private OnItemLongClickListener longClickListener;
+
+    public void setOnItemLongClickListener(OnItemLongClickListener listener) {
+        this.longClickListener = listener;
+    }
     public void setLastScannedPosition(int position) {
         this.lastScannedPosition = position;
     }

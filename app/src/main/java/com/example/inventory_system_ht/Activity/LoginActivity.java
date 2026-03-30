@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.Button;
@@ -96,6 +97,7 @@ public class LoginActivity extends BaseScannerActivity {
                 hideLoading();
                 handleFailure(t);
                 showSagaFeedback("Server Timeout: API is not responding!", false);
+                Log.e("API_ERROR", "Login Failed", t);
             }
         });
     }

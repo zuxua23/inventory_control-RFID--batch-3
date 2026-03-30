@@ -120,16 +120,16 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
         if (vibrator == null) vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
 
         switch (type) {
-            case 0: // SUCCESS: Beep Tinggi & Pendek
-                toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 150);
+            case 0: // SUCCESS:
+                toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 100);
                 break;
 
-            case 1: // DUPLICATE: Beep 2x Pendek
-                toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 200);
+            case 1: // DUPLICATE
+                toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 150);
                 break;
 
-            case 2: // ERROR/FAILED: Beep Rendah Panjang + Getar
-                toneGen.startTone(ToneGenerator.TONE_CDMA_HIGH_L, 400);
+            case 2: // ERROR/FAILED
+                toneGen.startTone(ToneGenerator.TONE_CDMA_HIGH_L, 300);
                 if (vibrator != null && vibrator.hasVibrator()) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE));

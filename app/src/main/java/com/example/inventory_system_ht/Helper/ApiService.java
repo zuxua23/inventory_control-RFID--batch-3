@@ -20,7 +20,7 @@ import retrofit2.http.POST;
 import retrofit2.http.Path;
 
 public interface ApiService {
-    @POST("core/auth/login")
+    @POST("auth/login")
     Call<AuthModels.LoginResponse> login(@Body AuthModels.LoginRequest loginRequest);
     @POST("tag/register")
     Call<GeneralResponse> registerTags(

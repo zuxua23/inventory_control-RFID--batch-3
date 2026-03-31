@@ -74,12 +74,11 @@ public class LoginActivity extends BaseScannerActivity {
             public void onResponse(Call<AuthModels.LoginResponse> call, Response<AuthModels.LoginResponse> response) {
                 hideLoading();
                 if (response.isSuccessful() && response.body() != null) {
-                    // Simpan Token JWT
-                    prefManager.saveToken(response.body().getToken());
+
+                    prefManager.saveToken("SESSION_ACTIVE");
 
                     showSagaFeedback("Login Successful!", true);
 
-                    // Pindah ke HomeActivity
                     startActivity(new Intent(LoginActivity.this, HomeActivity.class));
                     finish();
                 } else {

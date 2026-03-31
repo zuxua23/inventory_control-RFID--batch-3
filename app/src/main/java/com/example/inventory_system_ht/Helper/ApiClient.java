@@ -3,6 +3,11 @@ package com.example.inventory_system_ht.Helper;
 import android.content.Context;
 
 
+import com.franmontiel.persistentcookiejar.ClearableCookieJar;
+import com.franmontiel.persistentcookiejar.PersistentCookieJar;
+import com.franmontiel.persistentcookiejar.cache.SetCookieCache;
+import com.franmontiel.persistentcookiejar.persistence.SharedPrefsCookiePersistor;
+
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.Interceptor;
@@ -40,9 +45,15 @@ public class ApiClient {
             return chain.proceed(builder.build());
         };
 
+        ClearableCookieJar cookieJar = new PersistentCookieJar(
+                new SetCookieCache(),
+                new SharedPrefsCookiePersistor(context)
+        );
+
         OkHttpClient client = new OkHttpClient.Builder()
+                .cookieJar(cookieJar) // <-- TAMBAHKAN INI
                 .addInterceptor(loggingInterceptor)
-                .addInterceptor(authInterceptor)
+                .addInterceptor(authInterceptor) // Biarkan saja, buat jaga-jaga kalau nanti pakai JWT
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)

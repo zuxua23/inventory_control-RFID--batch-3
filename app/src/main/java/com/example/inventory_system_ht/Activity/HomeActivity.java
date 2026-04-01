@@ -1,5 +1,6 @@
 package com.example.inventory_system_ht.Activity;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Intent;
@@ -72,13 +73,11 @@ public class HomeActivity extends BaseScannerActivity {
         String roleName = (roleId == 1) ? "Administrator" : "Operator IT";
 
         appDao = AppDatabase.getDatabase(this).appDao();
-        // Set UI Data
         tvNamaOperator.setText("Welcome " + fullName);
         tvRoleOperator.setText(roleName);
 
         updateReaderStatus(false);
 
-        // Cek Session Validitas
         if (!prefManager.isSessionValid()) {
             prefManager.clearSession();
             Intent intent = new Intent(HomeActivity.this, LoginActivity.class);
@@ -117,7 +116,6 @@ public class HomeActivity extends BaseScannerActivity {
             }
         };
 
-        // Handle Back Press
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
@@ -138,6 +136,7 @@ public class HomeActivity extends BaseScannerActivity {
         btnSearchItem.setOnClickListener(menuClickListener);
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private void showLogoutPopup(View anchorView) {
         CardView cardView = new CardView(this);
         cardView.setCardBackgroundColor(Color.parseColor("#C62828"));
@@ -202,7 +201,6 @@ public class HomeActivity extends BaseScannerActivity {
 
         btnYes.setOnClickListener(v -> {
             dialog.dismiss();
-            // Clear Session
             SharedPreferences sharedPreferences = getSharedPreferences("UserSession", MODE_PRIVATE);
             sharedPreferences.edit().clear().apply();
             prefManager.clearSession();

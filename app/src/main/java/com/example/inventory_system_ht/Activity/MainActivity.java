@@ -11,7 +11,7 @@ import com.example.inventory_system_ht.R;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int SPLASH_TIME_OUT = 1500;
+    private static final int SPLASH_TIME_OUT = 1000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

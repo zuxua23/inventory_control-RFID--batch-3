@@ -13,9 +13,7 @@ public class PrefManager {
     SharedPreferences pref;
     SharedPreferences.Editor editor;
     Context _context;
-
     private static final String PREF_NAME = "InventoryPrefsSecure";
-
     private static final String KEY_IS_LOGIN = "IsLoggedIn";
     private static final String KEY_TOKEN = "jwt_token";
     private static final String KEY_USER_ID = "UserId";
@@ -25,7 +23,6 @@ public class PrefManager {
     private static final String KEY_BASE_URL = "base_url_api";
     private static final long SESSION_DURATION = 8 * 60 * 60 * 1000;
     private static final String DEFAULT_URL = "";
-
     private static final String STATIC_TOKEN_ANDROID = "sbroyfu4yt4oby4obuds66-34=nfejfeye7eifneiysiniw7k3-nd83-dnf=vneu";
 
     public PrefManager(Context context) {
@@ -90,7 +87,7 @@ public class PrefManager {
     }
 
     public void saveIp(String url) {
-        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+        if (!url.startsWith("http://")) {
             url = "http://" + url;
         }
         if (!url.endsWith("/")) {

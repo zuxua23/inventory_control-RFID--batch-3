@@ -76,12 +76,10 @@ public class TagModels {
         @NonNull public String getEpcTag() { return epcTag; }
 
         public String getTagId() { return tagId; }
-
         public String getItmId() { return itmId; }
         public String getProductName() { return productName; }
         public String getDoIdRef() { return doIdRef; }
         public int getSyncStatus() { return syncStatus; }
-
         public boolean isScanned() { return isScanned; }
         public void setScanned(boolean scanned) { isScanned = scanned; }
     }

@@ -20,48 +20,27 @@ import retrofit2.http.POST;
 import retrofit2.http.Path;
 
 public interface ApiService {
-    @POST("auth/login")
+    @POST("core/auth/login")
     Call<AuthModels.LoginResponse> login(@Body AuthModels.LoginRequest loginRequest);
     @POST("tag/register")
-    Call<GeneralResponse> registerTags(
-            @Header("Authorization") String token,
-            @Body AuthModels.RegisterRequest request
-    );
+    Call<GeneralResponse> registerTags(@Header("Authorization") String token, @Body AuthModels.RegisterRequest request);
     @POST("stock/in")
-    Call<GeneralResponse> stockIn(
-            @Header("Authorization") String token,
-            @Body StockInRequest request
-    );
-
+    Call<GeneralResponse> stockIn(@Header("Authorization") String token, @Body StockInRequest request);
     @GET("do/get")
-    Call<List<DOModels.DOResponseDto>> getDo(
-            @Header("Authorization") String token
-    );
-
+    Call<List<DOModels.DOResponseDto>> getDo(@Header("Authorization") String token);
     @GET("item")
-    Call<List<ItemModels.ItemResponseDto>> getAllItems(
-            @Header("Authorization") String token
-    );
+    Call<List<ItemModels.ItemResponseDto>> getAllItems(@Header("Authorization") String token);
     @GET("stock/in/info/{code}")
-    Call<TagModels.TagInfoDto> getTagInfo(
-            @Header("Authorization") String token,
-            @Path("code") String code
-    );
-
+    Call<TagModels.TagInfoDto> getTagInfo(@Header("Authorization") String token, @Path("code") String code);
     @POST("stock/preparation/bulk")
-    Call<GeneralResponse> submitStockPrep(
-            @Header("Authorization") String token,
-            @Body StockPrepBulkRequest request
-    );
+    Call<GeneralResponse> submitStockPrep(@Header("Authorization") String token, @Body StockPrepBulkRequest request);
     @GET("do")
     Call<List<DOModels.DOModel>> getAllDO(@Header("Authorization") String token);
-
-    // stock taking
     @POST("stock-taking/create")
     Call<StockTakingModels.CreateRes> createStockTaking(@Header("Authorization") String token, @Body StockTakingModels.CreateReq request);
-    @GET("stock-taking/stock-data")
+    @GET("stocktaking/GetStockData")
     Call<List<TagModels.TagModel>> getStockData(@Header("Authorization") String token);
-    @POST("stock-taking/scan")
+    @POST("stocktaking/scan")
     Call<GeneralResponse> scanStockTaking(@Header("Authorization") String token, @Body StockTakingModels.ScanReq request);
     @POST("stock-taking/remove")
     Call<GeneralResponse> removeStockTaking(@Header("Authorization") String token, @Body StockTakingModels.RemoveReq request);
@@ -69,8 +48,6 @@ public interface ApiService {
     Call<GeneralResponse> manualAddStockTaking(@Header("Authorization") String token, @Body StockTakingModels.ManualAddReq request);
     @POST("stock-taking/finalize")
     Call<GeneralResponse> finalizeStockTaking(@Header("Authorization") String token, @Body StockTakingModels.FinalizeReq request);
-
-    // Stock Out
     @POST("stock/out/scan")
     Call<GeneralResponse> scanStockOut(@Header("Authorization") String token, @Body StockOutModels.ScanReq request);
     @POST("stock/out")

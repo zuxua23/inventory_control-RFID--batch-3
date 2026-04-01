@@ -2,7 +2,6 @@ package com.example.inventory_system_ht.Helper;
 
 import android.content.Context;
 
-
 import com.franmontiel.persistentcookiejar.ClearableCookieJar;
 import com.franmontiel.persistentcookiejar.PersistentCookieJar;
 import com.franmontiel.persistentcookiejar.cache.SetCookieCache;
@@ -25,7 +24,7 @@ public class ApiClient {
         String baseUrl = prefManager.getBaseUrl();
 
         if (baseUrl == null || baseUrl.isEmpty()) {
-            baseUrl = "http://192.168.1.100/";
+            baseUrl = "http://10.62.9.162/";
         }
 
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
@@ -51,9 +50,9 @@ public class ApiClient {
         );
 
         OkHttpClient client = new OkHttpClient.Builder()
-                .cookieJar(cookieJar) // <-- TAMBAHKAN INI
+                .cookieJar(cookieJar)
                 .addInterceptor(loggingInterceptor)
-                .addInterceptor(authInterceptor) // Biarkan saja, buat jaga-jaga kalau nanti pakai JWT
+                .addInterceptor(authInterceptor)
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)

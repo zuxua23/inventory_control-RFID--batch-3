@@ -52,10 +52,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     private RecyclerView rvTags;
     private ItemAdapter adapter;
     private List<ItemModels.ItemModel> scannedItemsList;
-
-
     private List<ItemModels.ItemResponseDto> masterItemList = new ArrayList<>();
-
     private ToneGenerator toneGen;
     private Handler handler = new Handler(Looper.getMainLooper());
     private CommScanner mCommScanner;

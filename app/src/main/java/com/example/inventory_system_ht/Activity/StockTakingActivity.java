@@ -81,7 +81,6 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
         resultScan = findViewById(R.id.resultScan);
         rvTags = findViewById(R.id.rvTags);
 
-
         masterStockList = new ArrayList<>();
         adapter = new TagAdapter(masterStockList);
         appDao = AppDatabase.getDatabase(this).appDao();

@@ -42,10 +42,8 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
     private TagAdapter adapter;
     private List<TagModels.TagModel> allItemList;
     private List<TagModels.TagModel> filteredList;
-
     private CommScanner mCommScanner;
     private Handler handler = new Handler(Looper.getMainLooper());
-
     private ApiService api;
     private String token;
     @Override

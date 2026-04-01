@@ -128,10 +128,10 @@ public class LoginActivity extends BaseScannerActivity {
                 return;
             }
 
-            if (ipAddress.startsWith("http://") || ipAddress.startsWith("https://")) {
+            if (ipAddress.startsWith("http://")) {
                 showSagaFeedback("The URL format is correct! Please apply..", true);
             } else {
-                showSagaFeedback("Wrong Format! Must use http:// or https://", false);
+                showSagaFeedback("Wrong Format! Must use http://", false);
             }
         });
 

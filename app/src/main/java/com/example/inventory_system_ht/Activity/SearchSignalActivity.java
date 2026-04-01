@@ -50,7 +50,6 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         }
 
         setupScanner();
-
         switchRfid.setChecked(false);
 
         CompoundButton.OnCheckedChangeListener switchListener = new CompoundButton.OnCheckedChangeListener() {

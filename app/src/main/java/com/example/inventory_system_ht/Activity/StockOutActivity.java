@@ -268,7 +268,6 @@ public class StockOutActivity extends BaseScannerActivity implements BarcodeData
         });
     }
 
-
     private void executeFinalizeAPI() {
         showSagaFeedback("Saving & Finalizing DO...", true);
         StockOutModels.FinalizeReq req = new StockOutModels.FinalizeReq(doId, readerId);

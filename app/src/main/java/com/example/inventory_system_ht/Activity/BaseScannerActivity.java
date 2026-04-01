@@ -51,13 +51,11 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
 
         View snackbarView = snackbar.getView();
 
-        // 3. Atur Layout ke ATAS
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) snackbarView.getLayoutParams();
         params.gravity = Gravity.TOP;
         params.setMargins(30, 80, 30, 0);
         snackbarView.setLayoutParams(params);
 
-        // 4. EFEK DROP DARI ATAS (Real Drop)
         snackbarView.setTranslationY(-250f);
 
         snackbarView.animate()

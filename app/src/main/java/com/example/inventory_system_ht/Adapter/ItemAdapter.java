@@ -7,8 +7,6 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.cardview.widget.CardView;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.inventory_system_ht.Models.ItemModels;
@@ -20,7 +18,6 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
 
     private List<ItemModels.ItemModel> itemList;
     private OnItemClickListener listener;
-
     private int lastScannedPosition = -1;
 
     public interface OnItemClickListener {
@@ -49,13 +46,6 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         ItemModels.ItemModel item = itemList.get(position);
-//        CardView cardView = (CardView) holder.itemView;
-
-//        if (position == lastScannedPosition) {
-//            holder.itemView.setBackgroundColor(Color.parseColor("#E3F2FD"));
-//        } else {
-//            cardView.setCardBackgroundColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.blue_theme));
-//        }
 
         holder.tvTagId.setText(item.getEpcTag());
         holder.tvProductName.setText(item.getItemName());

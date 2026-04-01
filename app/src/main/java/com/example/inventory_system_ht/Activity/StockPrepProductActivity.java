@@ -40,7 +40,6 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 public class StockPrepProductActivity extends BaseScannerActivity implements BarcodeDataDelegate, RFIDDataDelegate {
-
     private EditText resultScan;
     private TextView tvScanned, tvNoDo, tvDateDo;
     private int scanCount = 0;
@@ -48,14 +47,11 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
     private List<TagModels.TagModel> scannedList;
     private Switch switchRfid;
     private RecyclerView rvTags;
-
     private String currentDoId = "";
     private String currentDoNo = "";
-
     private CommScanner mCommScanner;
     private ToneGenerator toneGen;
     private Handler handler = new Handler(Looper.getMainLooper());
-
     private ApiService api;
     private String token;
     private AppDao appDao;
@@ -199,7 +195,7 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
             appDao.insertScannedTag(newScan);
             runOnUiThread(() -> {
                 scannedList.add(0, newScan);
-                if (adapter != null) adapter.setLastScannedPosition(0); // Highlight biru
+                if (adapter != null) adapter.setLastScannedPosition(0);
 
                 adapter.notifyItemInserted(0);
                 rvTags.scrollToPosition(0);

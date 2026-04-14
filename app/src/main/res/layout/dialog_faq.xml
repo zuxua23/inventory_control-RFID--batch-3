@@ -20,7 +20,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:fontFamily="@font/raleway_bold"
-            android:text="FAQ"
+            android:text="@string/label_faq"
             android:textColor="@color/black"
             android:textSize="22sp" />
 
@@ -34,7 +34,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Remove:"
+            android:text="@string/label_remove_faq"
             android:textSize="18sp"
             android:fontFamily="@font/raleway_bold"
             android:textColor="@color/black"/>
@@ -43,7 +43,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Delete item from the application"
+            android:text="@string/label_remove_faq_fill"
             android:textSize="14sp"
             android:fontFamily="@font/raleway_regular"
             android:textColor="@color/black"/>
@@ -52,7 +52,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Add Manual:"
+            android:text="@string/label_add_faq"
             android:textSize="18sp"
             android:fontFamily="@font/raleway_bold"
             android:textColor="@color/black"/>
@@ -61,7 +61,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Add item outside the application"
+            android:text="@string/label_add_faq_fill"
             android:textSize="14sp"
             android:fontFamily="@font/raleway_regular"
             android:textColor="@color/black"/>

@@ -1,10 +1,22 @@
 package com.example.inventory_system_ht.Activity;
 
+import android.annotation.SuppressLint;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.PopupWindow;
+import android.widget.Switch;
+import android.widget.TextView;
+import androidx.cardview.widget.CardView;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.net.ConnectivityManager;
@@ -14,13 +26,10 @@ import android.os.Build;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.view.Gravity;
-import android.view.View;
-import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.FrameLayout;
-
 import androidx.appcompat.app.AppCompatActivity;
-
+import com.densowave.scannersdk.Common.CommScanner;
 import com.example.inventory_system_ht.Helper.PrefManager;
 import com.example.inventory_system_ht.R;
 import com.google.android.material.snackbar.Snackbar;
@@ -30,6 +39,9 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
     private Dialog loadingDialog;
     private ToneGenerator toneGen;
     private Vibrator vibrator;
+    private PopupWindow activePowerPopup = null;
+
+    protected abstract CommScanner getScannerInstance();
 
     public boolean isNetworkConnected() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -48,14 +60,11 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
         snackbar.setTextColor(Color.WHITE);
 
         snackbar.setAnimationMode(Snackbar.ANIMATION_MODE_FADE);
-
         View snackbarView = snackbar.getView();
-
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) snackbarView.getLayoutParams();
         params.gravity = Gravity.TOP;
         params.setMargins(30, 80, 30, 0);
         snackbarView.setLayoutParams(params);
-
         snackbarView.setTranslationY(-250f);
 
         snackbarView.animate()
@@ -63,7 +72,6 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
                 .setInterpolator(new android.view.animation.OvershootInterpolator(1.5f))
                 .setDuration(400)
                 .start();
-
         snackbar.show();
     }
 
@@ -121,11 +129,9 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
             case 0: // SUCCESS:
                 toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 100);
                 break;
-
             case 1: // DUPLICATE
                 toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 150);
                 break;
-
             case 2: // ERROR/FAILED
                 toneGen.startTone(ToneGenerator.TONE_CDMA_HIGH_L, 300);
                 if (vibrator != null && vibrator.hasVibrator()) {
@@ -137,6 +143,80 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
                 }
                 break;
         }
+    }
+
+    public void setupPowerDropdown(CardView btnPowerDropdown, @SuppressLint("UseSwitchCompatOrMaterialCode") Switch switchRfid, TextView tvPowerLevel) {
+        btnPowerDropdown.setVisibility(View.GONE);
+
+        switchRfid.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                CommScanner currentScanner = getScannerInstance();
+                boolean isRfidReady = (currentScanner != null && currentScanner.getRFIDScanner() != null);
+
+                if (!isRfidReady) {
+                    showSagaFeedback("HT not Connected to Reader RFID", false);
+                    switchRfid.setChecked(false);
+                    return;
+                }
+                btnPowerDropdown.setVisibility(View.VISIBLE);
+            } else {
+                btnPowerDropdown.setVisibility(View.GONE);
+            }
+            showSagaFeedback(isChecked ? "Mode RFID: ON" : "Mode RFID: OFF", true);
+        });
+
+        List<String> powerList = new ArrayList<>(Arrays.asList(
+                "10 dBm", "15 dBm", "20 dBm", "25 dBm", "27 dBm"
+        ));
+        btnPowerDropdown.setOnClickListener(v ->
+                showPowerDropdownPopup(btnPowerDropdown, powerList, tvPowerLevel));
+    }
+
+    private void showPowerDropdownPopup(View anchor, List<String> items, TextView tvPowerLevel) {
+        View popupView = getLayoutInflater().inflate(R.layout.dropdown_popup, null);
+        RecyclerView rv = popupView.findViewById(R.id.rvDropdown);
+        rv.setLayoutManager(new LinearLayoutManager(this));
+        rv.setNestedScrollingEnabled(true);
+
+        rv.setAdapter(new RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+            @Override
+            public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+                View v = getLayoutInflater().inflate(R.layout.item_dropdown, parent, false);
+                return new RecyclerView.ViewHolder(v) {};
+            }
+            @Override
+            public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+                TextView tv = holder.itemView.findViewById(R.id.tvDropdownItem);
+                tv.setText(items.get(position));
+                holder.itemView.setOnClickListener(v -> {
+                    tvPowerLevel.setText(items.get(position));
+                    if (activePowerPopup != null) activePowerPopup.dismiss();
+                });
+            }
+            @Override
+            public int getItemCount() { return items.size(); }
+        });
+
+        int itemHeightPx = (int) (56 * getResources().getDisplayMetrics().density);
+        int maxHeight    = itemHeightPx * 4;
+
+        PopupWindow popup = new PopupWindow(
+                popupView,
+                anchor.getWidth(),
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                true
+        );
+        popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        popup.setElevation(16f);
+        popup.setOutsideTouchable(true);
+
+        popupView.measure(
+                View.MeasureSpec.makeMeasureSpec(anchor.getWidth(), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        );
+        popup.setHeight(Math.min(popupView.getMeasuredHeight(), maxHeight));
+        popup.showAsDropDown(anchor, 0, 6);
+        activePowerPopup = popup;
     }
 
     @Override

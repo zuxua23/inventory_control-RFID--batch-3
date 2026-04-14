@@ -23,7 +23,6 @@ public class PrefManager {
     private static final String KEY_BASE_URL = "base_url_api";
     private static final long SESSION_DURATION = 8 * 60 * 60 * 1000;
     private static final String DEFAULT_URL = "";
-    private static final String STATIC_TOKEN_ANDROID = "sbroyfu4yt4oby4obuds66-34=nfejfeye7eifneiysiniw7k3-nd83-dnf=vneu";
 
     public PrefManager(Context context) {
         this._context = context;
@@ -45,13 +44,6 @@ public class PrefManager {
             pref = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
             editor = pref.edit();
         }
-    }
-
-    public void saveTokenInternal() {
-        editor.putBoolean(KEY_IS_LOGIN, true);
-        editor.putString(KEY_TOKEN, STATIC_TOKEN_ANDROID);
-        editor.putLong(KEY_LOGIN_TIME, System.currentTimeMillis());
-        editor.apply();
     }
 
     public void saveToken(String token) {
@@ -83,7 +75,7 @@ public class PrefManager {
     }
 
     public String getToken() {
-        return pref.getString(KEY_TOKEN, STATIC_TOKEN_ANDROID);
+        return pref.getString(KEY_TOKEN, null);
     }
 
     public void saveIp(String url) {

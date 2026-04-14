@@ -27,7 +27,6 @@ import java.util.List;
 import retrofit2.Call;
 
 public class StockPrepActivity extends BaseScannerActivity implements BarcodeDataDelegate {
-
     private RecyclerView rvTags;
     private DOAdapter adapter;
     private List<DOModels.DOModel> doList;
@@ -35,6 +34,10 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
     private Handler handler = new Handler(Looper.getMainLooper());
     private AppDao appDao;
 
+    @Override
+    protected CommScanner getScannerInstance() {
+        return mCommScanner;
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

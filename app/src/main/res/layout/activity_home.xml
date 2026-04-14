@@ -2,39 +2,41 @@
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/bg">
+    android:background="@color/blue_theme">
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/blue_theme"
-        android:paddingTop="20dp"
-        android:paddingHorizontal="20dp"
-        android:paddingBottom="20dp">
+        android:paddingTop="24dp"
+        android:paddingBottom="24dp"
+        android:paddingHorizontal="16dp">
 
         <ImageView
             android:id="@+id/ivProfile"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
             android:src="@drawable/account_icon"
             android:clickable="true"
             android:focusable="true"
-            android:background="?android:attr/selectableItemBackgroundBorderless" />
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/desc_user_profile_menu" />
 
         <ImageButton
             android:id="@+id/btnSyncData"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_popup_sync"
-            app:tint="@color/white" />
+            app:tint="@color/white"
+            android:contentDescription="@string/descsync_offline_data" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -42,301 +44,244 @@
             android:layout_toEndOf="@id/ivProfile"
             android:layout_toStartOf="@id/btnSyncData"
             android:layout_centerVertical="true"
-            android:gravity="center_vertical"
             android:orientation="vertical"
-            android:paddingHorizontal="15dp">
+            android:paddingHorizontal="12dp">
 
             <TextView
                 android:id="@+id/textViewNamaOperator"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/raleway_bold"
-                android:text="Welcome Ojan"
-                android:textColor="@color/bg"
+                android:text="@string/greeting_welcome"
+                android:textColor="@color/white"
                 android:textSize="15sp"
                 android:singleLine="true"
                 android:ellipsize="end" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="0.2dp"
-                android:background="@color/bg"
-                android:layout_marginTop="4dp"
-                android:layout_marginBottom="4dp" />
 
             <TextView
                 android:id="@+id/textViewRoleOperator"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/raleway_regular"
-                android:text="Operator IT"
-                android:textColor="@color/bg"
-                android:textSize="12sp" />
+                android:text="@string/geeting_role"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp"
+                tools:ignore="TextContrastCheck" />
         </LinearLayout>
 
     </RelativeLayout>
 
-    <androidx.cardview.widget.CardView
-        android:id="@+id/cardStatus"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="10dp"
-        app:cardCornerRadius="25dp"
-        app:cardBackgroundColor="@color/green_button"
-        app:cardElevation="6dp">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@drawable/bg_white_rounded_top"
+        app:cardElevation="15dp">
 
-        <RelativeLayout
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="12dp">
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:padding="10dp"
+            android:clipToPadding="false"
+            tools:ignore="UselessParent">
 
-            <View
-            android:layout_width="10dp"
-            android:layout_height="10dp"
-            android:background="@drawable/shape_paku"
-            android:layout_alignParentStart="true"
-            android:layout_centerVertical="true"
-            android:layout_marginStart="8dp"
-            android:elevation="4dp"/>
-
-            <TextView
-                android:id="@+id/textViewStatusReader"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:text="Reader Status : Connected"
-                android:textColor="@color/white"
-                android:textStyle="bold"
-                android:fontFamily="@font/raleway_bold"
-                android:textSize="18sp" />
-
-            <View
-                android:layout_width="10dp"
-                android:layout_height="10dp"
-                android:background="@drawable/shape_paku"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:layout_marginEnd="8dp"
-                android:elevation="4dp"/>
-        </RelativeLayout>
-    </androidx.cardview.widget.CardView>
-
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-
-            android:layout_marginHorizontal="10dp"
-            app:cardCornerRadius="20dp"
-            app:cardBackgroundColor="@color/blue_theme"
-            app:cardElevation="6dp">
-
-            <View
-                android:layout_width="10dp"
-                android:layout_height="10dp"
-                android:background="@drawable/shape_paku"
-                android:layout_gravity="top|start"
-                android:layout_margin="12dp"
-                android:elevation="4dp"/>
-
-            <View
-                android:layout_width="10dp"
-                android:layout_height="10dp"
-                android:background="@drawable/shape_paku"
-                android:layout_gravity="top|end"
-                android:layout_margin="12dp"
-                android:elevation="4dp"/>
-
-            <View
-                android:layout_width="10dp"
-                android:layout_height="10dp"
-                android:background="@drawable/shape_paku"
-                android:layout_gravity="bottom|start"
-                android:layout_margin="12dp"
-                android:elevation="4dp"/>
-
-            <View
-                android:layout_width="10dp"
-                android:layout_height="10dp"
-                android:background="@drawable/shape_paku"
-                android:layout_gravity="bottom|end"
-                android:layout_margin="12dp"
-                android:elevation="4dp"/>
-
-            <LinearLayout
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                app:cardCornerRadius="20dp"
+                app:cardBackgroundColor="@color/blue_theme"
+                app:cardElevation="6dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Menu:"
-                    android:paddingLeft="10dp"
-                    android:paddingTop="6dp"
-                    android:textColor="@color/white"
-                    android:textSize="20sp"
-                    android:fontFamily="@font/raleway_extra_bold"
-                    android:layout_marginBottom="16dp" />
-
-                <GridLayout
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:columnCount="3"
-                    android:alignmentMode="alignMargins">
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/label_menu"
+                        android:paddingStart="6dp"
+                        android:paddingTop="4dp"
+                        android:textColor="@color/white"
+                        android:textSize="20sp"
+                        android:fontFamily="@font/raleway_extra_bold"
+                        android:layout_marginBottom="16dp"
+                        tools:ignore="RtlSymmetry" />
 
                     <LinearLayout
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_columnWeight="1"
-                        android:layout_marginBottom="24dp"
-                        android:orientation="vertical"
-                        android:gravity="center">
+                        android:baselineAligned="false"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="16dp">
 
-                        <ImageButton
-                            android:id="@+id/ButtonStockIn"
-                            android:layout_width="90dp"    android:layout_height="85dp"   android:src="@drawable/stock_in_icon"
-                            android:padding="8dp"
-                            android:background="@drawable/bg_badge_card_menu"
-                            android:foreground="@drawable/bg_menu_selector"/>
-
-                        <TextView
-                            android:layout_width="wrap_content"
+                        <LinearLayout
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:text="Stock In"
-                            android:layout_marginTop="8dp"
-                            android:gravity="center"
-                            android:textColor="@color/white"
-                            android:textSize="13sp"        android:fontFamily="@font/raleway_semi_bold"/>
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center">
+                            <ImageButton
+                                android:id="@+id/ButtonStockIn"
+                                android:layout_width="85dp"
+                                android:layout_height="80dp"
+                                android:background="@drawable/bg_badge_card_menu"
+                                android:foreground="@drawable/bg_menu_selector"
+                                android:padding="10dp"
+                                android:src="@drawable/stock_in_icon"
+                                android:contentDescription="@string/menu_stock_in" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:fontFamily="@font/raleway_semi_bold"
+                                android:gravity="center"
+                                android:text="@string/menu_stock_in"
+                                android:textColor="@color/white"
+                                android:textSize="13sp"
+                                android:importantForAccessibility="no"
+                                tools:ignore="TextContrastCheck" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center">
+
+                            <ImageButton
+                                android:id="@+id/ButtonStockPreparation"
+                                android:layout_width="85dp"
+                                android:layout_height="80dp"
+                                android:background="@drawable/bg_badge_card_menu"
+                                android:contentDescription="@string/menu_stock_preparation"
+                                android:foreground="@drawable/bg_menu_selector"
+                                android:padding="10dp"
+                                android:src="@drawable/stock_preparation_icon"
+                                app:tint="#D84315" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:fontFamily="@font/raleway_semi_bold"
+                                android:gravity="center"
+                                android:text="@string/menu_stock_preparation"
+                                android:textColor="@color/white"
+                                android:textSize="13sp"
+                                android:importantForAccessibility="no"
+                                tools:ignore="TextContrastCheck"/>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center">
+                            <ImageButton
+                                android:id="@+id/ButtonStockTaking"
+                                android:layout_width="85dp"
+                                android:layout_height="80dp"
+                                android:background="@drawable/bg_badge_card_menu"
+                                android:foreground="@drawable/bg_menu_selector"
+                                android:padding="10dp"
+                                android:src="@drawable/stock_taking_icon"
+                                android:contentDescription="@string/menu_stock_taking" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:fontFamily="@font/raleway_semi_bold"
+                                android:gravity="center"
+                                android:textAlignment="center"
+                                android:text="@string/menu_stock_taking"
+                                android:textColor="@color/white"
+                                android:textSize="13sp"
+                                android:importantForAccessibility="no"
+                                tools:ignore="TextContrastCheck" />
+                        </LinearLayout>
+
                     </LinearLayout>
 
                     <LinearLayout
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_columnWeight="1"
-                        android:orientation="vertical"
-                        android:gravity="center">
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
 
-                        <ImageButton
-                            android:id="@+id/ButtonStockPreparation"
-                            android:layout_width="90dp"    android:layout_height="85dp"   android:background="@drawable/bg_badge_card_menu"
-                            android:padding="8dp"
-                            android:src="@drawable/stock_preparation_icon"
-                            android:foreground="@drawable/bg_menu_selector"/>
+                        <View
+                            android:layout_width="0dp"
+                            android:layout_height="0dp"
+                            android:layout_weight="0.5"/>
 
-                        <TextView
-                            android:layout_width="wrap_content"
+                        <LinearLayout
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:text="Stock Prep"
-                            android:layout_marginTop="8dp"
-                            android:gravity="center"
-                            android:textColor="@color/white"
-                            android:textSize="13sp"        android:fontFamily="@font/raleway_semi_bold"/>
-                    </LinearLayout>
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_columnWeight="1"
-                        android:orientation="vertical"
-                        android:gravity="center">
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center">
+                            <ImageButton
+                                android:id="@+id/ButtonTagRegis"
+                                android:layout_width="85dp"
+                                android:layout_height="80dp"
+                                android:background="@drawable/bg_badge_card_menu"
+                                android:foreground="@drawable/bg_menu_selector"
+                                android:padding="10dp"
+                                android:src="@drawable/ic_tag"
+                                android:contentDescription="@string/menu_tag_registration" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:fontFamily="@font/raleway_semi_bold"
+                                android:gravity="center"
+                                android:text="@string/menu_tag_registration"
+                                android:textColor="@color/white"
+                                android:textSize="13sp"
+                                android:importantForAccessibility="no"
+                                tools:ignore="TextContrastCheck"/>
+                        </LinearLayout>
 
-                        <ImageButton
-                            android:id="@+id/ButtonStockOut"
-                            android:layout_width="90dp"
-                            android:layout_height="85dp"
-                            android:background="@drawable/bg_badge_card_menu"
-                            android:foreground="@drawable/bg_menu_selector"
-                            android:padding="8dp"
-                            android:src="@drawable/stock_out_ic" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
+                        <LinearLayout
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:text="Stock Out"
-                            android:layout_marginTop="8dp"
-                            android:gravity="center"
-                            android:textAlignment="center"
-                            android:textColor="@color/white"
-                            android:textSize="13sp"        android:fontFamily="@font/raleway_semi_bold"/>
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center">
+                            <ImageButton
+                                android:id="@+id/ButtonSearchItem"
+                                android:layout_width="85dp"
+                                android:layout_height="80dp"
+                                android:background="@drawable/bg_badge_card_menu"
+                                android:foreground="@drawable/bg_menu_selector"
+                                android:padding="10dp"
+                                android:src="@drawable/seacrh_item_icon"
+                                android:contentDescription="@string/menu_search_item" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:fontFamily="@font/raleway_semi_bold"
+                                android:gravity="center"
+                                android:text="@string/menu_search_item"
+                                android:textColor="@color/white"
+                                android:textSize="13sp"
+                                android:importantForAccessibility="no"
+                                tools:ignore="TextContrastCheck"/>
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="0dp"
+                            android:layout_height="0dp"
+                            android:layout_weight="0.5"/>
                     </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_columnWeight="1"
-                        android:orientation="vertical"
-                        android:paddingBottom="20dp"
-                        android:gravity="center">
-
-                        <ImageButton
-                            android:id="@+id/ButtonTagRegis"
-                            android:layout_width="90dp"    android:layout_height="85dp"   android:src="@drawable/ic_tag"
-                            android:background="@drawable/bg_badge_card_menu"
-                            android:foreground="@drawable/bg_menu_selector"
-                            android:padding="8dp"/>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Tag Regis"
-                            android:layout_marginTop="8dp"
-                            android:gravity="center"
-                            android:textColor="@color/white"
-                            android:textSize="13sp"        android:fontFamily="@font/raleway_semi_bold"/>
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_columnWeight="1"
-                        android:orientation="vertical"
-                        android:gravity="center">
-
-                        <ImageButton
-                            android:id="@+id/ButtonStockTaking"
-                            android:layout_width="90dp"    android:layout_height="85dp"   android:background="@drawable/bg_badge_card_menu"
-                            android:foreground="@drawable/bg_menu_selector"
-                            android:padding="8dp"
-                            android:src="@drawable/stock_taking_icon" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Stock Taking and Adjustment"
-                            android:layout_marginTop="8dp"
-                            android:gravity="center"
-                            android:textAlignment="center"
-                            android:textColor="@color/white"
-                            android:textSize="13sp"        android:fontFamily="@font/raleway_semi_bold"/>
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_columnWeight="1"
-                        android:orientation="vertical"
-                        android:gravity="center"
-                        android:paddingBottom="20dp">
-
-                        <ImageButton
-                            android:id="@+id/ButtonSearchItem"
-                            android:layout_width="90dp"    android:layout_height="85dp"   android:background="@drawable/bg_badge_card_menu"
-                            android:foreground="@drawable/bg_menu_selector"
-                            android:padding="8dp"
-                            android:src="@drawable/seacrh_item_icon" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Search Item"
-                            android:layout_marginTop="8dp"
-                            android:gravity="center"
-                            android:textColor="@color/white"
-                            android:textSize="13sp"        android:fontFamily="@font/raleway_semi_bold"/>
-                    </LinearLayout>
-
-
-                </GridLayout>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+        </ScrollView>
+    </FrameLayout>
 </LinearLayout>

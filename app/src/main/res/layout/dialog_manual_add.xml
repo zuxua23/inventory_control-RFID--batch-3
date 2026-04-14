@@ -2,6 +2,7 @@
 <androidx.cardview.widget.CardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     app:cardCornerRadius="24dp"
@@ -18,7 +19,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Manual Add Item"
+            android:text="@string/label_title_dialog_manual_add"
             android:textSize="20sp"
             android:fontFamily="@font/raleway_bold"
             android:textColor="@color/black"
@@ -30,26 +31,31 @@
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:background="@drawable/bg_edit_text"
-            android:hint="Masukkan Item ID"
+            android:hint="@string/hint_manual_item_id"
             android:paddingHorizontal="16dp"
             android:fontFamily="@font/raleway_bold"
             android:textSize="14sp"
             android:textColor="@color/black"
-            android:layout_marginBottom="12dp"/>
+            android:layout_marginBottom="12dp"
+            android:inputType="text"
+            android:importantForAutofill="no" />
 
         <EditText
             android:id="@+id/etManualRemark"
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:background="@drawable/bg_edit_text"
-            android:hint="Notes / Remark"
+            android:hint="@string/hint_manual_remark"
             android:paddingHorizontal="16dp"
             android:fontFamily="@font/raleway_bold"
             android:textSize="14sp"
             android:textColor="@color/black"
-            android:layout_marginBottom="24dp"/>
+            android:layout_marginBottom="24dp"
+            android:inputType="text"
+            android:importantForAutofill="no" />
 
         <LinearLayout
+            style="?android:attr/buttonBarStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
@@ -57,30 +63,35 @@
 
             <Button
                 android:id="@+id/btnCancelManual"
+                style="?android:attr/buttonBarButtonStyle"
                 android:layout_width="0dp"
                 android:layout_height="50dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="8dp"
-                android:backgroundTint="#BDBDBD"
-                android:text="Batal"
+                android:backgroundTint="#7A7C7D"
+                android:text="@string/dialog_cancel"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
                 android:fontFamily="@font/raleway_bold"
-                app:cornerRadius="16dp" />
+                app:cornerRadius="16dp"
+                tools:ignore="all" />
 
             <Button
                 android:id="@+id/btnSaveManual"
+                style="?android:attr/buttonBarButtonStyle"
                 android:layout_width="0dp"
                 android:layout_height="50dp"
-                android:layout_weight="1"
                 android:layout_marginStart="8dp"
-                android:backgroundTint="#01C470"
-                android:text="Simpan"
+                android:layout_weight="1"
+                android:fontFamily="@font/raleway_bold"
+                android:backgroundTint="@color/green_button"
+                android:stateListAnimator="@null"
+                android:text="@string/action_save"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
-                android:fontFamily="@font/raleway_bold"
-                app:cornerRadius="16dp" />
-
+                android:textSize="16sp"
+                app:cornerRadius="20dp"
+                tools:ignore="TextContrastCheck,VisualLintButtonSize"/>
         </LinearLayout>
     </LinearLayout>
 </androidx.cardview.widget.CardView>

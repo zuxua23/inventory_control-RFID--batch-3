@@ -80,11 +80,5 @@
             android:exported="false"
             android:windowSoftInputMode="stateAlwaysHidden"
             android:screenOrientation="portrait"/>
-
-        <activity
-            android:name=".Activity.StockOutActivity"
-            android:exported="false"
-            android:windowSoftInputMode="stateAlwaysHidden"
-            android:screenOrientation="portrait"/>
 </application>
     </manifest>

@@ -12,6 +12,8 @@ import android.widget.LinearLayout;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import androidx.cardview.widget.CardView;
+
 import com.densowave.scannersdk.Common.CommScanner;
 import com.densowave.scannersdk.Listener.RFIDDataDelegate;
 import com.densowave.scannersdk.RFID.RFIDData;
@@ -30,9 +32,15 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
     private TextView tvItemTitle, tvRssiValue;
     private Switch switchRfid;
     private Button btnStopSearch;
+    private CardView btnPowerDropdown;
     private ImageView btnBack;
     private CommScanner mCommScanner;
     private Handler handler = new Handler(Looper.getMainLooper());
+
+    @Override
+    protected CommScanner getScannerInstance() {
+        return mCommScanner;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,6 +50,7 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         selectedItem = (TagModels.TagModel) getIntent().getSerializableExtra("SELECTED_ITEM");
 
         isRfidMode = false;
+        btnPowerDropdown = findViewById(R.id.btnPowerDropdown);
 
         initUI();
 
@@ -51,37 +60,38 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
 
         setupScanner();
         switchRfid.setChecked(false);
+        TextView tvPowerLevel = findViewById(R.id.tvPowerLevel);
 
-        CompoundButton.OnCheckedChangeListener switchListener = new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if (isChecked) {
-                    boolean isRfidReady = (mCommScanner != null && mCommScanner.getRFIDScanner() != null);
+        setupPowerDropdown(btnPowerDropdown, switchRfid, tvPowerLevel);
 
-                    if (!isRfidReady) {
-                        showSagaFeedback("HT not Connected to Reader RFID", false);
+        switchRfid.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            CommScanner currentScanner = getScannerInstance();
 
-                        switchRfid.setOnCheckedChangeListener(null);
-                        switchRfid.setChecked(false);
-                        switchRfid.setOnCheckedChangeListener(this);
-                        return;
-                    }
+            if (isChecked) {
+                boolean isRfidReady = (currentScanner != null && currentScanner.getRFIDScanner() != null);
+
+                if (!isRfidReady) {
+                    showSagaFeedback("HT not Connected to Reader RFID", false);
+                    switchRfid.setChecked(false);
+                    return;
                 }
-
-                isRfidMode = isChecked;
-
-                String msg = isChecked ? "Search Mode: RFID ON" : "Search Mode: BARCODE (Manual)";
-                showSagaFeedback(msg, true);
-
-                if (!isChecked) {
-                    resetBars();
-                    tvRssiValue.setText("Barcode Mode: Ready");
-                } else {
-                    tvRssiValue.setText("-00 dBm");
-                }
+                btnPowerDropdown.setVisibility(View.VISIBLE);
+            } else {
+                btnPowerDropdown.setVisibility(View.GONE);
             }
-        };
-        switchRfid.setOnCheckedChangeListener(switchListener);
+
+            isRfidMode = isChecked;
+
+            String msg = isChecked ? "Search Mode: RFID ON" : "Search Mode: BARCODE (Manual)";
+            showSagaFeedback(msg, true);
+
+            if (!isChecked) {
+                resetBars();
+                tvRssiValue.setText("Barcode Mode: Ready");
+            } else {
+                tvRssiValue.setText("-00 dBm");
+            }
+        });
 
         btnStopSearch.setOnClickListener(v -> finish());
         btnBack.setOnClickListener(v -> finish());
@@ -101,7 +111,7 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
             try {
                 mCommScanner.getRFIDScanner().setDataDelegate(this);
                 // Set barcode delegate juga buat jaga-jaga kalau mau manual scan
-//                 mCommScanner.getBarcodeScanner().setDataDelegate(this);
+                // mCommScanner.getBarcodeScanner().setDataDelegate(this);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -121,7 +131,6 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
 
                 handler.post(() -> {
                     playScanFeedback(0);
-
                     updateSignalBars(rssi);
                 });
             }

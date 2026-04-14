@@ -22,6 +22,7 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.cardview.widget.CardView;
 import androidx.core.content.res.ResourcesCompat;
 
+import com.densowave.scannersdk.Common.CommScanner;
 import com.example.inventory_system_ht.Helper.ApiClient;
 import com.example.inventory_system_ht.Helper.ApiService;
 import com.example.inventory_system_ht.Helper.AppDao;
@@ -48,6 +49,15 @@ public class HomeActivity extends BaseScannerActivity {
     private ImageButton btnSyncData;
     private AppDao appDao;
 
+    // Tambahkan instance CommScanner jika kamu menggunakannya di HomeActivity
+    private CommScanner mCommScanner;
+
+    // Implementasi abstract method wajib dari BaseScannerActivity
+    @Override
+    protected CommScanner getScannerInstance() {
+        return mCommScanner;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -61,11 +71,13 @@ public class HomeActivity extends BaseScannerActivity {
         btnStockTaking = findViewById(R.id.ButtonStockTaking);
         btnTagRegis = findViewById(R.id.ButtonTagRegis);
         btnSearchItem = findViewById(R.id.ButtonSearchItem);
-        btnStockOut = findViewById(R.id.ButtonStockOut);
-        cardStatus = findViewById(R.id.cardStatus);
-        textViewStatusReader = findViewById(R.id.textViewStatusReader);
         tvNamaOperator = findViewById(R.id.textViewNamaOperator);
         tvRoleOperator = findViewById(R.id.textViewRoleOperator);
+
+        // PENTING: Inisialisasi cardStatus dan textViewStatusReader agar tidak NullPointerException
+        // Pastikan id ini ada di XML layout activity_home (jika tidak ada, hapus atau sesuaikan)
+        // cardStatus = findViewById(R.id.cardStatus);
+        // textViewStatusReader = findViewById(R.id.textViewStatusReader);
 
         SharedPreferences sharedPreferences = getSharedPreferences("UserSession", MODE_PRIVATE);
         String fullName = sharedPreferences.getString("USER_FULLNAME", "Guest");
@@ -76,7 +88,8 @@ public class HomeActivity extends BaseScannerActivity {
         tvNamaOperator.setText("Welcome " + fullName);
         tvRoleOperator.setText(roleName);
 
-        updateReaderStatus(false);
+        // Hanya jalankan jika kamu sudah menginisialisasi textViewStatusReader dan cardStatus
+        // updateReaderStatus(false);
 
         if (!prefManager.isSessionValid()) {
             prefManager.clearSession();
@@ -101,8 +114,6 @@ public class HomeActivity extends BaseScannerActivity {
                 intent = new Intent(HomeActivity.this, StockInActivity.class);
             } else if (id == R.id.ButtonStockPreparation) {
                 intent = new Intent(HomeActivity.this, StockPrepActivity.class);
-            } else if (id == R.id.ButtonStockOut) {
-                intent = new Intent(HomeActivity.this, StockOutActivity.class);
             } else if (id == R.id.ButtonStockTaking) {
                 intent = new Intent(HomeActivity.this, StockTakingActivity.class);
             } else if (id == R.id.ButtonTagRegis) {
@@ -131,7 +142,9 @@ public class HomeActivity extends BaseScannerActivity {
         btnStockIn.setOnClickListener(menuClickListener);
         btnStockPrep.setOnClickListener(menuClickListener);
         btnStockTaking.setOnClickListener(menuClickListener);
-        btnStockOut.setOnClickListener(menuClickListener);
+        if (btnStockOut != null) {
+            btnStockOut.setOnClickListener(menuClickListener);
+        }
         btnTagRegis.setOnClickListener(menuClickListener);
         btnSearchItem.setOnClickListener(menuClickListener);
     }
@@ -215,14 +228,17 @@ public class HomeActivity extends BaseScannerActivity {
     }
 
     private void updateReaderStatus(boolean isConnected) {
-        if (isConnected) {
-            textViewStatusReader.setText("Reader Status : Connected");
-            cardStatus.setCardBackgroundColor(getResources().getColor(R.color.green_button));
-        } else {
-            textViewStatusReader.setText("Reader Status : Not Connected");
-            cardStatus.setCardBackgroundColor(Color.parseColor("#9E9E9E"));
+        if (textViewStatusReader != null && cardStatus != null) {
+            if (isConnected) {
+                textViewStatusReader.setText("Reader Status : Connected");
+                cardStatus.setCardBackgroundColor(getResources().getColor(R.color.green_button));
+            } else {
+                textViewStatusReader.setText("Reader Status : Not Connected");
+                cardStatus.setCardBackgroundColor(Color.parseColor("#9E9E9E"));
+            }
         }
     }
+
     private void syncOfflineData() {
         if (!isNetworkConnected()) {
             showSagaFeedback("Still offline! Let's find Wi-Fi first.", false);
@@ -262,7 +278,7 @@ public class HomeActivity extends BaseScannerActivity {
                                 for (String epc : tagsToSync) {
                                     appDao.markTagAsSynced(epc);
                                 }
-                                 appDao.clearSyncedTags();
+                                appDao.clearSyncedTags();
 
                                 runOnUiThread(() -> {
                                     hideLoading();

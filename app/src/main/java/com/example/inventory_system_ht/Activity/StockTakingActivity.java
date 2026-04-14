@@ -8,6 +8,7 @@ import android.media.ToneGenerator;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.Button;
@@ -15,6 +16,7 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.Switch;
+import android.widget.TextView;
 
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -64,6 +66,11 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
     private TagModels.TagModel selectedTag = null;
 
     @Override
+    protected CommScanner getScannerInstance() {
+        return mCommScanner;
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_stock_taking_adjustment);
@@ -77,7 +84,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
         btnBack = findViewById(R.id.btnBack);
         switchRfid = findViewById(R.id.switchRfid);
         btnRefresh = findViewById(R.id.btnRefresh);
-        btnFinalize = findViewById(R.id.btnFinalize);
+        btnFinalize = findViewById(R.id.btnSave);
         resultScan = findViewById(R.id.resultScan);
         rvTags = findViewById(R.id.rvTags);
 
@@ -97,15 +104,26 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
     private void setupListeners() {
         btnBack.setOnClickListener(v -> finish());
 
+        CardView btnPowerDropdown = findViewById(R.id.btnPowerDropdown);
+        TextView tvPowerLevel     = findViewById(R.id.tvPowerLevel);
+
+        setupPowerDropdown(btnPowerDropdown, switchRfid, tvPowerLevel);
+
         switchRfid.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            CommScanner currentScanner = getScannerInstance();
+
             if (isChecked) {
-                boolean isRfidReady = (mCommScanner != null && mCommScanner.getRFIDScanner() != null);
+                boolean isRfidReady = (currentScanner != null && currentScanner.getRFIDScanner() != null);
                 if (!isRfidReady) {
                     showSagaFeedback("Failed: HT is not connected to the RFID Reader yet!", false);
                     switchRfid.setChecked(false);
                     return;
                 }
+                btnPowerDropdown.setVisibility(View.VISIBLE);
+            } else {
+                btnPowerDropdown.setVisibility(View.GONE);
             }
+
             showSagaFeedback(isChecked ? "RFID Mode Active" : "Barcode Mode Active", true);
             resultScan.requestFocus();
         });
@@ -244,8 +262,6 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
             runOnUiThread(() -> {
                 if (!tagsToSync.isEmpty()) {
                     showSagaFeedback("Syncing " + tagsToSync.size() + " data offline...", true);
-                    // Karena ini Stock Taking, kita loop tembak API-nya (Atau lu bisa minta Backend C# lu bikinin API Bulk Scan Stock Taking)
-                    // Disini gw contohin pake loop. Kalau data banyak, disarankan minta API Bulk ke C#.
                     syncStockTakingData(tagsToSync, 0);
                 } else {
                     executeFinalizeAPI();
@@ -308,7 +324,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
             TagModels.TagModel tag = masterStockList.get(i);
             if (tag.getEpcTag().equalsIgnoreCase(epcOrBarcode) || tag.getTagId().equalsIgnoreCase(epcOrBarcode)) {
 
-                tag.setScanned(true); // Pake setter-nya
+                tag.setScanned(true);
                 adapter.notifyItemChanged(i);
                 rvTags.smoothScrollToPosition(i);
                 break;
@@ -435,7 +451,8 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
             int width = (int)(getResources().getDisplayMetrics().widthPixels * 0.90);
             faqDialog.getWindow().setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
-        faqDialog.show();    }
+        faqDialog.show();
+    }
 
     private void setupScanner() {
         if (mCommScanner != null) {
@@ -471,8 +488,6 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
         return sb.toString();
     }
 
-
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -500,7 +515,9 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
             }
         }
     }
-    @Override protected void onDestroy() {
+
+    @Override
+    protected void onDestroy() {
         super.onDestroy();
         if (toneGen != null) { toneGen.release(); toneGen = null; }
     }

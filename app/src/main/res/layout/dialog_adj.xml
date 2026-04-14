@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     app:cardCornerRadius="30dp"
     android:elevation="10dp"
     android:layout_margin="40dp"
-    app:cardBackgroundColor="@color/white">
-
+    app:cardBackgroundColor="@color/white"
+    tools:ignore="ContentDescription">
     <ImageButton
         android:id="@+id/btnFaq"
         android:layout_width="wrap_content"
@@ -16,8 +17,9 @@
         android:src="@drawable/ic_faq"
         android:layout_marginTop="16dp"
         android:layout_marginStart="16dp"
-        android:background="@android:color/transparent" />
-
+        android:background="@android:color/transparent"
+        android:importantForAccessibility="no"
+        tools:ignore="TouchTargetSizeCheck" />
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -25,16 +27,17 @@
         android:gravity="center"
         android:padding="24dp">
 
-        <ImageView
-            android:layout_width="55dp"
-            android:layout_height="55dp"
-            android:src="@drawable/ic_question_alert" />
-
+    <ImageView
+        android:layout_width="55dp"
+        android:layout_height="55dp"
+        android:src="@drawable/ic_question_alert"
+        android:importantForAccessibility="no"
+        tools:ignore="ImageContrastCheck" />
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="5dp"
-            android:text="What's Your Choice?"
+            android:text="@string/dialog_msg_adj"
             android:textSize="18sp"
             android:fontFamily="@font/raleway_bold"
             android:textAlignment="center"
@@ -54,20 +57,20 @@
                 android:backgroundTint="@color/merah"
                 android:fontFamily="@font/raleway_bold"
                 android:stateListAnimator="@null"
-                android:text="Remove"
+                android:text="@string/action_remove"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
                 android:textSize="13sp"
-                app:cornerRadius="20dp" />
-
+                app:cornerRadius="20dp"
+                tools:ignore="TextContrastCheck" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Or"
+                android:text="@string/label_or"
                 android:textSize="10sp"
                 android:fontFamily="@font/raleway_bold"
-                android:textColor="@color/black" />
-
+                android:textColor="@color/black"
+                tools:ignore="SmallSp" />
             <Button
                 android:id="@+id/btnAddManual"
                 android:layout_width="130dp"
@@ -75,12 +78,12 @@
                 android:fontFamily="@font/raleway_bold"
                 android:backgroundTint="#01C470"
                 android:stateListAnimator="@null"
-                android:text="Add Manual"
+                android:text="@string/action_add"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
                 android:textSize="13sp"
-                app:cornerRadius="20dp" />
-
+                app:cornerRadius="20dp"
+                tools:ignore="TextContrastCheck" />
         </LinearLayout>
     </LinearLayout>
 </androidx.cardview.widget.CardView>

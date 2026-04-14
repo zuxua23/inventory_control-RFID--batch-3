@@ -26,20 +26,20 @@
             android:orientation="vertical">
 
             <TextView
-                android:id="@+id/tvTagId"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/tv_tag_id"
-                android:textColor="@color/white"
-                android:textSize="12sp"
-                android:fontFamily="@font/raleway_bold"
-                tools:ignore="TextContrastCheck"/>
-
-            <TextView
                 android:id="@+id/tvProductName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/tv_product_name"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:fontFamily="@font/raleway_bold"
+                tools:ignore="TextContrastCheck" />
+
+            <TextView
+                android:id="@+id/tvLocation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/tv_location"
                 android:textColor="@color/white"
                 android:textSize="12sp"
                 android:textStyle="bold"

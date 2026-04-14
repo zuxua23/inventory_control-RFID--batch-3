@@ -15,6 +15,7 @@ import android.widget.ImageView;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -52,6 +53,10 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
     private List<TagModels.TagModel> registeredTagList;
     private Handler handler = new Handler();
     private boolean isProcessing = false;
+    @Override
+    protected CommScanner getScannerInstance() {
+        return mCommScanner;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,19 +99,10 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
             }
         });
 
-        switchRfid.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                boolean isConnected = (mCommScanner != null && mCommScanner.getRFIDScanner() != null);
-                if (!isConnected) {
-                    showSagaFeedback("HT not Connected to Reader RFID", false);
-                    switchRfid.setChecked(false);
-                    return;
-                }
-            }
-            showSagaFeedback(isChecked ? "Mode RFID: ON" : "Mode RFID: OFF", true);
-            resultScan.requestFocus();
-        });
+        CardView btnPowerDropdown = findViewById(R.id.btnPowerDropdown);
+        TextView tvPowerLevel     = findViewById(R.id.tvPowerLevel);
 
+        setupPowerDropdown(btnPowerDropdown, switchRfid, tvPowerLevel);
         resultScan.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -117,10 +113,8 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
                 String data = s.toString().trim();
                 if (data.length() >= 8 && !isProcessing && !switchRfid.isChecked()) {
                     isProcessing = true;
-
                     new Thread(() -> {
                         processScannedData(data, false);
-
                         runOnUiThread(() -> {
                             resultScan.setText("");
                             isProcessing = false;
@@ -331,6 +325,7 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
             playScanFeedback(2);
         }
     }
+
     @Override
     protected void onPause() {
         super.onPause();

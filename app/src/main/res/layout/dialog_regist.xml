@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     app:cardCornerRadius="30dp"
     android:elevation="10dp"
     android:layout_margin="30dp"
@@ -20,6 +21,7 @@
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:layout_gravity="center"
+            android:contentDescription="@string/logo_warning"
             android:src="@drawable/ic_warning"
             app:tint="@color/blue_theme"/>
 
@@ -29,7 +31,7 @@
             android:layout_height="wrap_content"
             android:paddingHorizontal="10dp"
             android:paddingTop="15dp"
-            android:text="Register Tags?"
+            android:text="@string/label_register_tags"
             android:textSize="18sp"
             android:fontFamily="@font/raleway_bold"
             android:textAlignment="center"
@@ -39,21 +41,21 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Make sure the scanned tag is correct."
+            android:text="@string/desc_label"
             android:textSize="12sp"
             android:fontFamily="@font/raleway_regular"
             android:textAlignment="center"
             android:layout_marginTop="5dp"
             android:layout_gravity="center"
-            android:textColor="@color/text_grey"/>
+            android:textColor="@color/text_grey"
+            tools:ignore="TextContrastCheck" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:orientation="horizontal"
-            android:paddingLeft="10dp"
-            android:paddingRight="10dp"
+            android:paddingHorizontal="10dp"
             android:weightSum="2">
 
             <Button
@@ -62,27 +64,31 @@
                 android:layout_height="50dp"
                 android:layout_marginEnd="8dp"
                 android:layout_weight="1"
-                android:backgroundTint="#BDBDBD"
+                android:backgroundTint="#7A7C7D"
                 android:fontFamily="@font/raleway_bold"
-                android:text="Cancel"
-                android:textSize="15dp"
+                android:text="@string/dialog_cancel"
+                android:textSize="15sp"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
-                app:cornerRadius="20dp" />
+                app:cornerRadius="20dp"
+                tools:ignore="all" />
 
             <Button
-                android:id="@+id/btnYes"
+                android:id="@+id/btnSave"
+                style="?android:attr/buttonBarButtonStyle"
                 android:layout_width="wrap_content"
                 android:layout_height="50dp"
                 android:layout_marginStart="8dp"
                 android:layout_weight="1"
                 android:fontFamily="@font/raleway_bold"
-                android:backgroundTint="#01C470"
-                android:text="Register"
-                android:textSize="15dp"
+                android:backgroundTint="@color/green_button"
+                android:stateListAnimator="@null"
+                android:text="@string/action_register"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
-                app:cornerRadius="20dp" />
+                android:textSize="16sp"
+                app:cornerRadius="20dp"
+                tools:ignore="TextContrastCheck,VisualLintButtonSize"/>
         </LinearLayout>
     </LinearLayout>
 </androidx.cardview.widget.CardView>

@@ -12,6 +12,8 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 
+import com.densowave.scannersdk.Common.CommScanner;
+import com.densowave.scannersdk.Listener.RFIDDataDelegate;
 import com.example.inventory_system_ht.Helper.ApiClient;
 import com.example.inventory_system_ht.Helper.ApiService;
 import com.example.inventory_system_ht.Helper.PrefManager;
@@ -29,7 +31,10 @@ public class LoginActivity extends BaseScannerActivity {
     private EditText etUsername;
     private EditText etPassword;
     private PrefManager prefManager;
-
+    @Override
+    protected CommScanner getScannerInstance() {
+        return null;
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

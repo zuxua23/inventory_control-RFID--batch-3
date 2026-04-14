@@ -36,4 +36,21 @@ public class ItemModels {
         public String getItemId() { return itemId; }
         public String getItemName() { return itemName; }
     }
+    public static class SumProductModel {
+        private String itemId;
+        private String itemName;
+        private int count;
+
+        public SumProductModel(String itemId, String itemName, int count) {
+            this.itemId   = itemId;
+            this.itemName = itemName;
+            this.count    = count;
+        }
+
+        public void addCount(int n) { this.count += n; }
+        public String getItemId()   { return itemId; }
+        public String getItemName() { return itemName; }
+        public int getCount()       { return count; }
+    }
+
 }

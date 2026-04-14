@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_marginBottom="8dp"
     app:cardCornerRadius="20dp"
     app:cardBackgroundColor="@color/blue_theme"
@@ -23,20 +23,22 @@
             android:id="@+id/tvTagId"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="[Product ID]"
-            android:textColor="#FFFFFF"
+            android:text="@string/tv_product_id"
+            android:textColor="@color/white"
             android:textSize="12sp"
-            android:fontFamily="@font/raleway_bold" />
+            android:fontFamily="@font/raleway_bold"
+            tools:ignore="TextContrastCheck"/>
 
         <TextView
             android:id="@+id/tvProductName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="[Product name]"
-            android:textColor="#FFFFFF"
+            android:text="@string/tv_product_name"
+            android:textColor="@color/white"
             android:textSize="12sp"
             android:textStyle="bold"
-            android:fontFamily="@font/raleway_bold" />
+            android:fontFamily="@font/raleway_bold"
+            tools:ignore="TextContrastCheck"/>
 
     </LinearLayout>
 </androidx.cardview.widget.CardView>

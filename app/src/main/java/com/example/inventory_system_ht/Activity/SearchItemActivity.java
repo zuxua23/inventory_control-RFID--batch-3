@@ -47,6 +47,10 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
     private ApiService api;
     private String token;
     @Override
+    protected CommScanner getScannerInstance() {
+        return mCommScanner;
+    }
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search_item);

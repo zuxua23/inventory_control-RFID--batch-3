@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     app:cardCornerRadius="30dp"
     android:elevation="10dp"
     android:layout_margin="40dp"
@@ -20,18 +21,18 @@
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_warning"/>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:paddingHorizontal="20dp"
-            android:paddingTop="10dp"
-            android:text="Are you sure you want to Logout?"
-            android:textSize="18sp"
-            android:fontFamily="@font/raleway_bold"
-            android:textAlignment="center"
-            android:textColor="@color/black"/>
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_warning"
+            tools:ignore="ImageContrastCheck" /> <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="10dp"
+        android:text="@string/dialog_msg_logout"
+        android:textSize="18sp"
+        android:fontFamily="@font/raleway_bold"
+        android:textAlignment="center"
+        android:textColor="@color/black"/>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -51,12 +52,12 @@
                 android:backgroundTint="@color/merah"
                 android:fontFamily="@font/raleway_bold"
                 android:stateListAnimator="@null"
-                android:text="No"
+                android:text="@string/action_no"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
-                android:textSize="13dp"
-                app:cornerRadius="20dp" />
-
+                android:textSize="13sp"
+                app:cornerRadius="20dp"
+                tools:ignore="TextContrastCheck, ButtonStyle" />
             <Button
                 android:id="@+id/btnYes"
                 android:layout_width="wrap_content"
@@ -66,12 +67,12 @@
                 android:fontFamily="@font/raleway_bold"
                 android:backgroundTint="#01C470"
                 android:stateListAnimator="@null"
-                android:text="Yes"
+                android:text="@string/action_yes"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
-                android:textSize="13dp"
-                app:cornerRadius="20dp" />
+                android:textSize="13sp"
+                app:cornerRadius="20dp"
+                tools:ignore="TextContrastCheck, ButtonStyle" />
         </LinearLayout>
     </LinearLayout>
 </androidx.cardview.widget.CardView>
-

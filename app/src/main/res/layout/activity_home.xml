@@ -69,219 +69,315 @@
                 android:layout_marginTop="2dp"
                 tools:ignore="TextContrastCheck" />
         </LinearLayout>
-
     </RelativeLayout>
 
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
+        android:padding="10dp"
         android:background="@drawable/bg_white_rounded_top"
         app:cardElevation="15dp">
-
-        <ScrollView
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:fillViewport="true"
-            android:padding="10dp"
-            android:clipToPadding="false"
-            tools:ignore="UselessParent">
 
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardCornerRadius="20dp"
                 app:cardBackgroundColor="@color/blue_theme"
-                app:cardElevation="6dp">
+                app:cardElevation="0dp">
 
-                <LinearLayout
+                <ScrollView
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/label_menu"
-                        android:paddingStart="6dp"
-                        android:paddingTop="4dp"
-                        android:textColor="@color/white"
-                        android:textSize="20sp"
-                        android:fontFamily="@font/raleway_extra_bold"
-                        android:layout_marginBottom="16dp"
-                        tools:ignore="RtlSymmetry" />
+                    android:layout_height="match_parent"
+                    android:fillViewport="true"
+                    android:clipToPadding="false"
+                    tools:ignore="UselessParent">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:baselineAligned="false"
-                        android:orientation="horizontal"
-                        android:layout_marginBottom="16dp">
+                        android:orientation="vertical"
+                        android:padding="10dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/label_menu"
+                            android:paddingStart="6dp"
+                            android:paddingTop="4dp"
+                            android:textColor="@color/white"
+                            android:textSize="18sp"
+                            android:fontFamily="@font/raleway_extra_bold"
+                            android:layout_marginBottom="16dp"
+                            tools:ignore="RtlSymmetry" />
+
 
                         <LinearLayout
-                            android:layout_width="0dp"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:gravity="center">
-                            <ImageButton
-                                android:id="@+id/ButtonStockIn"
-                                android:layout_width="85dp"
-                                android:layout_height="80dp"
-                                android:background="@drawable/bg_badge_card_menu"
-                                android:foreground="@drawable/bg_menu_selector"
-                                android:padding="10dp"
-                                android:src="@drawable/stock_in_icon"
-                                android:contentDescription="@string/menu_stock_in" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:fontFamily="@font/raleway_semi_bold"
-                                android:gravity="center"
-                                android:text="@string/menu_stock_in"
-                                android:textColor="@color/white"
-                                android:textSize="13sp"
-                                android:importantForAccessibility="no"
-                                tools:ignore="TextContrastCheck" />
+                            android:baselineAligned="false"
+                            android:orientation="horizontal"
+                            android:weightSum="2">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="1"
+                                android:padding="8dp">
+
+                                <androidx.cardview.widget.CardView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    app:cardCornerRadius="16dp"
+                                    app:cardBackgroundColor="@android:color/white"
+                                    app:cardElevation="2dp">
+
+                                    <LinearLayout
+                                        android:id="@+id/ButtonStockIn"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="match_parent"
+                                        android:orientation="vertical"
+                                        android:gravity="center"
+                                        android:paddingVertical="20dp"
+                                        android:paddingHorizontal="12dp"
+                                        android:clickable="true"
+                                        android:focusable="true"
+                                        android:foreground="?android:attr/selectableItemBackground">
+
+                                        <ImageView
+                                            android:layout_width="64dp"
+                                            android:layout_height="64dp"
+                                            android:src="@drawable/stock_in_icon"
+                                            android:importantForAccessibility="no" />
+
+                                        <TextView
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:layout_marginTop="12dp"
+                                            android:fontFamily="@font/raleway_bold"
+                                            android:text="@string/menu_stock_in"
+                                            android:textColor="#388E3C"
+                                            android:textSize="14sp"
+                                            android:gravity="center"
+                                            android:minLines="2"
+                                            android:textAlignment="center"/>
+                                    </LinearLayout>
+                                </androidx.cardview.widget.CardView>
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="1"
+                                android:padding="8dp">
+
+                                <androidx.cardview.widget.CardView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    app:cardCornerRadius="16dp"
+                                    app:cardBackgroundColor="@android:color/white"
+                                    app:cardElevation="2dp">
+
+                                    <LinearLayout
+                                        android:id="@+id/ButtonStockPreparation"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="match_parent"
+                                        android:orientation="vertical"
+                                        android:gravity="center"
+                                        android:paddingVertical="20dp"
+                                        android:paddingHorizontal="12dp"
+                                        android:clickable="true"
+                                        android:focusable="true"
+                                        android:foreground="?android:attr/selectableItemBackground">
+
+                                        <ImageView
+                                            android:layout_width="64dp"
+                                            android:layout_height="64dp"
+                                            android:src="@drawable/stock_preparation_icon"
+                                            android:importantForAccessibility="no" />
+
+                                        <TextView
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:layout_marginTop="12dp"
+                                            android:fontFamily="@font/raleway_bold"
+                                            android:text="@string/menu_stock_preparation"
+                                            android:textColor="#F57C00"
+                                            android:textSize="14sp"
+                                            android:gravity="center"
+                                            android:minLines="2"
+                                            android:textAlignment="center"/>
+                                    </LinearLayout>
+                                </androidx.cardview.widget.CardView>
+                            </LinearLayout>
                         </LinearLayout>
 
                         <LinearLayout
-                            android:layout_width="0dp"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:gravity="center">
+                            android:baselineAligned="false"
+                            android:orientation="horizontal"
+                            android:weightSum="2">
 
-                            <ImageButton
-                                android:id="@+id/ButtonStockPreparation"
-                                android:layout_width="85dp"
-                                android:layout_height="80dp"
-                                android:background="@drawable/bg_badge_card_menu"
-                                android:contentDescription="@string/menu_stock_preparation"
-                                android:foreground="@drawable/bg_menu_selector"
-                                android:padding="10dp"
-                                android:src="@drawable/stock_preparation_icon"
-                                app:tint="#D84315" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:fontFamily="@font/raleway_semi_bold"
-                                android:gravity="center"
-                                android:text="@string/menu_stock_preparation"
-                                android:textColor="@color/white"
-                                android:textSize="13sp"
-                                android:importantForAccessibility="no"
-                                tools:ignore="TextContrastCheck"/>
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="1"
+                                android:padding="8dp">
+
+                                <androidx.cardview.widget.CardView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    app:cardCornerRadius="16dp"
+                                    app:cardBackgroundColor="@android:color/white"
+                                    app:cardElevation="2dp">
+
+                                    <LinearLayout
+                                        android:id="@+id/ButtonTagRegis"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="match_parent"
+                                        android:orientation="vertical"
+                                        android:gravity="center"
+                                        android:paddingVertical="20dp"
+                                        android:paddingHorizontal="12dp"
+                                        android:clickable="true"
+                                        android:focusable="true"
+                                        android:foreground="?android:attr/selectableItemBackground">
+
+                                        <ImageView
+                                            android:layout_width="64dp"
+                                            android:layout_height="64dp"
+                                            android:src="@drawable/ic_tag"
+                                            android:importantForAccessibility="no" />
+
+                                        <TextView
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:layout_marginTop="12dp"
+                                            android:fontFamily="@font/raleway_bold"
+                                            android:text="@string/menu_tag_registration"
+                                            android:textColor="#12538D"
+                                            android:textSize="14sp"
+                                            android:gravity="center"
+                                            android:minLines="2"
+                                            android:textAlignment="center"/>
+                                    </LinearLayout>
+                                </androidx.cardview.widget.CardView>
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="1"
+                                android:padding="8dp">
+
+                                <androidx.cardview.widget.CardView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    app:cardCornerRadius="16dp"
+                                    app:cardBackgroundColor="@android:color/white"
+                                    app:cardElevation="2dp">
+
+                                    <LinearLayout
+                                        android:id="@+id/ButtonStockTaking"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="match_parent"
+                                        android:orientation="vertical"
+                                        android:gravity="center"
+                                        android:paddingVertical="20dp"
+                                        android:paddingHorizontal="12dp"
+                                        android:clickable="true"
+                                        android:focusable="true"
+                                        android:foreground="?android:attr/selectableItemBackground">
+
+                                        <ImageView
+                                            android:layout_width="64dp"
+                                            android:layout_height="64dp"
+                                            android:src="@drawable/stock_taking_icon"
+                                            android:importantForAccessibility="no" />
+
+                                        <TextView
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:layout_marginTop="12dp"
+                                            android:fontFamily="@font/raleway_bold"
+                                            android:text="@string/menu_stock_taking"
+                                            android:textColor="#D32F2F"
+                                            android:textSize="14sp"
+                                            android:gravity="center"
+                                            android:minLines="2"
+                                            android:textAlignment="center"/>
+                                    </LinearLayout>
+                                </androidx.cardview.widget.CardView>
+                            </LinearLayout>
                         </LinearLayout>
 
                         <LinearLayout
-                            android:layout_width="0dp"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:gravity="center">
-                            <ImageButton
-                                android:id="@+id/ButtonStockTaking"
-                                android:layout_width="85dp"
-                                android:layout_height="80dp"
-                                android:background="@drawable/bg_badge_card_menu"
-                                android:foreground="@drawable/bg_menu_selector"
-                                android:padding="10dp"
-                                android:src="@drawable/stock_taking_icon"
-                                android:contentDescription="@string/menu_stock_taking" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:fontFamily="@font/raleway_semi_bold"
-                                android:gravity="center"
-                                android:textAlignment="center"
-                                android:text="@string/menu_stock_taking"
-                                android:textColor="@color/white"
-                                android:textSize="13sp"
-                                android:importantForAccessibility="no"
-                                tools:ignore="TextContrastCheck" />
+                            android:orientation="horizontal"
+                            android:weightSum="2"
+                            android:layout_marginBottom="16dp">
+
+                            <View
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="0.5"/>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="1"
+                                android:padding="8dp">
+
+                                <androidx.cardview.widget.CardView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    app:cardCornerRadius="16dp"
+                                    app:cardBackgroundColor="@android:color/white"
+                                    app:cardElevation="2dp">
+
+                                    <LinearLayout
+                                        android:id="@+id/ButtonSearchItem"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="match_parent"
+                                        android:orientation="vertical"
+                                        android:gravity="center"
+                                        android:paddingVertical="20dp"
+                                        android:paddingHorizontal="12dp"
+                                        android:clickable="true"
+                                        android:focusable="true"
+                                        android:foreground="?android:attr/selectableItemBackground">
+
+                                        <ImageView
+                                            android:layout_width="64dp"
+                                            android:layout_height="64dp"
+                                            android:src="@drawable/seacrh_item_icon"
+                                            android:importantForAccessibility="no" />
+
+                                        <TextView
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:layout_marginTop="12dp"
+                                            android:fontFamily="@font/raleway_bold"
+                                            android:text="@string/menu_search_item"
+                                            android:textColor="#0288D1"
+                                            android:textSize="14sp"
+                                            android:gravity="center"
+                                            android:minLines="2"
+                                            android:textAlignment="center"/>
+                                    </LinearLayout>
+                                </androidx.cardview.widget.CardView>
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="0.5"/>
                         </LinearLayout>
 
                     </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginBottom="8dp">
-
-                        <View
-                            android:layout_width="0dp"
-                            android:layout_height="0dp"
-                            android:layout_weight="0.5"/>
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:gravity="center">
-                            <ImageButton
-                                android:id="@+id/ButtonTagRegis"
-                                android:layout_width="85dp"
-                                android:layout_height="80dp"
-                                android:background="@drawable/bg_badge_card_menu"
-                                android:foreground="@drawable/bg_menu_selector"
-                                android:padding="10dp"
-                                android:src="@drawable/ic_tag"
-                                android:contentDescription="@string/menu_tag_registration" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:fontFamily="@font/raleway_semi_bold"
-                                android:gravity="center"
-                                android:text="@string/menu_tag_registration"
-                                android:textColor="@color/white"
-                                android:textSize="13sp"
-                                android:importantForAccessibility="no"
-                                tools:ignore="TextContrastCheck"/>
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:gravity="center">
-                            <ImageButton
-                                android:id="@+id/ButtonSearchItem"
-                                android:layout_width="85dp"
-                                android:layout_height="80dp"
-                                android:background="@drawable/bg_badge_card_menu"
-                                android:foreground="@drawable/bg_menu_selector"
-                                android:padding="10dp"
-                                android:src="@drawable/seacrh_item_icon"
-                                android:contentDescription="@string/menu_search_item" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:fontFamily="@font/raleway_semi_bold"
-                                android:gravity="center"
-                                android:text="@string/menu_search_item"
-                                android:textColor="@color/white"
-                                android:textSize="13sp"
-                                android:importantForAccessibility="no"
-                                tools:ignore="TextContrastCheck"/>
-                        </LinearLayout>
-
-                        <View
-                            android:layout_width="0dp"
-                            android:layout_height="0dp"
-                            android:layout_weight="0.5"/>
-                    </LinearLayout>
-                </LinearLayout>
+                </ScrollView>
             </androidx.cardview.widget.CardView>
-        </ScrollView>
     </FrameLayout>
 </LinearLayout>

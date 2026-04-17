@@ -3,6 +3,7 @@ package com.example.inventory_system_ht.Activity;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
@@ -15,11 +16,13 @@ import android.view.Window;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout; // Tambahan import untuk LinearLayout
 import android.widget.PopupWindow;
 import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
 
 import com.densowave.scannersdk.Common.CommScanner;
@@ -42,17 +45,15 @@ import retrofit2.Response;
 
 public class HomeActivity extends BaseScannerActivity {
     private ImageView ivProfile;
-    private ImageButton btnStockIn, btnStockPrep, btnStockTaking, btnTagRegis, btnSearchItem, btnStockOut;
+    private LinearLayout btnStockIn, btnStockPrep, btnStockTaking, btnTagRegis, btnSearchItem, btnStockOut;
     private TextView tvNamaOperator, tvRoleOperator, textViewStatusReader;
     private CardView cardStatus;
     private PrefManager prefManager;
     private ImageButton btnSyncData;
     private AppDao appDao;
 
-    // Tambahkan instance CommScanner jika kamu menggunakannya di HomeActivity
     private CommScanner mCommScanner;
 
-    // Implementasi abstract method wajib dari BaseScannerActivity
     @Override
     protected CommScanner getScannerInstance() {
         return mCommScanner;
@@ -65,32 +66,6 @@ public class HomeActivity extends BaseScannerActivity {
 
         prefManager = new PrefManager(this);
 
-        ivProfile = findViewById(R.id.ivProfile);
-        btnStockIn = findViewById(R.id.ButtonStockIn);
-        btnStockPrep = findViewById(R.id.ButtonStockPreparation);
-        btnStockTaking = findViewById(R.id.ButtonStockTaking);
-        btnTagRegis = findViewById(R.id.ButtonTagRegis);
-        btnSearchItem = findViewById(R.id.ButtonSearchItem);
-        tvNamaOperator = findViewById(R.id.textViewNamaOperator);
-        tvRoleOperator = findViewById(R.id.textViewRoleOperator);
-
-        // PENTING: Inisialisasi cardStatus dan textViewStatusReader agar tidak NullPointerException
-        // Pastikan id ini ada di XML layout activity_home (jika tidak ada, hapus atau sesuaikan)
-        // cardStatus = findViewById(R.id.cardStatus);
-        // textViewStatusReader = findViewById(R.id.textViewStatusReader);
-
-        SharedPreferences sharedPreferences = getSharedPreferences("UserSession", MODE_PRIVATE);
-        String fullName = sharedPreferences.getString("USER_FULLNAME", "Guest");
-        int roleId = sharedPreferences.getInt("ROLE_ID", 2);
-        String roleName = (roleId == 1) ? "Administrator" : "Operator IT";
-
-        appDao = AppDatabase.getDatabase(this).appDao();
-        tvNamaOperator.setText("Welcome " + fullName);
-        tvRoleOperator.setText(roleName);
-
-        // Hanya jalankan jika kamu sudah menginisialisasi textViewStatusReader dan cardStatus
-        // updateReaderStatus(false);
-
         if (!prefManager.isSessionValid()) {
             prefManager.clearSession();
             Intent intent = new Intent(HomeActivity.this, LoginActivity.class);
@@ -100,7 +75,30 @@ public class HomeActivity extends BaseScannerActivity {
             return;
         }
 
+        // findViewById
+        ivProfile       = findViewById(R.id.ivProfile);
+        btnStockIn      = findViewById(R.id.ButtonStockIn);
+        btnStockPrep    = findViewById(R.id.ButtonStockPreparation);
+        btnStockTaking  = findViewById(R.id.ButtonStockTaking);
+        btnTagRegis     = findViewById(R.id.ButtonTagRegis);
+        btnSearchItem   = findViewById(R.id.ButtonSearchItem);
+        tvNamaOperator  = findViewById(R.id.textViewNamaOperator);
+        tvRoleOperator  = findViewById(R.id.textViewRoleOperator);
+        btnSyncData     = findViewById(R.id.btnSyncData);
+
+        appDao = AppDatabase.getDatabase(this).appDao();
+
+        String fullName = prefManager.getFullName();
+        String roleName = prefManager.getRoleName();
+
+        tvNamaOperator.setText("Welcome " + fullName);
+        tvRoleOperator.setText(roleName);
+
         ivProfile.setOnClickListener(v -> showLogoutPopup(v));
+
+        if (btnSyncData != null) {
+            btnSyncData.setOnClickListener(v -> syncOfflineData());
+        }
 
         View.OnClickListener menuClickListener = v -> {
             if (!isNetworkConnected()) {
@@ -152,7 +150,7 @@ public class HomeActivity extends BaseScannerActivity {
     @SuppressLint("ClickableViewAccessibility")
     private void showLogoutPopup(View anchorView) {
         CardView cardView = new CardView(this);
-        cardView.setCardBackgroundColor(Color.parseColor("#C62828"));
+        cardView.setCardBackgroundColor(ContextCompat.getColor(this,R.color.merah));
         cardView.setRadius(40f);
         cardView.setCardElevation(8f);
 
@@ -213,30 +211,16 @@ public class HomeActivity extends BaseScannerActivity {
         btnNo.setOnClickListener(v -> dialog.dismiss());
 
         btnYes.setOnClickListener(v -> {
-            dialog.dismiss();
-            SharedPreferences sharedPreferences = getSharedPreferences("UserSession", MODE_PRIVATE);
-            sharedPreferences.edit().clear().apply();
-            prefManager.clearSession();
+                    dialog.dismiss();
+                    prefManager.clearSession();
 
-            Intent intent = new Intent(HomeActivity.this, LoginActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finish();
-        });
+                    Intent intent = new Intent(HomeActivity.this, LoginActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    finish();
+                });
 
-        dialog.show();
-    }
-
-    private void updateReaderStatus(boolean isConnected) {
-        if (textViewStatusReader != null && cardStatus != null) {
-            if (isConnected) {
-                textViewStatusReader.setText("Reader Status : Connected");
-                cardStatus.setCardBackgroundColor(getResources().getColor(R.color.green_button));
-            } else {
-                textViewStatusReader.setText("Reader Status : Not Connected");
-                cardStatus.setCardBackgroundColor(Color.parseColor("#9E9E9E"));
-            }
-        }
+            dialog.show();
     }
 
     private void syncOfflineData() {

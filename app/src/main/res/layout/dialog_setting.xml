@@ -1,111 +1,112 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    app:cardCornerRadius="30dp"
-    android:elevation="10dp"
-    android:layout_margin="40dp"
-    app:cardBackgroundColor="@color/white">
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="24dp"
+    app:cardBackgroundColor="@color/white"
+    app:cardCornerRadius="24dp"
+    app:cardElevation="8dp">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_gravity="center"
+        android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:padding="24dp">
 
+        <!-- Title -->
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="6dp"
             android:fontFamily="@font/raleway_bold"
-            android:paddingBottom="15dp"
+            android:gravity="center"
+            android:paddingBottom="20dp"
             android:text="@string/title_setting"
             android:textColor="@color/black"
-            android:textSize="24sp"
+            android:textSize="22sp"
             android:textStyle="bold" />
 
+        <!-- Input row: EditText + checkmark -->
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
             android:background="@drawable/bg_setting_edit_text"
-            android:orientation="horizontal">
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="4dp">
 
             <EditText
                 android:id="@+id/etIpAPI"
-                android:layout_width="190dp"
+                android:layout_width="0dp"
                 android:layout_height="48dp"
-                android:importantForAutofill="no"
-                android:background="@color/white"
-                android:hint="@string/hint_url_setting"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
                 android:fontFamily="@font/raleway_regular"
-                android:textColor="@color/black"
-                android:paddingVertical="10dp"
+                android:hint="@string/hint_url_setting"
+                android:importantForAutofill="no"
                 android:inputType="text"
+                android:maxLines="1"
+                android:textColor="@color/black"
+                android:textColorHint="#9E9E9E"
                 android:textSize="14sp" />
 
             <ImageButton
                 android:id="@+id/buttonCekIp"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
                 android:background="@android:color/transparent"
                 android:contentDescription="@string/desc_ceklis"
-                android:stateListAnimator="@null"
-                android:foreground="?android:attr/selectableItemBackground"
-                android:src="@drawable/ic_ceklis" />
+                android:foreground="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_ceklis"
+                android:stateListAnimator="@null" />
         </LinearLayout>
 
+        <!-- Action buttons -->
         <LinearLayout
             style="?android:attr/buttonBarStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
             android:orientation="horizontal"
-            android:paddingLeft="30dp"
-            android:paddingTop="20dp"
-            android:paddingRight="30dp"
             android:weightSum="2">
 
             <Button
                 android:id="@+id/btnCancel"
                 style="?android:attr/buttonBarButtonStyle"
-                android:layout_width="140dp"
-                android:layout_height="50dp"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
                 android:layout_marginEnd="8dp"
                 android:layout_weight="1"
                 android:backgroundTint="#7A7C7D"
                 android:fontFamily="@font/raleway_bold"
-                android:stateListAnimator="@null"
                 android:foreground="?android:attr/selectableItemBackground"
+                android:stateListAnimator="@null"
                 android:text="@string/dialog_cancel"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
-                android:textSize="13sp"
-                app:cornerRadius="30dp"
-                tools:ignore="TextContrastCheck,VisualLintButtonSize,all"/>
+                android:textSize="15sp"
+                app:cornerRadius="26dp"
+                tools:ignore="TextContrastCheck" />
 
             <Button
                 android:id="@+id/btnApplyIp"
                 style="?android:attr/buttonBarButtonStyle"
-                android:layout_width="140dp"
-                android:layout_height="50dp"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
                 android:layout_marginStart="8dp"
                 android:layout_weight="1"
+                android:backgroundTint="@color/green_button"
                 android:fontFamily="@font/raleway_bold"
-                android:backgroundTint="#01C470"
-                android:stateListAnimator="@null"
                 android:foreground="?android:attr/selectableItemBackground"
+                android:stateListAnimator="@null"
                 android:text="@string/action_apply"
-                android:textAlignment="center"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
-                android:textSize="13sp"
-                app:cornerRadius="30dp"
-                tools:ignore="TextContrastCheck,VisualLintButtonSize"/>
+                android:textSize="15sp"
+                app:cornerRadius="26dp"
+                tools:ignore="TextContrastCheck" />
         </LinearLayout>
     </LinearLayout>
 </androidx.cardview.widget.CardView>
-

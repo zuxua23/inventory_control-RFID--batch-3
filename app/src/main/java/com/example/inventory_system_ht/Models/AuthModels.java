@@ -1,10 +1,10 @@
 package com.example.inventory_system_ht.Models;
 
 import com.google.gson.annotations.SerializedName;
-
 import java.util.List;
 
 public class AuthModels {
+
     public static class LoginRequest {
         private final String username;
         private final String password;
@@ -14,21 +14,29 @@ public class AuthModels {
             this.password = password;
         }
 
-        public String getUsername() {
-            return username;
-        }
-
-        public String getPassword() {
-            return password;
-        }
+        public String getUsername() { return username; }
+        public String getPassword() { return password; }
     }
+
     public static class LoginResponse {
+        @SerializedName("success")
         private boolean success;
+
+        @SerializedName("token")
         private String token;
+
+        @SerializedName("token_type")
+        private String tokenType;
+
+        @SerializedName("user")
+        private UserModel user;
 
         public boolean isSuccess() { return success; }
         public String getToken() { return token; }
+        public String getTokenType() { return tokenType; }
+        public UserModel getUser() { return user; }
     }
+
     public static class RegisterRequest {
         @SerializedName("tagIds")
         private List<String> tagIds;
@@ -37,33 +45,39 @@ public class AuthModels {
             this.tagIds = tagIds;
         }
 
-        public List<String> getTagIds() {
-            return tagIds;
-        }
-
-        public void setTagIds(List<String> tagIds) {
-            this.tagIds = tagIds;
-        }
+        public List<String> getTagIds() { return tagIds; }
+        public void setTagIds(List<String> tagIds) { this.tagIds = tagIds; }
     }
 
     public static class UserModel {
-        private final String usr_id;
-        private final String usr_name;
-        private final String usr_fullname;
-        private final String usr_password;
-        private final int role_id;
-        public UserModel(String usr_id, String usr_name, String usr_fullname, String usr_password, int role_id) {
-            this.usr_id = usr_id;
-            this.usr_name = usr_name;
-            this.usr_fullname = usr_fullname;
-            this.usr_password = usr_password;
-            this.role_id = role_id;
-        }
+        @SerializedName("usr_id")
+        private String usrId;
 
-        public String getUsr_id() { return usr_id; }
-        public String getUsr_name() { return usr_name; }
-        public String getUsr_fullname() { return usr_fullname; }
-        public String getUsr_password() { return usr_password; }
-        public int getRole_id() { return role_id; }
+        @SerializedName("usr_name")
+        private String usrName;
+
+        @SerializedName("usr_fullname")
+        private String usrFullname;
+
+        @SerializedName("roles")
+        private List<String> roles;
+
+        @SerializedName("permissions")
+        private List<String> permissions;
+
+        // No-arg constructor penting buat Gson
+        public UserModel() {}
+
+        public String getUsrId()        { return usrId; }
+        public String getUsrName()      { return usrName; }
+        public String getUsrFullname()  { return usrFullname; }
+        public List<String> getRoles()  { return roles; }
+        public List<String> getPermissions() { return permissions; }
+
+        // Helper: ambil role pertama buat display
+        public String getPrimaryRole() {
+            if (roles != null && !roles.isEmpty()) return roles.get(0);
+            return "Unknown";
+        }
     }
 }

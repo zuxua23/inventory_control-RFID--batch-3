@@ -83,4 +83,15 @@ public class TagModels {
         public boolean isScanned() { return isScanned; }
         public void setScanned(boolean scanned) { isScanned = scanned; }
     }
+    public static class TagResponseDto {
+        @SerializedName("tagId")    private String tagId;
+        @SerializedName("itemId")   private String itemId;
+        @SerializedName("itemName") private String itemName;
+        @SerializedName("status")   private String status;
+
+        public String getTagId()    { return tagId; }
+        public String getItemId()   { return itemId; }
+        public String getItemName() { return itemName; }
+        public String getStatus()   { return status; }
+    }
 }

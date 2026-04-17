@@ -182,18 +182,27 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
 
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rvTags"
+                <androidx.cardview.widget.CardView
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
-                    android:layout_marginTop="12dp"
-                    android:clipToPadding="false"
-                    android:paddingBottom="60dp"
-                    android:verticalScrollbarPosition="left"
-                    android:scrollbars="vertical"
+                    android:layout_marginTop="10dp"
+                    app:cardCornerRadius="15dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="@android:color/transparent"
                     app:layout_constraintTop_toBottomOf="@id/tvListTitle"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    tools:listitem="@layout/item_tag" />
+                    app:layout_constraintBottom_toBottomOf="parent">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rvTags"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:clipToPadding="false"
+                        android:paddingBottom="10dp"
+                        android:verticalScrollbarPosition="left"
+                        android:scrollbars="vertical"
+                        tools:listitem="@layout/item_tag" />
+
+                </androidx.cardview.widget.CardView>
 
             </androidx.constraintlayout.widget.ConstraintLayout>
         </androidx.cardview.widget.CardView>
@@ -203,61 +212,46 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center"
-            android:paddingHorizontal="10dp"
-            android:paddingBottom="20dp"
+            android:paddingHorizontal="20dp"
+            android:paddingBottom="10dp"
+            android:gravity="center_vertical"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
-            <androidx.cardview.widget.CardView
+            <Button
                 android:id="@+id/btnClear"
                 android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_marginEnd="8dp"
                 android:layout_weight="1"
-                android:layout_height="48dp"
-                android:layout_marginEnd="5dp"
-                app:cardCornerRadius="24dp"
-                app:cardElevation="6dp"
-                app:cardBackgroundColor="@color/merah"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?android:attr/selectableItemBackground">
+                android:backgroundTint="@color/merah"
+                android:fontFamily="@font/raleway_bold"
+                android:stateListAnimator="@null"
+                android:text="@string/action_clear"
+                android:elevation="2dp"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                app:cornerRadius="20dp"
+                tools:ignore="ButtonStyle" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:gravity="center"
-                    android:text="@string/action_clear"
-                    android:textColor="@color/white"
-                    android:fontFamily="@font/raleway_bold"
-                    android:textSize="16sp"
-                    tools:ignore="TextContrastCheck" />
-            </androidx.cardview.widget.CardView>
-
-            <androidx.cardview.widget.CardView
+            <Button
                 android:id="@+id/btnSubmitRegis"
                 android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_marginStart="8dp"
                 android:layout_weight="1"
-                android:layout_height="48dp"
-                android:layout_marginStart="5dp"
-                app:cardCornerRadius="24dp"
-                app:cardElevation="6dp"
-                app:cardBackgroundColor="#01C470"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?android:attr/selectableItemBackground">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:gravity="center"
-                    android:text="@string/action_save"
-                    android:textColor="@color/white"
-                    android:fontFamily="@font/raleway_bold"
-                    android:textSize="16sp"
-                    tools:ignore="TextContrastCheck" />
-            </androidx.cardview.widget.CardView>
-
+                android:fontFamily="@font/raleway_bold"
+                android:backgroundTint="@color/green_button"
+                android:stateListAnimator="@null"
+                android:text="@string/action_save"
+                android:elevation="2dp"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                app:cornerRadius="20dp"
+                tools:ignore="TextContrastCheck,ButtonStyle" />
         </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>

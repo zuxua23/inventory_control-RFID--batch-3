@@ -96,7 +96,7 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
     public void handleApiError(int statusCode) {
         hideLoading();
         if (statusCode == 401) {
-            showSagaFeedback("Session Expired! Please login again.", false);
+            showSagaFeedback("Session expired, please login again", false);
             PrefManager pref = new PrefManager(this);
             pref.clearSession();
             Intent intent = new Intent(this, LoginActivity.class);
@@ -104,20 +104,45 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
             startActivity(intent);
             finish();
         } else if (statusCode >= 500) {
-            showSagaFeedback("Server Error (500): API is crashing, contact IT!", false);
+            showSagaFeedback("Server is having issues, please try again later", false);
+        } else if (statusCode == 403) {
+            showSagaFeedback("You don't have permission for this action", false);
+        } else if (statusCode == 404) {
+            showSagaFeedback("Data not found", false);
         } else {
-            showSagaFeedback("Error: " + statusCode + ". Check your data/request.", false);
+            showSagaFeedback("Something went wrong, please check your input", false);
         }
+    }
+
+    public void handleApiError(retrofit2.Response<?> response) {
+        hideLoading();
+        int statusCode = response.code();
+
+        if (statusCode == 401) {
+            showSagaFeedback("Session expired, please login again", false);
+            PrefManager pref = new PrefManager(this);
+            pref.clearSession();
+            Intent intent = new Intent(this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+            return;
+        }
+
+        String msg = com.example.inventory_system_ht.Helper.ErrorParser.getMessage(response);
+        showSagaFeedback(msg, false);
     }
 
     public void handleFailure(Throwable t) {
         hideLoading();
         if (t instanceof java.net.SocketTimeoutException) {
-            showSagaFeedback("Timeout: Internet is a garbage warehouse, try again!", false);
+            showSagaFeedback("Connection timeout, please check your internet", false);
+        } else if (t instanceof java.net.ConnectException) {
+            showSagaFeedback("Cannot reach server, is it online?", false);
         } else if (t instanceof java.io.IOException) {
-            showSagaFeedback("Network Error: Check your WiFi/Data connection!", false);
+            showSagaFeedback("Network error, check your WiFi/Data connection", false);
         } else {
-            showSagaFeedback("Failure: " + t.getMessage(), false);
+            showSagaFeedback("Something went wrong, please try again", false);
         }
     }
 

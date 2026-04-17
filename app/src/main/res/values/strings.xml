@@ -44,7 +44,7 @@
     <string name="label_no_do">No : DO-1234-123</string>
     <string name="label_date_do">Date : 12-12-2012</string>
     <string name="title_stock_prep_do">List Delivery Order:</string>
-    <string name="title_stock_taking_adj">Stock Taking &amp; Adjust</string>
+    <string name="title_stock_taking_adj">Stock Taking &amp; Adj</string>
     <string name="label_note">Note:</string>
     <string name="hint_type_note">Type note here...</string>
     <string name="dialog_msg_logout">Are you sure you want to Logout?</string>

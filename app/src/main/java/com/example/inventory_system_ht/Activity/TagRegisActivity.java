@@ -77,9 +77,13 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
         rvTags.setLayoutManager(new LinearLayoutManager(this));
         rvTags.setAdapter(adapter);
 
-        adapter.setOnItemLongClickListener((item, position) -> {
-            showDeleteSingleItemDialog(item, position);
+        adapter.setOnItemClickListener(item -> {
+            int position = registeredTagList.indexOf(item);
+            if (position != -1) {
+                showDeleteSingleItemDialog(item, position);
+            }
         });
+
 
         btnBack.setOnClickListener(v -> finish());
 
@@ -265,7 +269,7 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
                     adapter.notifyDataSetChanged();
                     updateScanCount();
                 } else {
-                    handleApiError(response.code());
+                    handleApiError(response);   // <-- pake overload yg nerima Response
                     playScanFeedback(2);
                 }
                 resultScan.requestFocus();

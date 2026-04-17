@@ -292,15 +292,26 @@
                         tools:ignore="TouchTargetSizeCheck,ButtonStyle" />
                 </LinearLayout>
 
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rvTags"
+                <androidx.cardview.widget.CardView
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:clipToPadding="false"
-                    android:paddingBottom="10dp"
-                    android:verticalScrollbarPosition="left"
-                    android:scrollbars="vertical"
-                    tools:listitem="@layout/item_product" />
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginTop="10dp"
+                    app:cardCornerRadius="15dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="@android:color/transparent">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rvTags"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:clipToPadding="false"
+                        android:paddingBottom="10dp"
+                        android:verticalScrollbarPosition="left"
+                        android:scrollbars="vertical"
+                        tools:listitem="@layout/item_product" />
+
+                </androidx.cardview.widget.CardView>
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -327,11 +338,12 @@
                 android:fontFamily="@font/raleway_bold"
                 android:stateListAnimator="@null"
                 android:text="@string/action_clear"
+                android:elevation="2dp"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
                 android:textSize="16sp"
                 app:cornerRadius="20dp"
-                tools:ignore="ButtonStyle"/>
+                tools:ignore="ButtonStyle" />
 
             <Button
                 android:id="@+id/btnSave"
@@ -343,11 +355,12 @@
                 android:backgroundTint="@color/green_button"
                 android:stateListAnimator="@null"
                 android:text="@string/action_save"
+                android:elevation="2dp"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
                 android:textSize="16sp"
                 app:cornerRadius="20dp"
-                tools:ignore="TextContrastCheck,ButtonStyle"/>
+                tools:ignore="TextContrastCheck,ButtonStyle" />
         </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>

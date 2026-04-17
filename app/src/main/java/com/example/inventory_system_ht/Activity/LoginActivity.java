@@ -1,5 +1,7 @@
 package com.example.inventory_system_ht.Activity;
 
+import static androidx.constraintlayout.helper.widget.MotionEffect.TAG;
+
 import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Color;
@@ -78,13 +80,39 @@ public class LoginActivity extends BaseScannerActivity {
             @Override
             public void onResponse(Call<AuthModels.LoginResponse> call, Response<AuthModels.LoginResponse> response) {
                 hideLoading();
-                if (response.isSuccessful() && response.body() != null) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    AuthModels.LoginResponse body = response.body();
+                    String token = body.getToken();
+                    AuthModels.UserModel user = body.getUser();
 
-                    prefManager.saveToken("SESSION_ACTIVE");
+                    if (token == null || token.isEmpty() || user == null) {
+                        showSagaFeedback("Login Failed: Invalid server response", false);
+                        return;
+                    }
 
-                    showSagaFeedback("Login Successful!", true);
+                    String fullName = user.getUsrFullname();
+                    if (fullName == null || fullName.trim().isEmpty()) {
+                        fullName = user.getUsrName();
+                    }
 
-                    startActivity(new Intent(LoginActivity.this, HomeActivity.class));
+                    // Serialize permissions ke JSON buat disimpen
+                    String permissionsJson = new com.google.gson.Gson()
+                            .toJson(user.getPermissions() != null ? user.getPermissions() : new java.util.ArrayList<>());
+
+                    prefManager.saveUserSession(
+                            token,
+                            user.getUsrId(),
+                            user.getUsrName(),
+                            fullName,
+                            user.getPrimaryRole(),   // ambil role pertama
+                            permissionsJson
+                    );
+
+                    showSagaFeedback("Login Successful! Welcome " + fullName, true);
+
+                    Intent intent = new Intent(LoginActivity.this, HomeActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
                     finish();
                 } else {
                     handleApiError(response.code());

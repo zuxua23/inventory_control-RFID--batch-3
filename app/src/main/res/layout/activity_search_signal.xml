@@ -205,6 +205,7 @@
             android:text="@string/action_stop_searching"
             android:textAllCaps="false"
             android:textSize="16sp"
+            android:elevation="4dp"
             android:backgroundTint="@color/merah"
             android:textColor="@color/white"
             android:fontFamily="@font/raleway_bold"

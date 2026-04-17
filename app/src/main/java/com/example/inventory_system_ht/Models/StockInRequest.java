@@ -9,12 +9,16 @@ public class StockInRequest {
 
     @SerializedName("scannedCodes")
     private final List<String> scannedCodes;
+    @SerializedName("LocId")
+    private String locationId;
 
-    public StockInRequest(String scannerType, List<String> scannedCodes) {
+    public StockInRequest(String scannerType, List<String> scannedCodes, String locationId) {
         this.scannerType = scannerType;
         this.scannedCodes = scannedCodes;
+        this.locationId = locationId;
     }
 
+    public String getLocationId() { return locationId; }
     public String getScannerType() { return scannerType; }
     public List<String> getScannedCodes() { return scannedCodes; }
 }

@@ -35,9 +35,11 @@ public interface ApiService {
     @POST("api/stockin")
     Call<GeneralResponse> stockIn(@Header("Authorization") String token, @Body StockInRequest request);
 
-    @POST("api/preparation")
+    @POST("api/preparation/bulk")
     Call<GeneralResponse> submitStockPrep(@Header("Authorization") String token, @Body StockPrepBulkRequest request);
 
+    @GET("api/pickinglist/{id}")
+    Call<DOModels.DOResponseDto> getPickingListById(@Header("Authorization") String token, @Path("id") String id);
     @POST("api/stocktaking/create")
     Call<StockTakingModels.CreateRes> createStockTaking(@Header("Authorization") String token, @Body StockTakingModels.CreateReq request);
 

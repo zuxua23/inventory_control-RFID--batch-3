@@ -14,13 +14,18 @@ public class StockPrepBulkRequest {
     @SerializedName("scannedCodes")
     private final List<String> scannedCodes;
 
-    public StockPrepBulkRequest(String doId, List<String> scannedCodes, String scannerType) {
+    @SerializedName("locId")
+    private final String locId;
+
+    public StockPrepBulkRequest(String doId, List<String> scannedCodes, String scannerType, String locId) {
         this.doId = doId;
         this.scannedCodes = scannedCodes;
         this.scannerType = scannerType;
+        this.locId = locId;
     }
 
     public String getDoId() { return doId; }
     public String getScannerType() { return scannerType; }
     public List<String> getScannedCodes() { return scannedCodes; }
+    public String getLocId() { return locId; }
 }

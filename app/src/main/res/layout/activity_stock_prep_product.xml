@@ -126,9 +126,10 @@
                         android:fontFamily="@font/raleway_bold"
                         android:textSize="14sp"
                         android:maxLines="1"
-                        android:inputType="text"
-                        android:importantForAutofill="no"
-                        android:imeOptions="actionDone"
+                        android:focusable="false"
+                        android:focusableInTouchMode="false"
+                        android:cursorVisible="false"
+                        android:clickable="false"
                         tools:ignore="TouchTargetSizeCheck" />
 
                     <ImageView
@@ -259,6 +260,7 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
                     android:background="@drawable/bg_tab_button"
+                    android:padding="3dp"
                     android:layout_marginBottom="12dp">
 
                     <Button
@@ -266,6 +268,9 @@
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minHeight="0dp"
                         android:text="@string/tab_list_product"
                         android:textColor="@color/white"
                         android:fontFamily="@font/raleway_bold"
@@ -273,7 +278,7 @@
                         android:textAllCaps="false"
                         android:backgroundTint="@color/blue_theme"
                         android:stateListAnimator="@null"
-                        app:cornerRadius="12dp"
+                        app:cornerRadius="8dp"
                         tools:ignore="TouchTargetSizeCheck,ButtonStyle" />
 
                     <Button
@@ -281,6 +286,9 @@
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minHeight="0dp"
                         android:text="@string/tab_sum_product"
                         android:textColor="@color/blue_theme"
                         android:fontFamily="@font/raleway_bold"
@@ -288,7 +296,7 @@
                         android:textAllCaps="false"
                         android:backgroundTint="@color/white"
                         android:stateListAnimator="@null"
-                        app:cornerRadius="12dp"
+                        app:cornerRadius="8dp"
                         tools:ignore="TouchTargetSizeCheck,ButtonStyle" />
                 </LinearLayout>
 

@@ -40,17 +40,25 @@ public class ItemModels {
         private String itemId;
         private String itemName;
         private int count;
+        private int required;
 
         public SumProductModel(String itemId, String itemName, int count) {
-            this.itemId   = itemId;
-            this.itemName = itemName;
-            this.count    = count;
+            this(itemId, itemName, count, 0);
         }
 
-        public void addCount(int n) { this.count += n; }
-        public String getItemId()   { return itemId; }
+        public SumProductModel(String itemId, String itemName, int count, int required) {
+            this.itemId = itemId;
+            this.itemName = itemName;
+            this.count = count;
+            this.required = required;
+        }
+
+        public String getItemId() { return itemId; }
         public String getItemName() { return itemName; }
-        public int getCount()       { return count; }
+        public int getCount() { return count; }
+        public int getRequired() { return required; }
+        public void setRequired(int required) { this.required = required; }
+        public void addCount(int n) { this.count += n; }
     }
 
 }

@@ -78,14 +78,13 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
 
     private void fetchDOFromServer() {
         if (!isNetworkConnected()) {
-            showSagaFeedback("Offline! Read local data only.", false);
+            showSagaFeedback("Tidak ada koneksi, data dari HP saja", false);
             playScanFeedback(2);
             loadDataFromLocalDB();
             return;
         }
 
         showLoading();
-        showSagaFeedback("Syncing DO List...", true);
 
         PrefManager pref = new PrefManager(this);
         String token = "Bearer " + pref.getToken();
@@ -101,19 +100,21 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
                         appDao.insertDOList(remoteDOs);
                         runOnUiThread(() -> {
                             hideLoading();
-                            showSagaFeedback("DO List Updated!", true);
+                            showSagaFeedback("Daftar DO diperbarui", true);
                             playScanFeedback(0);
                             loadDataFromLocalDB();
                         });
                     }).start();
                 } else {
-                    handleApiError(response.code());
+                    hideLoading();
+                    handleApiError(response);
                     playScanFeedback(2);
                 }
             }
 
             @Override
             public void onFailure(Call<List<DOModels.DOModel>> call, Throwable t) {
+                hideLoading();
                 handleFailure(t);
                 playScanFeedback(2);
             }

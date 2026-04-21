@@ -118,17 +118,19 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
         hideLoading();
         int statusCode = response.code();
 
+        // 401 tetep handle khusus karena harus logout
         if (statusCode == 401) {
-            showSagaFeedback("Session expired, please login again", false);
             PrefManager pref = new PrefManager(this);
             pref.clearSession();
             Intent intent = new Intent(this, LoginActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
             finish();
+            showSagaFeedback("Session expired, please login again", false);
             return;
         }
 
+        // sisanya: ambil dari body server aja
         String msg = com.example.inventory_system_ht.Helper.ErrorParser.getMessage(response);
         showSagaFeedback(msg, false);
     }

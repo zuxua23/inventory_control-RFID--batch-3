@@ -190,10 +190,10 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
         tvTitle.setText("Register " + registeredTagList.size() + " Tags?");
 
         dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
-        dialog.findViewById(R.id.btnYes).setOnClickListener(v -> {
+        dialog.findViewById(R.id.btnSave).setOnClickListener(v -> {   // ← btnYes jadi btnSave
             dialog.dismiss();
             List<String> ids = new ArrayList<>();
-            for(TagModels.TagModel t : registeredTagList) ids.add(t.getEpcTag());
+            for (TagModels.TagModel t : registeredTagList) ids.add(t.getEpcTag());
             hitApiRegisterTags(ids);
         });
         dialog.show();
@@ -212,23 +212,20 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
         TextView tvTitle = dialog.findViewById(R.id.tvTitle);
         tvTitle.setText("Remove " + tag.getEpcTag() + " dari list?");
 
-        Button btnYes = dialog.findViewById(R.id.btnYes);
+        Button btnYes = dialog.findViewById(R.id.btnSave);   // ← btnYes jadi btnSave
         btnYes.setText("Remove");
         btnYes.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.RED));
 
         dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
         btnYes.setOnClickListener(v -> {
             dialog.dismiss();
-
             registeredTagList.remove(position);
             adapter.notifyItemRemoved(position);
             adapter.notifyItemRangeChanged(position, registeredTagList.size());
-
             updateScanCount();
             showSagaFeedback("Tag successfully removed from list!", true);
             resultScan.requestFocus();
         });
-
         dialog.show();
     }
 

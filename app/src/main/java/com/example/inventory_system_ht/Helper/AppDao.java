@@ -29,4 +29,7 @@ public interface AppDao {
 
     @Query("DELETE FROM tb_Tag_Local WHERE sync_status = 1")
     void clearSyncedTags();
+
+    @Query("DELETE FROM tb_Tag_Local WHERE epc_tag = :epc")
+    void deleteScannedTagByEpc(String epc);
 }

@@ -103,7 +103,8 @@
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:paddingHorizontal="8dp">
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="4dp">
 
                 <TextView
                     android:id="@+id/tvScanned"
@@ -123,11 +124,11 @@
                 <androidx.cardview.widget.CardView
                     android:id="@+id/btnPowerDropdown"
                     android:layout_width="wrap_content"
-                    android:layout_height="32dp"
+                    android:layout_height="match_parent"
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?android:attr/selectableItemBackground"
-                    app:cardCornerRadius="16dp"
+                    app:cardCornerRadius="20dp"
                     app:cardElevation="0dp"
                     app:cardBackgroundColor="@color/white"
                     tools:ignore="TouchTargetSizeCheck"

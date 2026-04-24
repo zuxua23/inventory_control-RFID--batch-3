@@ -85,11 +85,13 @@ public class TagModels {
     }
     public static class TagResponseDto {
         @SerializedName("tagId")    private String tagId;
+        @SerializedName("epcTag")   private String epcTag;   // TAMBAH INI
         @SerializedName("itemId")   private String itemId;
         @SerializedName("itemName") private String itemName;
         @SerializedName("status")   private String status;
 
         public String getTagId()    { return tagId; }
+        public String getEpcTag()   { return epcTag; }        // TAMBAH INI
         public String getItemId()   { return itemId; }
         public String getItemName() { return itemName; }
         public String getStatus()   { return status; }

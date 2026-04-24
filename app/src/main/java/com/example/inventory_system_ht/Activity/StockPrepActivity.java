@@ -91,7 +91,7 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
 
         ApiService apiService = ApiClient.getClient(this).create(ApiService.class);
 
-        apiService.getAllDO(token).enqueue(new retrofit2.Callback<List<DOModels.DOModel>>() {
+        apiService.getDo(token).enqueue(new retrofit2.Callback<List<DOModels.DOModel>>() {
             @Override
             public void onResponse(Call<List<DOModels.DOModel>> call, retrofit2.Response<List<DOModels.DOModel>> response) {
                 if (response.isSuccessful() && response.body() != null) {

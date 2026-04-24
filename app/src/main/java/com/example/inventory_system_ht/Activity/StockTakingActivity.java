@@ -157,7 +157,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
     private void startStockTakingSession() {
         showLoading();
         showSagaFeedback("Opening a Session...", true);
-        EditText etNote = findViewById(R.id.etAdjustmentNote);
+        TextView etNote = findViewById(R.id.tvRemark);
         String note = etNote.getText().toString().trim();
 
         StockTakingModels.CreateReq req = new StockTakingModels.CreateReq(note.isEmpty() ? "PT Sato Routine Inventory" : note);

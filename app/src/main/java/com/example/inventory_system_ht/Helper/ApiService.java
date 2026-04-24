@@ -38,6 +38,8 @@ public interface ApiService {
     @POST("api/preparation/bulk")
     Call<GeneralResponse> submitStockPrep(@Header("Authorization") String token, @Body StockPrepBulkRequest request);
 
+    @GET("api/preparation/do")
+    Call<List<DOModels.DOModel>> getDo(@Header("Authorization") String token);
     @GET("api/pickinglist/{id}")
     Call<DOModels.DOResponseDto> getPickingListById(@Header("Authorization") String token, @Path("id") String id);
     @POST("api/stocktaking/create")
@@ -64,15 +66,14 @@ public interface ApiService {
     // WARNING: ENDPOINT DI BAWAH INI BELUM ADA/TIDAK TERLIHAT DI ROUTE BACKEND LU
     // Pastiin di BE-nya dibikin juga, atau sesuaikan kalau emang route-nya beda
     // =========================================================================
-    @GET("api/do/get")
-    Call<List<DOModels.DOResponseDto>> getDo(@Header("Authorization") String token);
+//    @GET("api/do/get")
+//    Call<List<DOModels.DOResponseDto>> getDo(@Header("Authorization") String token);
 
     @GET("api/item")
     Call<List<ItemModels.ItemResponseDto>> getAllItems(@Header("Authorization") String token);
 
-    @GET("api/stockin/info/{code}") // Disesuaikan sedikit asumi ngikutin stockin
+    @GET("api/stockin/{code}")
     Call<TagModels.TagInfoDto> getTagInfo(@Header("Authorization") String token, @Path("code") String code);
-
     @GET("api/do")
     Call<List<DOModels.DOModel>> getAllDO(@Header("Authorization") String token);
 

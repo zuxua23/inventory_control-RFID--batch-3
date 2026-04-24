@@ -40,39 +40,39 @@ public class SumProductAdapter extends RecyclerView.Adapter<SumProductAdapter.Vi
     public void onBindViewHolder(@NonNull ViewHolder h, int position) {
         ItemModels.SumProductModel item = list.get(position);
 
-        int count = item.getCount();
+        int count    = item.getCount();
         int required = item.getRequired();
 
+        // FIX: Ambil item name, fallback ke item id kalau null/kosong
         String name = item.getItemName();
         if (name == null || name.trim().isEmpty()) {
-            name = "Item tidak diketahui";
+            name = item.getItemId() != null ? item.getItemId() : "Item tidak diketahui";
         }
 
-        String itemId = item.getItemId();
-        if (itemId == null) itemId = "-";
-
         if (h.tvProductName != null) h.tvProductName.setText(name);
-        if (h.tvLocation != null) h.tvLocation.setText("Kode: " + itemId);
 
+        // FIX: Sembunyikan tvLocation - di sum product tidak perlu tag id / kode
+        if (h.tvLocation != null) h.tvLocation.setVisibility(View.GONE);
+
+        // Tampilkan qty
         if (h.tvQty != null) {
             if (required > 0) {
                 h.tvQty.setText(count + "/" + required);
             } else {
-                h.tvQty.setText(count + "/?");
+                h.tvQty.setText(String.valueOf(count));
             }
         }
 
-        boolean fulfilled = required > 0 && count >= required;
-        boolean over = required > 0 && count > required;
-
+        // Warna card berdasarkan status qty
         int bgColor;
-        if (over) {
-            bgColor = Color.parseColor("#D32F2F");
-        } else if (fulfilled) {
-            bgColor = Color.parseColor("#2E7D32");
+        if (required > 0 && count > required) {
+            bgColor = Color.parseColor("#D32F2F"); // merah = over
+        } else if (required > 0 && count >= required) {
+            bgColor = Color.parseColor("#2E7D32"); // hijau = fulfilled
         } else {
-            bgColor = Color.parseColor("#1976D2");
+            bgColor = Color.parseColor("#1976D2"); // biru = belum
         }
+
         if (h.cardRoot != null) h.cardRoot.setCardBackgroundColor(bgColor);
     }
 
@@ -91,8 +91,8 @@ public class SumProductAdapter extends RecyclerView.Adapter<SumProductAdapter.Vi
                 cardRoot = (CardView) itemView;
             }
             tvProductName = itemView.findViewById(R.id.tvProductName);
-            tvLocation = itemView.findViewById(R.id.tvLocation);
-            tvQty = itemView.findViewById(R.id.tvQty);
+            tvLocation    = itemView.findViewById(R.id.tvLocation);
+            tvQty         = itemView.findViewById(R.id.tvQty);
         }
     }
 }

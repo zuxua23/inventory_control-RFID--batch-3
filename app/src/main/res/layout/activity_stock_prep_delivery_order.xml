@@ -30,7 +30,7 @@
         android:layout_height="wrap_content"
         android:text="@string/menu_stock_preparation"
         android:textColor="@color/white"
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:fontFamily="@font/raleway_bold"
         android:layout_marginStart="4dp"
         app:layout_constraintStart_toEndOf="@id/btnBack"

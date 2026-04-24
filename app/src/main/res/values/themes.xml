@@ -13,4 +13,20 @@
         <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/bg</item>
         <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@android:color/transparent</item>
     </style>
+
+    <style name="RoundedButtonLeft" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">13dp</item>
+        <item name="cornerSizeBottomLeft">13dp</item>
+        <item name="cornerSizeTopRight">0dp</item>
+        <item name="cornerSizeBottomRight">0dp</item>
+    </style>
+
+    <style name="RoundedButtonRight" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">0dp</item>
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cornerSizeTopRight">13dp</item>
+        <item name="cornerSizeBottomRight">13dp</item>
+    </style>
 </resources>

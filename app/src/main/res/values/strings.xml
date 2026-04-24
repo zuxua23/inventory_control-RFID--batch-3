@@ -84,4 +84,6 @@
     <string name="desc_logo_apl">logo_apl</string>
     <string name="label_welcome_launch">Welcome!</string>
     <string name="launch_version1">Beta V01.R00.00</string>
+    <string name="tvlokationstocktaking">Location: Plant 2</string>
+    <string name="qtystocktakingadj">Qty: 0/100</string>
 </resources>

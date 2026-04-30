@@ -30,7 +30,7 @@
         android:layout_height="wrap_content"
         android:text="@string/title_search_item"
         android:textColor="@color/white"
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:fontFamily="@font/raleway_bold"
         android:layout_marginStart="4dp"
         tools:ignore="TextContrastCheck"
@@ -66,7 +66,7 @@
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="58dp"
+                android:layout_height="50dp"
                 android:layout_margin="6dp"
                 android:background="@drawable/bg_setting_edit_text"
                 android:gravity="center_vertical"
@@ -85,13 +85,13 @@
                 <EditText
                     android:id="@+id/searchItem"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
+                    android:layout_height="40dp"
                     android:layout_marginStart="8dp"
                     android:background="@android:color/transparent" android:fontFamily="@font/raleway_regular"
                     android:hint="@string/hint_search_item"
                     android:textColor="@color/black"
                     android:textColorHint="@android:color/darker_gray"
-                    android:textSize="15sp"
+                    android:textSize="14sp"
                     android:maxLines="1" android:inputType="text"
                     android:imeOptions="actionSearch"
                     android:importantForAutofill="no"
@@ -114,8 +114,7 @@
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="10dp">
+                android:layout_height="match_parent">
 
                 <TextView
                     android:id="@+id/tvListTitle"
@@ -124,6 +123,7 @@
                     android:text="@string/title_list_product"
                     android:textColor="@color/blue_theme"
                     android:textSize="18sp"
+                    android:layout_margin="10dp"
                     android:fontFamily="@font/raleway_extra_bold"
                     android:textAlignment="center"
                     app:layout_constraintTop_toTopOf="parent" />
@@ -134,6 +134,7 @@
                     android:layout_marginTop="10dp"
                     app:cardCornerRadius="15dp"
                     app:cardElevation="0dp"
+                    android:layout_margin="10dp"
                     app:cardBackgroundColor="@android:color/transparent"
                     app:layout_constraintTop_toBottomOf="@id/tvListTitle"
                     app:layout_constraintBottom_toBottomOf="parent">
@@ -151,7 +152,45 @@
                 </androidx.cardview.widget.CardView>
             </androidx.constraintlayout.widget.ConstraintLayout>
         </androidx.cardview.widget.CardView>
+        <androidx.cardview.widget.CardView
+            android:id="@+id/btnRefresh"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="28dp"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="8dp"
+            app:cardBackgroundColor="@color/white"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?android:attr/selectableItemBackground">
 
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_reload"
+                    app:tint="@color/blue_theme"
+                    android:layout_marginEnd="8dp"
+                    android:importantForAccessibility="no"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Refresh"
+                    android:textColor="@color/blue_theme"
+                    android:fontFamily="@font/raleway_bold"
+                    android:textSize="16sp" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

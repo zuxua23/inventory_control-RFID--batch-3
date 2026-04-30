@@ -62,16 +62,15 @@ public class LoginActivity extends BaseScannerActivity {
         String password = etPassword.getText().toString().trim();
 
         if (username.isEmpty() || password.isEmpty()) {
-            showSagaFeedback("Username & Password are required!", false);
+            showWarning("Username & Password are required!");
             return;
         }
 
         if (!isNetworkConnected()) {
-            showSagaFeedback("Login Failed: Your internet is down, check WiFi/Data first!", false);
+            showWarning("Login Failed: Your internet is down");
             return;
         }
         showLoading();
-        showSagaFeedback("Authenticating with server...", true);
 
         ApiService apiService = ApiClient.getClient(this).create(ApiService.class);
         AuthModels.LoginRequest loginRequest = new AuthModels.LoginRequest(username, password);
@@ -86,7 +85,7 @@ public class LoginActivity extends BaseScannerActivity {
                     AuthModels.UserModel user = body.getUser();
 
                     if (token == null || token.isEmpty() || user == null) {
-                        showSagaFeedback("Login Failed: Invalid server response", false);
+                        showError("Login Failed: Invalid server response");
                         return;
                     }
 
@@ -104,11 +103,11 @@ public class LoginActivity extends BaseScannerActivity {
                             user.getUsrId(),
                             user.getUsrName(),
                             fullName,
-                            user.getPrimaryRole(),   // ambil role pertama
+                            user.getPrimaryRole(),
                             permissionsJson
                     );
 
-                    showSagaFeedback("Login Successful! Welcome " + fullName, true);
+                    showSuccess("Login Successful! Welcome " + fullName);
 
                     Intent intent = new Intent(LoginActivity.this, HomeActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -120,7 +119,7 @@ public class LoginActivity extends BaseScannerActivity {
                     if (response.code() == 401) {
                         errorMsg = "Unauthorized: Your account is not registered!";
                     }
-                    showSagaFeedback(errorMsg, false);
+                    showError(errorMsg);
                 }
             }
 
@@ -128,8 +127,7 @@ public class LoginActivity extends BaseScannerActivity {
             public void onFailure(Call<AuthModels.LoginResponse> call, Throwable t) {
                 hideLoading();
                 handleFailure(t);
-                showSagaFeedback("Server Timeout: API is not responding!", false);
-                Log.e("API_ERROR", "Login Failed", t);
+                showError("Server Timeout");
             }
         });
     }
@@ -157,15 +155,37 @@ public class LoginActivity extends BaseScannerActivity {
             String ipAddress = etIpAPI.getText().toString().trim();
 
             if (ipAddress.isEmpty()) {
-                showSagaFeedback("Fill in the Server first, bro", false);
+                showWarning("Fill in the Server first");
                 return;
             }
 
-            if (ipAddress.startsWith("http://")) {
-                showSagaFeedback("The URL format is correct! Please apply..", true);
-            } else {
-                showSagaFeedback("Wrong Format! Must use http://", false);
+            if (!ipAddress.startsWith("http://") && !ipAddress.startsWith("https://")) {
+                showError("Wrong Format! Must start with http://");
+                return;
             }
+
+            showLoading();
+
+            prefManager.saveIp(ipAddress);
+
+            ApiService apiService = ApiClient.getClient(this).create(ApiService.class);
+            apiService.ping().enqueue(new Callback<GeneralResponse>() {
+                @Override
+                public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
+                    hideLoading();
+                    if (response.isSuccessful()) {
+                        showSuccess("Server Connected!");
+                    } else {
+                        showError("Server unreachable! Code: " + response.code());
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<GeneralResponse> call, Throwable t) {
+                    hideLoading();
+                    showError("Cannot connect to server!");
+                }
+            });
         });
 
         btnApplyIp.setOnClickListener(v -> {
@@ -174,10 +194,10 @@ public class LoginActivity extends BaseScannerActivity {
             if (!ipAddress.isEmpty()) {
                 prefManager.saveIp(ipAddress);
 
-                showSagaFeedback("Server saved successfully: " + ipAddress, true);
+                showSuccess("Server saved successfully");
                 dialog.dismiss();
             } else {
-                showSagaFeedback("Server cannot be empty", false);
+                showWarning("Server cannot be empty");
             }
         });
 

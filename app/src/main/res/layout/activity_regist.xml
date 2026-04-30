@@ -30,15 +30,17 @@
         android:layout_height="wrap_content"
         android:text="@string/title_stock_registration"
         android:textColor="@color/white"
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:fontFamily="@font/raleway_bold"
         android:layout_marginStart="4dp"
         tools:ignore="TextContrastCheck"
         app:layout_constraintStart_toEndOf="@id/btnBack"
+        app:layout_constraintEnd_toStartOf="@id/ivReaderBattery"
         app:layout_constraintTop_toTopOf="@id/btnBack"
         app:layout_constraintBottom_toBottomOf="@id/btnBack" />
 
     <androidx.cardview.widget.CardView
+        android:id="@+id/cardRfidSwitch"
         android:layout_width="wrap_content"
         android:layout_height="36dp"
         android:layout_marginEnd="16dp"
@@ -62,6 +64,17 @@
             android:switchPadding="8dp"
             tools:ignore="UseSwitchCompatOrMaterialXml, TouchTargetSizeCheck" />
     </androidx.cardview.widget.CardView>
+
+    <ImageView
+        android:id="@+id/ivReaderBattery"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:src="@drawable/ic_battery_indicator"
+        android:visibility="gone"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintEnd_toStartOf="@id/cardRfidSwitch"
+        app:layout_constraintTop_toTopOf="@id/btnBack"
+        app:layout_constraintBottom_toBottomOf="@id/btnBack" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/whiteContainer"
@@ -168,8 +181,7 @@
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="10dp">
+                android:layout_height="match_parent">
 
                 <TextView
                     android:id="@+id/tvListTitle"
@@ -178,6 +190,7 @@
                     android:text="@string/title_list_tag"
                     android:textColor="@color/blue_theme"
                     android:textSize="18sp"
+                    android:layout_margin="10dp"
                     android:fontFamily="@font/raleway_extra_bold"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
@@ -188,6 +201,7 @@
                     android:layout_height="0dp"
                     android:layout_marginTop="10dp"
                     app:cardCornerRadius="15dp"
+                    android:layout_margin="10dp"
                     app:cardElevation="0dp"
                     app:cardBackgroundColor="@android:color/transparent"
                     app:layout_constraintTop_toBottomOf="@id/tvListTitle"
@@ -201,7 +215,7 @@
                         android:paddingBottom="10dp"
                         android:verticalScrollbarPosition="left"
                         android:scrollbars="vertical"
-                        tools:listitem="@layout/item_tag" />
+                        tools:listitem="@layout/item_tag_regist" />
 
                 </androidx.cardview.widget.CardView>
 
@@ -226,7 +240,7 @@
                 android:layout_height="50dp"
                 android:layout_marginEnd="8dp"
                 android:layout_weight="1"
-                android:backgroundTint="@color/merah"
+                android:backgroundTint="@color/red"
                 android:fontFamily="@font/raleway_bold"
                 android:stateListAnimator="@null"
                 android:text="@string/action_clear"

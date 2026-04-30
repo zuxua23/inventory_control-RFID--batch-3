@@ -23,40 +23,16 @@
         android:contentDescription="@string/desc_back"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
-
-    <androidx.cardview.widget.CardView
-        android:id="@+id/cardRfidHeader"
-        android:layout_width="wrap_content"
-        android:layout_height="36dp"
-        android:layout_marginEnd="10dp"
-        app:cardCornerRadius="18dp"
-        app:cardElevation="0dp"
-        app:cardBackgroundColor="@color/white"
-        app:layout_constraintEnd_toEndOf="parent"
+    <ImageView
+        android:id="@+id/ivReaderBattery"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:src="@drawable/ic_battery_indicator"
+        android:visibility="gone"
+        android:layout_marginStart="8dp"
+        app:layout_constraintStart_toEndOf="@id/btnBack"
         app:layout_constraintTop_toTopOf="@id/btnBack"
-        app:layout_constraintBottom_toBottomOf="@id/btnBack">
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="10dp"
-            android:orientation="horizontal">
-
-            <Switch
-                android:id="@+id/switchRfid"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:paddingHorizontal="12dp"
-                android:text="@string/label_rfid"
-                android:textColor="@color/blue_theme"
-                android:fontFamily="@font/raleway_bold"
-                android:textSize="14sp"
-                android:switchPadding="8dp"
-                tools:ignore="UseSwitchCompatOrMaterialXml, TouchTargetSizeCheck" />
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
-
+        app:layout_constraintBottom_toBottomOf="@id/btnBack" />
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/whiteContainer"
         android:layout_width="match_parent"
@@ -73,7 +49,7 @@
         <androidx.cardview.widget.CardView
             android:id="@+id/cardLocating"
             android:layout_width="match_parent"
-            android:layout_height="45dp"
+            android:layout_height="50dp"
             android:layout_marginHorizontal="10dp"
             android:layout_marginTop="10dp"
             app:cardCornerRadius="22dp"
@@ -198,7 +174,7 @@
             android:textAllCaps="false"
             android:textSize="16sp"
             android:elevation="4dp"
-            android:backgroundTint="@color/merah"
+            android:backgroundTint="@color/red"
             android:textColor="@color/white"
             android:fontFamily="@font/raleway_bold"
             android:stateListAnimator="@null"

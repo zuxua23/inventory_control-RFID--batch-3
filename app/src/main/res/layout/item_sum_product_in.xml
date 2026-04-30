@@ -35,17 +35,6 @@
                 android:fontFamily="@font/raleway_bold"
                 tools:ignore="TextContrastCheck" />
 
-            <TextView
-                android:id="@+id/tvLocation"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/tv_location"
-                android:textColor="@color/white"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:fontFamily="@font/raleway_bold"
-                tools:ignore="TextContrastCheck"/>
-
         </LinearLayout>
 
         <TextView

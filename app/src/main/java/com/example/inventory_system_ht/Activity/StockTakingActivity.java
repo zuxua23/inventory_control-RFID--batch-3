@@ -115,7 +115,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
             if (isChecked) {
                 boolean isRfidReady = (currentScanner != null && currentScanner.getRFIDScanner() != null);
                 if (!isRfidReady) {
-                    showSagaFeedback("Failed: HT is not connected to the RFID Reader yet!", false);
+                    showError("HT is not connected to the RFID Reader yet!");
                     switchRfid.setChecked(false);
                     return;
                 }
@@ -124,13 +124,13 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
                 btnPowerDropdown.setVisibility(View.GONE);
             }
 
-            showSagaFeedback(isChecked ? "RFID Mode Active" : "Barcode Mode Active", true);
+            showSuccess(isChecked ? "RFID Mode Active" : "Barcode Mode Active");
             resultScan.requestFocus();
         });
 
         btnRefresh.setOnClickListener(v -> {
             if (!isNetworkConnected()) {
-                showSagaFeedback("Offline bro, check connection!", false);
+                showWarning("No internet connection, please check your network.");
                 return;
             }
             startStockTakingSession();
@@ -138,7 +138,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
 
         btnFinalize.setOnClickListener(v -> {
             if (activeSttId.isEmpty()) {
-                showSagaFeedback("There are no sessions running yet bro!", false);
+                showWarning("No active session yet!");
                 return;
             }
             finalizeSession();
@@ -156,7 +156,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
 
     private void startStockTakingSession() {
         showLoading();
-        showSagaFeedback("Opening a Session...", true);
+        showWarning("Opening a session...");
         TextView etNote = findViewById(R.id.tvRemark);
         String note = etNote.getText().toString().trim();
 
@@ -169,13 +169,13 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
                     fetchMasterStock();
                 } else {
                     hideLoading();
-                    showSagaFeedback("Failed to create session!", false);
+                    showError("Failed to create session!");
                 }
             }
             @Override
             public void onFailure(Call<StockTakingModels.CreateRes> call, Throwable t) {
                 hideLoading();
-                showSagaFeedback("RTO: " + t.getMessage(), false);
+                showError("Connection timeout: " + t.getMessage());
             }
         });
     }
@@ -190,13 +190,13 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
                     masterStockList.clear();
                     masterStockList.addAll(response.body());
                     adapter.notifyDataSetChanged();
-                    showSagaFeedback("Pulled successfully " + masterStockList.size() + " data!", true);
+                    showSuccess("Loaded " + masterStockList.size() + " items successfully!");
                 }
             }
             @Override
             public void onFailure(Call<List<TagModels.TagModel>> call, Throwable t) {
                 hideLoading();
-                showSagaFeedback("Failed to retrieve master data!", false);
+                showError("Failed to retrieve master data!");
             }
         });
     }
@@ -209,7 +209,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
 
         if (!isNetworkConnected()) {
             playScanFeedback(0);
-            showSagaFeedback("Offline! Data is saved on your phone first.", false);
+            showWarning("Offline! Data saved locally.");
 
             new Thread(() -> {
                 TagModels.TagModel offlineTag = new TagModels.TagModel(data, data, "STT_OFFLINE", "Stock Taking", activeSttId, 0);
@@ -241,13 +241,13 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
 
     private void finalizeSession() {
         if (!isNetworkConnected()) {
-            showSagaFeedback("Still Offline! Find a signal first to finalize.", false);
+            showWarning("You're still offline! Find a signal first to finalize.");
             playScanFeedback(2);
             return;
         }
 
         showLoading();
-        showSagaFeedback("Checking offline data...", true);
+        showWarning("Checking offline data...");
 
         new Thread(() -> {
             List<TagModels.TagModel> pendingTags = appDao.getPendingTags();
@@ -261,7 +261,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
 
             runOnUiThread(() -> {
                 if (!tagsToSync.isEmpty()) {
-                    showSagaFeedback("Syncing " + tagsToSync.size() + " data offline...", true);
+                    showWarning("Syncing " + tagsToSync.size() + " offline item(s)...");
                     syncStockTakingData(tagsToSync, 0);
                 } else {
                     executeFinalizeAPI();
@@ -293,14 +293,14 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
     }
 
     private void executeFinalizeAPI() {
-        showSagaFeedback("Finalizing Session...", true);
+        showWarning("Finalizing session...");
         StockTakingModels.FinalizeReq req = new StockTakingModels.FinalizeReq(activeSttId);
         api.finalizeStockTaking(token, req).enqueue(new Callback<GeneralResponse>() {
             @Override
             public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
                 hideLoading();
                 if(response.isSuccessful()) {
-                    showSagaFeedback("Session Completed and Data Saved!", true);
+                    showSuccess("Session completed and data saved!");
                     playScanFeedback(0);
                     activeSttId = "";
                     masterStockList.clear();
@@ -360,7 +360,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
                 public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
                     hideLoading();
                     if (response.isSuccessful()) {
-                        showSagaFeedback("Items Removed!", true);
+                        showSuccess("Item removed!");
                         dialog.dismiss();
                         fetchMasterStock();
                     } else {
@@ -384,7 +384,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
 
     private void showManualAddDialog() {
         if (activeSttId.isEmpty()) {
-            showSagaFeedback("Open a session first before adding manually!", false);
+            showWarning("Please open a session before adding manually!");
             return;
         }
 
@@ -410,11 +410,11 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
             String remark = inputRemark.getText().toString().trim();
 
             if (itemId.isEmpty()) {
-                showSagaFeedback("Item ID cannot be empty!", false);
+                showWarning("Item ID cannot be empty!");
                 return;
             }
             showLoading();
-            showSagaFeedback("Save manual data...", true);
+            showWarning("Saving manual data...");
 
             StockTakingModels.ManualAddReq req = new StockTakingModels.ManualAddReq(activeSttId, itemId, remark);
             api.manualAddStockTaking(token, req).enqueue(new Callback<GeneralResponse>() {
@@ -422,7 +422,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
                 public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
                     hideLoading();
                     if(response.isSuccessful()) {
-                        showSagaFeedback("Manual Add Successful!", true);
+                        showSuccess("Manual add successful!");
                         playScanFeedback(0);
                         dialog.dismiss();
                     } else {
@@ -494,7 +494,7 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
         setupScanner();
 
         if (getHTBatteryLevel() <= 15) {
-            showSagaFeedback("Leftover HT battery " + getHTBatteryLevel() + "%, time to charge!", false);
+            showWarning("HT Battery at " + getHTBatteryLevel() + "%, please charge now!");
             playScanFeedback(2);
         }
     }

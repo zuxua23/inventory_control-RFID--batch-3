@@ -10,137 +10,92 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 
 public class PrefManager {
-    SharedPreferences pref;
-    SharedPreferences.Editor editor;
-    Context _context;
 
-    private static final String PREF_NAME = "InventoryPrefsSecure";
-    private static final String KEY_IS_LOGIN = "IsLoggedIn";
-    private static final String KEY_TOKEN = "jwt_token";
-    private static final String KEY_USER_ID = "UserId";
-    private static final String KEY_USERNAME = "UserUsername";
-    private static final String KEY_FULLNAME = "UserFullName";
-    private static final String KEY_ROLE_CODE = "UserRoleCode";
-    private static final String KEY_PERMISSIONS = "UserPermissions";
-    private static final String KEY_LOGIN_TIME = "login_time";
-    private static final String KEY_BASE_URL = "base_url_api";
+    private SharedPreferences securePref;
+    private SharedPreferences pref;
+    private Context _context;
 
-    private static final long SESSION_DURATION = 8 * 60 * 60 * 1000;
-    private static final String DEFAULT_URL = "";
+    private static final String PREF_NAME       = "InventoryPrefsBase";
+    private static final String SECURE_PREF     = "InventoryPrefsSecure";
+    private static final String KEY_BASE_URL    = "base_url_api";
+    private static final String KEY_TOKEN       = "token";
+    private static final String KEY_USER_ID     = "user_id";
+    private static final String KEY_USERNAME    = "username";
+    private static final String KEY_FULL_NAME   = "full_name";
+    private static final String KEY_ROLE_CODE   = "role_code";
+    private static final String KEY_PERMISSIONS = "permissions";
+    private static final String KEY_LOGGED_IN   = "is_logged_in";
 
     public PrefManager(Context context) {
         this._context = context;
+        // Untuk base URL — pakai SharedPreferences biasa
+        pref = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
 
+        // Untuk session/token — pakai EncryptedSharedPreferences
         try {
-            String masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC);
-
-            pref = EncryptedSharedPreferences.create(
-                    PREF_NAME,
-                    masterKeyAlias,
+            String masterKey = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC);
+            securePref = EncryptedSharedPreferences.create(
+                    SECURE_PREF,
+                    masterKey,
                     context,
                     EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             );
-            editor = pref.edit();
-
         } catch (GeneralSecurityException | IOException e) {
-            e.printStackTrace();
-            pref = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-            editor = pref.edit();
+            // Fallback ke SharedPreferences biasa kalau gagal
+            securePref = context.getSharedPreferences(SECURE_PREF + "_fb", Context.MODE_PRIVATE);
         }
     }
 
-
-    public void saveToken(String token) {
-        editor.putBoolean(KEY_IS_LOGIN, true);
-        editor.putString(KEY_TOKEN, token);
-        editor.putLong(KEY_LOGIN_TIME, System.currentTimeMillis());
-        editor.apply();
-    }
     public void saveUserSession(String token, String userId, String username,
                                 String fullName, String roleCode, String permissionsJson) {
-        editor.putBoolean(KEY_IS_LOGIN, true);
-        editor.putString(KEY_TOKEN, token);
-        editor.putString(KEY_USER_ID, userId);
-        editor.putString(KEY_USERNAME, username);
-        editor.putString(KEY_FULLNAME, fullName);
-        editor.putString(KEY_ROLE_CODE, roleCode);
-        editor.putString(KEY_PERMISSIONS, permissionsJson);
-        editor.putLong(KEY_LOGIN_TIME, System.currentTimeMillis());
-        editor.apply();
+        securePref.edit()
+                .putBoolean(KEY_LOGGED_IN,   true)
+                .putString(KEY_TOKEN,        token)
+                .putString(KEY_USER_ID,      userId)
+                .putString(KEY_USERNAME,     username)
+                .putString(KEY_FULL_NAME,    fullName)
+                .putString(KEY_ROLE_CODE,    roleCode)
+                .putString(KEY_PERMISSIONS,  permissionsJson != null ? permissionsJson : "[]")
+                .apply();
     }
 
     public boolean isSessionValid() {
-        boolean isLoggedIn = pref.getBoolean(KEY_IS_LOGIN, false);
-        String token = pref.getString(KEY_TOKEN, null);
-        long loginTime = pref.getLong(KEY_LOGIN_TIME, 0);
-
-        if (!isLoggedIn || token == null) return false;
-
-        long currentTime = System.currentTimeMillis();
-        return (currentTime - loginTime) < SESSION_DURATION;
+        return securePref.getBoolean(KEY_LOGGED_IN, false)
+                && securePref.getString(KEY_TOKEN, null) != null;
     }
 
     public void clearSession() {
-        editor.remove(KEY_IS_LOGIN);
-        editor.remove(KEY_TOKEN);
-        editor.remove(KEY_LOGIN_TIME);
-        editor.remove(KEY_USER_ID);
-        editor.remove(KEY_USERNAME);
-        editor.remove(KEY_FULLNAME);
-        editor.remove(KEY_ROLE_CODE);
-        editor.remove(KEY_PERMISSIONS);
-        editor.apply();
+        securePref.edit()
+                .remove(KEY_LOGGED_IN)
+                .remove(KEY_TOKEN)
+                .remove(KEY_USER_ID)
+                .remove(KEY_USERNAME)
+                .remove(KEY_FULL_NAME)
+                .remove(KEY_ROLE_CODE)
+                .remove(KEY_PERMISSIONS)
+                .apply();
     }
 
-    public String getToken() {
-        return pref.getString(KEY_TOKEN, null);
-    }
-
-    public String getUserId() {
-        return pref.getString(KEY_USER_ID, "");
-    }
-
-    public String getUsername() {
-        return pref.getString(KEY_USERNAME, "");
-    }
-
-    public String getFullName() {
-        return pref.getString(KEY_FULLNAME, "Guest");
-    }
-
-    public String getRoleCode() {
-        return pref.getString(KEY_ROLE_CODE, "");
-    }
-
-    public String getPermissions() {
-        return pref.getString(KEY_PERMISSIONS, "[]");
-    }
+    public String getToken()       { return securePref.getString(KEY_TOKEN, null); }
+    public String getUserId()      { return securePref.getString(KEY_USER_ID, ""); }
+    public String getUsername()    { return securePref.getString(KEY_USERNAME, ""); }
+    public String getFullName()    { return securePref.getString(KEY_FULL_NAME, "Guest"); }
+    public String getRoleCode()    { return securePref.getString(KEY_ROLE_CODE, ""); }
+    public String getPermissions() { return securePref.getString(KEY_PERMISSIONS, "[]"); }
 
     public String getRoleName() {
         String code = getRoleCode();
         if (code == null || code.isEmpty()) return "Unknown Role";
-
         return code.substring(0, 1).toUpperCase() + code.substring(1).toLowerCase();
     }
 
-
     public void saveIp(String url) {
-        if (!url.startsWith("http://")) {
-            url = "http://" + url;
-        }
-        if (!url.endsWith("/")) {
-            url += "/";
-        }
-        editor.putString(KEY_BASE_URL, url);
-        editor.apply();
+        if (!url.startsWith("http://")) url = "http://" + url;
+        if (!url.endsWith("/")) url += "/";
+        pref.edit().putString(KEY_BASE_URL, url).apply();
     }
 
-    public String getBaseUrl() {
-        return pref.getString(KEY_BASE_URL, DEFAULT_URL);
-    }
-
-    public String getIp() {
-        return getBaseUrl();
-    }
+    public String getBaseUrl() { return pref.getString(KEY_BASE_URL, ""); }
+    public String getIp()      { return getBaseUrl(); }
 }

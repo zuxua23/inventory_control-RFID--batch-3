@@ -39,12 +39,17 @@ public class DOAdapter extends RecyclerView.Adapter<DOAdapter.DOViewHolder> {
     @Override
     public void onBindViewHolder(@NonNull DOViewHolder holder, int position) {
         DOModels.DOModel doItem = doList.get(position);
-
         holder.tvDoNo.setText(doItem.getDoNo());
-
-        holder.tvDoName.setText(doItem.getStatus());
-
+        holder.tvDoName.setText(formatDate(doItem.getCreatedAt())); // ganti ke date
         holder.itemView.setOnClickListener(v -> listener.onItemClick(doItem));
+    }
+
+    private String formatDate(String raw) {
+        try {
+            java.text.SimpleDateFormat in = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US);
+            java.text.SimpleDateFormat out = new java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.ENGLISH);
+            return out.format(in.parse(raw));
+        } catch (Exception e) { return raw; }
     }
 
     public static class DOViewHolder extends RecyclerView.ViewHolder {

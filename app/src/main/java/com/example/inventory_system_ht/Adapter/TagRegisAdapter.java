@@ -13,17 +13,17 @@ import com.example.inventory_system_ht.R;
 
 import java.util.List;
 
-public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagVH> {
+public class TagRegisAdapter extends RecyclerView.Adapter<TagRegisAdapter.ViewHolder> {
 
     private final List<TagModels.TagModel> list;
-    private OnItemClickListener listener;
     private int lastScannedPosition = -1;
+    private OnItemClickListener listener;
 
     public interface OnItemClickListener {
         void onItemClick(TagModels.TagModel item);
     }
 
-    public TagAdapter(List<TagModels.TagModel> list) {
+    public TagRegisAdapter(List<TagModels.TagModel> list) {
         this.list = list;
     }
 
@@ -37,37 +37,29 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagVH> {
 
     @NonNull
     @Override
-    public TagVH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_product, parent, false);
-        return new TagVH(v);
+                .inflate(R.layout.item_tag_regist, parent, false);
+        return new ViewHolder(v);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull TagVH h, int position) {
+    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         TagModels.TagModel item = list.get(position);
-        String name = item.getProductName();
-        if (name == null || name.isEmpty() || "Validating...".equals(name)) {
-            h.tvProductName.setText("Validating...");
-        } else {
-            h.tvProductName.setText(name);
-        }
-
-        h.itemView.setOnClickListener(v -> {
+        holder.tvTagId.setText(item.getEpcTag());
+        holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onItemClick(item);
         });
     }
 
     @Override
-    public int getItemCount() {
-        return list.size();
-    }
+    public int getItemCount() { return list.size(); }
 
-    static class TagVH extends RecyclerView.ViewHolder {
-        TextView tvProductName;
-        TagVH(@NonNull View itemView) {
+    static class ViewHolder extends RecyclerView.ViewHolder {
+        TextView tvTagId;
+        ViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvProductName = itemView.findViewById(R.id.tvProductName);
+            tvTagId = itemView.findViewById(R.id.tvTagId);
         }
     }
 }

@@ -19,9 +19,12 @@ import retrofit2.http.GET;
 import retrofit2.http.Header;
 import retrofit2.http.POST;
 import retrofit2.http.Path;
+import retrofit2.http.Query;
 
 public interface ApiService {
-    // SUDAH DISESUAIKAN DENGAN ROUTE BACKEND
+
+    @GET("api/ping")
+    Call<GeneralResponse> ping();
     @POST("api/auth/login")
     Call<AuthModels.LoginResponse> login(@Body AuthModels.LoginRequest loginRequest);
 
@@ -30,7 +33,7 @@ public interface ApiService {
     @GET("api/tag/{id}")
     Call<TagModels.TagModel> getTagDetail(@Header("Authorization") String token,@Path("id") String tagId);
     @GET("api/stockin/{code}")
-    Call<TagModels.TagResponseDto> getTagByCode(@Header("Authorization") String token, @Path("code") String code);
+    Call<TagModels.TagResponseDto> getTagByCode(@Header("Authorization") String token, @Path("code") String code, @Query("scannerType") String scannerTyp);
 
     @POST("api/stockin")
     Call<GeneralResponse> stockIn(@Header("Authorization") String token, @Body StockInRequest request);
@@ -62,13 +65,6 @@ public interface ApiService {
 
     @GET("api/location")
     Call<List<LocationModels.LocationModel>> getLocations(@Header("Authorization") String token);
-    // =========================================================================
-    // WARNING: ENDPOINT DI BAWAH INI BELUM ADA/TIDAK TERLIHAT DI ROUTE BACKEND LU
-    // Pastiin di BE-nya dibikin juga, atau sesuaikan kalau emang route-nya beda
-    // =========================================================================
-//    @GET("api/do/get")
-//    Call<List<DOModels.DOResponseDto>> getDo(@Header("Authorization") String token);
-
     @GET("api/item")
     Call<List<ItemModels.ItemResponseDto>> getAllItems(@Header("Authorization") String token);
 
@@ -77,9 +73,9 @@ public interface ApiService {
     @GET("api/do")
     Call<List<DOModels.DOModel>> getAllDO(@Header("Authorization") String token);
 
-    @POST("api/stockout/scan") // Asumsi ngikutin standar penamaan BE
-    Call<GeneralResponse> scanStockOut(@Header("Authorization") String token, @Body StockOutModels.ScanReq request);
-
-    @POST("api/stockout") // Asumsi ngikutin standar penamaan BE
-    Call<GeneralResponse> finalizeStockOut(@Header("Authorization") String token, @Body StockOutModels.FinalizeReq request);
+    @GET("/api/search-item")
+    Call<List<TagModels.SearchItemListDto>> getSearchItems(@Header("Authorization") String token);
+    @GET("/api/search-item/{code}")
+    Call<TagModels.TagDetailDto> getTagDetailSearchItem(@Header("Authorization") String token, @Path("code") String code
+    );
 }

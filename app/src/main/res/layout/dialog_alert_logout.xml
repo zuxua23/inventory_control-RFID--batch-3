@@ -49,7 +49,7 @@
                 android:layout_height="50dp"
                 android:layout_marginEnd="8dp"
                 android:layout_weight="1"
-                android:backgroundTint="@color/merah"
+                android:backgroundTint="@color/red"
                 android:fontFamily="@font/raleway_bold"
                 android:stateListAnimator="@null"
                 android:text="@string/action_no"

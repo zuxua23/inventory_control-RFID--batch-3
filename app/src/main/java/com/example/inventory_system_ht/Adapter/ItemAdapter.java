@@ -1,6 +1,5 @@
 package com.example.inventory_system_ht.Adapter;
 
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,7 +17,6 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
 
     private List<ItemModels.ItemModel> itemList;
     private OnItemClickListener listener;
-    private int lastScannedPosition = -1;
 
     public interface OnItemClickListener {
         void onItemClick(ItemModels.ItemModel item);
@@ -29,7 +27,7 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
     }
 
     public void setLastScannedPosition(int position) {
-        this.lastScannedPosition = position;
+        // reserved untuk highlight animasi kalau dibutuhkan nanti
     }
 
     public ItemAdapter(List<ItemModels.ItemModel> itemList) {
@@ -39,38 +37,37 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_product, parent, false);
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_product, parent, false);
         return new ViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         ItemModels.ItemModel item = itemList.get(position);
-
         holder.tvTagId.setText(item.getEpcTag());
-        holder.tvProductName.setText(item.getItemName());
-        holder.tvQty.setText("Qty: " + item.getQty());
-
+        holder.tvProductName.setText(
+                item.getItemName() != null && !item.getItemName().isEmpty()
+                        ? item.getItemName()
+                        : item.getItemId()
+        );
         holder.itemView.setOnClickListener(v -> {
-            if (listener != null) {
-                listener.onItemClick(item);
-            }
+            if (listener != null) listener.onItemClick(item);
         });
     }
 
     @Override
     public int getItemCount() {
-        return itemList.size();
+        return itemList == null ? 0 : itemList.size();
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvTagId, tvProductName, tvQty;
+        TextView tvTagId, tvProductName;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTagId = itemView.findViewById(R.id.tvTagId);
             tvProductName = itemView.findViewById(R.id.tvProductName);
-            tvQty = itemView.findViewById(R.id.tvQty);
         }
     }
 }

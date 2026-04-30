@@ -6,6 +6,8 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.inventory_system_ht.Models.ItemModels;
@@ -13,11 +15,11 @@ import com.example.inventory_system_ht.R;
 
 import java.util.List;
 
-public class SumProductAdapter extends RecyclerView.Adapter<SumProductAdapter.ViewHolder> {
+public class SumProductPrepAdapter extends RecyclerView.Adapter<SumProductPrepAdapter.ViewHolder> {
 
     private List<ItemModels.SumProductModel> list;
 
-    public SumProductAdapter(List<ItemModels.SumProductModel> list) {
+    public SumProductPrepAdapter(List<ItemModels.SumProductModel> list) {
         this.list = list;
     }
 
@@ -30,7 +32,7 @@ public class SumProductAdapter extends RecyclerView.Adapter<SumProductAdapter.Vi
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_sum_product_in, parent, false); // layout baru
+                .inflate(R.layout.item_sum_product_do, parent, false);
         return new ViewHolder(v);
     }
 
@@ -44,7 +46,13 @@ public class SumProductAdapter extends RecyclerView.Adapter<SumProductAdapter.Vi
         }
 
         h.tvProductName.setText(name);
-        h.tvQty.setText("Qty: " + item.getCount());
+        h.tvQty.setText(item.getCount() + "/" + item.getRequired());
+
+        // Biru -> Hijau saat fulfilled
+        boolean fulfilled = item.getRequired() > 0 && item.getCount() >= item.getRequired();
+        int colorRes = fulfilled ? R.color.green_button : R.color.blue_theme;
+        h.cardSumItem.setCardBackgroundColor(
+                ContextCompat.getColor(h.itemView.getContext(), colorRes));
     }
 
     @Override
@@ -53,14 +61,14 @@ public class SumProductAdapter extends RecyclerView.Adapter<SumProductAdapter.Vi
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
+        CardView cardSumItem;
         TextView tvProductName, tvQty;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
+            cardSumItem = itemView.findViewById(R.id.cardSumItem);
             tvProductName = itemView.findViewById(R.id.tvProductName);
             tvQty = itemView.findViewById(R.id.tvQty);
         }
-
-
     }
 }

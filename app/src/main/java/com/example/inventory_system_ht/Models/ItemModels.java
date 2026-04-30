@@ -5,10 +5,10 @@ import java.io.Serializable;
 public class ItemModels {
 
     public static class ItemModel implements Serializable {
-        private final String epcTag;
-        private final String itemId;
-        private final String itemName;
-        private final int qty;
+        private String epcTag;
+        private String itemId;
+        private String itemName;
+        private int qty;
 
         public ItemModel(String epcTag, String itemId, String itemName, int qty) {
             this.epcTag = epcTag;
@@ -21,7 +21,8 @@ public class ItemModels {
         public String getItemId() { return itemId; }
         public String getItemName() { return itemName; }
         public int getQty() { return qty; }
-
+        public void setItemId(String itemId) { this.itemId = itemId; }
+        public void setItemName(String itemName) { this.itemName = itemName; }
     }
 
     public static class ItemResponseDto {

@@ -30,15 +30,17 @@
         android:layout_height="wrap_content"
         android:text="@string/title_stock_in"
         android:textColor="@color/white"
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:fontFamily="@font/raleway_bold"
         android:layout_marginStart="4dp"
         tools:ignore="TextContrastCheck"
         app:layout_constraintStart_toEndOf="@id/btnBack"
+        app:layout_constraintEnd_toStartOf="@id/ivReaderBattery"
         app:layout_constraintTop_toTopOf="@id/btnBack"
         app:layout_constraintBottom_toBottomOf="@id/btnBack" />
 
     <androidx.cardview.widget.CardView
+        android:id="@+id/cardRfidSwitch"
         android:layout_width="wrap_content"
         android:layout_height="36dp"
         android:layout_marginEnd="16dp"
@@ -74,6 +76,17 @@
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
+    <ImageView
+        android:id="@+id/ivReaderBattery"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:src="@drawable/ic_battery_indicator"
+        android:visibility="gone"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintEnd_toStartOf="@id/cardRfidSwitch"
+        app:layout_constraintTop_toTopOf="@id/btnBack"
+        app:layout_constraintBottom_toBottomOf="@id/btnBack" />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/whiteContainer"
         android:layout_width="match_parent"
@@ -92,8 +105,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginHorizontal="10dp"
-            android:layout_marginTop="10dp"
             app:layout_constraintTop_toTopOf="parent">
 
             <androidx.cardview.widget.CardView
@@ -101,9 +112,9 @@
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_weight="1"
-                android:layout_marginEnd="8dp"
                 android:clickable="true"
                 android:focusable="true"
+                android:layout_margin="10dp"
                 app:cardCornerRadius="20dp"
                 app:cardElevation="6dp"
                 app:cardBackgroundColor="@color/white"
@@ -113,7 +124,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:gravity="center_vertical"
-                    android:paddingHorizontal="12dp"
+                    android:paddingHorizontal="10dp"
                     android:orientation="horizontal"
                     tools:ignore="UseCompoundDrawables">
 
@@ -153,6 +164,7 @@
                 android:visibility="gone"
                 android:clickable="true"
                 android:focusable="true"
+                android:layout_margin="10dp"
                 android:foreground="?android:attr/selectableItemBackground"
                 app:cardCornerRadius="20dp"
                 app:cardElevation="6dp"
@@ -179,11 +191,10 @@
         <androidx.cardview.widget.CardView
             android:id="@+id/cardScanned"
             android:layout_width="match_parent"
-            android:layout_height="45dp"
+            android:layout_height="wrap_content"
             android:layout_marginHorizontal="10dp"
-            android:layout_marginTop="12dp"
             app:cardCornerRadius="15dp"
-            app:cardBackgroundColor="#0077C0"
+            app:cardBackgroundColor="@color/blue_theme"
             app:cardElevation="4dp"
             app:layout_constraintTop_toBottomOf="@id/layoutDropdowns">
 
@@ -208,7 +219,8 @@
                 android:layout_gravity="center"
                 android:text="@string/label_scanned_count"
                 android:textColor="@color/white"
-                android:textSize="16sp"
+                android:layout_margin="4dp"
+                android:textSize="14sp"
                 android:fontFamily="@font/raleway_bold"
                 tools:ignore="TextContrastCheck" />
         </androidx.cardview.widget.CardView>
@@ -229,8 +241,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:orientation="vertical"
-                android:padding="10dp">
+                android:orientation="vertical">
 
                 <LinearLayout
                     android:id="@+id/llTabHeader"
@@ -240,6 +251,7 @@
                     android:gravity="center_vertical"
                     android:background="@drawable/bg_tab_button"
                     android:padding="4dp"
+                    android:layout_margin="10dp"
                     android:layout_marginBottom="12dp"
                     app:shapeAppearanceOverlay="@style/RoundedButtonLeft">
 
@@ -286,6 +298,7 @@
                     android:layout_height="0dp"
                     android:layout_weight="1"
                     android:layout_marginTop="10dp"
+                    android:layout_margin="10dp"
                     app:cardCornerRadius="15dp"
                     app:cardElevation="0dp"
                     app:cardBackgroundColor="@android:color/transparent">
@@ -323,7 +336,7 @@
                 android:layout_height="50dp"
                 android:layout_marginEnd="8dp"
                 android:layout_weight="1"
-                android:backgroundTint="@color/merah"
+                android:backgroundTint="@color/red"
                 android:fontFamily="@font/raleway_bold"
                 android:stateListAnimator="@null"
                 android:text="@string/action_clear"

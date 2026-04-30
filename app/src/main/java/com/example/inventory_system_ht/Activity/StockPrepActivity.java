@@ -38,6 +38,7 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
     protected CommScanner getScannerInstance() {
         return mCommScanner;
     }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -69,7 +70,7 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
                 if (dataDariDB != null && !dataDariDB.isEmpty()) {
                     doList.addAll(dataDariDB);
                 } else {
-                    showSagaFeedback("Data is empty, please refresh it!", false);
+                    showWarning("No data available, please refresh");
                 }
                 adapter.notifyDataSetChanged();
             });
@@ -78,7 +79,7 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
 
     private void fetchDOFromServer() {
         if (!isNetworkConnected()) {
-            showSagaFeedback("Tidak ada koneksi, data dari HP saja", false);
+            showWarning("No internet connection, showing cached data");
             playScanFeedback(2);
             loadDataFromLocalDB();
             return;
@@ -97,10 +98,12 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
                 if (response.isSuccessful() && response.body() != null) {
                     List<DOModels.DOModel> remoteDOs = response.body();
                     new Thread(() -> {
+                        // Bersihin data DO lama biar status preparation gak nyampah
+                        try { appDao.deleteAllDO(); } catch (Exception ignored) {}
                         appDao.insertDOList(remoteDOs);
                         runOnUiThread(() -> {
                             hideLoading();
-                            showSagaFeedback("Daftar DO diperbarui", true);
+                            showSuccess("DO list updated");
                             playScanFeedback(0);
                             loadDataFromLocalDB();
                         });
@@ -152,11 +155,11 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
                 }
                 if (match != null) {
                     playScanFeedback(0);
-                    showSagaFeedback("DO Founded: " + scannedDo, true);
+                    showSuccess("DO Found: " + scannedDo);
                     openDetailDO(match);
                 } else {
                     playScanFeedback(2);
-                    showSagaFeedback("DO " + scannedDo + " it's not on the list!", false);
+                    showError("DO " + scannedDo + " not found in list");
                 }
             });
         }
@@ -166,9 +169,10 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
     protected void onResume() {
         super.onResume();
         setupScanner();
+        loadDataFromLocalDB();
 
         if (getHTBatteryLevel() <= 15) {
-            showSagaFeedback("Leftover HT battery " + getHTBatteryLevel() + "%, time to charge!", false);
+            showWarning("HT Battery at " + getHTBatteryLevel() + "%, please charge now!");
             playScanFeedback(2);
         }
     }

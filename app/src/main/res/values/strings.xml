@@ -19,7 +19,7 @@
     <string name="menu_search_item">Search Item</string>
     <string name="desc_user_profile_menu">User profile menu</string>
     <string name="descsync_offline_data">Sync offline data</string>
-    <string name="title_stock_registration">Stock Registration</string>
+    <string name="title_stock_registration">Tag Registration</string>
     <string name="label_scanned_0">Scanned : 0</string>
     <string name="title_list_tag">List Tag:</string>
     <string name="action_clear">Clear</string>
@@ -76,11 +76,11 @@
     <string name="do_no">[DO NO]</string>
     <string name="do_name">[DO name]</string>
     <string name="icon_location">icon location</string>
-    <string name="tv_tag_id">[Tag Id]</string>
     <string name="tv_product_name">[Product name]</string>
     <string name="tv_qty">Qty: 1</string>
     <string name="tv_location">[Location]</string>
-    <string name="tv_product_id">[Product ID]</string>
+    <string name="tv_tag_id">[Tag ID]</string>
+    <string name="tv_product_id">[product ID]</string>
     <string name="desc_logo_apl">logo_apl</string>
     <string name="label_welcome_launch">Welcome!</string>
     <string name="launch_version1">Beta V01.R00.00</string>

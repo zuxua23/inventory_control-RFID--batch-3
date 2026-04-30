@@ -54,7 +54,7 @@
                 android:id="@+id/btnRemove"
                 android:layout_width="130dp"
                 android:layout_height="50dp"
-                android:backgroundTint="@color/merah"
+                android:backgroundTint="@color/red"
                 android:fontFamily="@font/raleway_bold"
                 android:stateListAnimator="@null"
                 android:text="@string/action_remove"

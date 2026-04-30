@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.PopupWindow;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -30,6 +31,7 @@ import android.view.Window;
 import android.widget.FrameLayout;
 import androidx.appcompat.app.AppCompatActivity;
 import com.densowave.scannersdk.Common.CommScanner;
+import com.densowave.scannersdk.Const.CommConst;
 import com.example.inventory_system_ht.Helper.PrefManager;
 import com.example.inventory_system_ht.R;
 import com.google.android.material.snackbar.Snackbar;
@@ -54,26 +56,56 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
     }
 
     public void showSagaFeedback(String pesan, boolean isSuccess) {
-        View rootView = findViewById(android.R.id.content);
-        Snackbar snackbar = Snackbar.make(rootView, pesan, Snackbar.LENGTH_SHORT);
-        snackbar.setBackgroundTint(isSuccess ? Color.parseColor("#2E7D32") : Color.parseColor("#C62828"));
-        snackbar.setTextColor(Color.WHITE);
-
-        snackbar.setAnimationMode(Snackbar.ANIMATION_MODE_FADE);
-        View snackbarView = snackbar.getView();
-        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) snackbarView.getLayoutParams();
-        params.gravity = Gravity.TOP;
-        params.setMargins(30, 80, 30, 0);
-        snackbarView.setLayoutParams(params);
-        snackbarView.setTranslationY(-250f);
-
-        snackbarView.animate()
-                .translationY(0f)
-                .setInterpolator(new android.view.animation.OvershootInterpolator(1.5f))
-                .setDuration(400)
-                .start();
-        snackbar.show();
+        showSagaFeedback(pesan, isSuccess ? 0 : 2);
     }
+
+    public void showSagaFeedback(String pesan, int type) {
+        FrameLayout rootLayout = findViewById(android.R.id.content);
+
+        View bannerView = getLayoutInflater().inflate(R.layout.layout_message_banner, rootLayout, false);
+        ImageView dot = bannerView.findViewById(R.id.dotIndicator); // ganti View -> ImageView
+        TextView tvMessage = bannerView.findViewById(R.id.tvBannerMessage);
+
+        switch (type) {
+            case 1:  dot.setImageResource(R.drawable.dot_warning); break;
+            case 2:  dot.setImageResource(R.drawable.dot_error);   break;
+            default: dot.setImageResource(R.drawable.dot_success); break;
+        }
+
+        tvMessage.setText(pesan);
+
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        params.gravity = Gravity.TOP;
+        params.setMargins(15, 15, 15, 0);
+        bannerView.setLayoutParams(params);
+
+        bannerView.setAlpha(0f);
+        bannerView.setTranslationY(-60f);
+        rootLayout.addView(bannerView);
+
+        bannerView.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(200)
+                .setInterpolator(new android.view.animation.OvershootInterpolator(1.2f))
+                .start();
+
+        bannerView.postDelayed(() ->
+                        bannerView.animate()
+                                .alpha(0f)
+                                .translationY(-40f)
+                                .setDuration(250)
+                                .withEndAction(() -> rootLayout.removeView(bannerView))
+                                .start(),
+                2500
+        );
+    }
+    public void showSuccess(String pesan) { showSagaFeedback(pesan, 0); }
+    public void showError(String pesan)   { showSagaFeedback(pesan, 2); }
+    public void showWarning(String pesan) { showSagaFeedback(pesan, 1); }
 
     public void showLoading() {
         if (loadingDialog == null) {
@@ -198,7 +230,29 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
         btnPowerDropdown.setOnClickListener(v ->
                 showPowerDropdownPopup(btnPowerDropdown, powerList, tvPowerLevel));
     }
-
+    public void updateReaderBattery(ImageView ivBattery) {
+        if (ivBattery == null) return;
+        CommScanner scanner = getScannerInstance();
+        if (scanner == null) {
+            ivBattery.setVisibility(View.GONE);
+            return;
+        }
+        try {
+            CommConst.CommBattery battery = scanner.getRemainingBattery();
+            ivBattery.setVisibility(View.VISIBLE);
+            int color;
+            if (battery == CommConst.CommBattery.UNDER10) {
+                color = Color.parseColor("#F44336"); // merah
+            } else if (battery == CommConst.CommBattery.UNDER40) {
+                color = Color.parseColor("#FFC107"); // kuning
+            } else {
+                color = Color.parseColor("#4CAF50"); // hijau
+            }
+            ivBattery.setColorFilter(color);
+        } catch (Exception e) {
+            ivBattery.setVisibility(View.GONE);
+        }
+    }
     private void showPowerDropdownPopup(View anchor, List<String> items, TextView tvPowerLevel) {
         View popupView = getLayoutInflater().inflate(R.layout.dropdown_popup, null);
         RecyclerView rv = popupView.findViewById(R.id.rvDropdown);

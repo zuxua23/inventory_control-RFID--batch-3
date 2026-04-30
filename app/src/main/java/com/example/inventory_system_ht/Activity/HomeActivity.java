@@ -3,11 +3,8 @@ package com.example.inventory_system_ht.Activity;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.view.View;
@@ -16,40 +13,22 @@ import android.view.Window;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.LinearLayout; // Tambahan import untuk LinearLayout
-import android.widget.PopupWindow;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
-import androidx.cardview.widget.CardView;
-import androidx.core.content.ContextCompat;
-import androidx.core.content.res.ResourcesCompat;
 
 import com.densowave.scannersdk.Common.CommScanner;
-import com.example.inventory_system_ht.Helper.ApiClient;
-import com.example.inventory_system_ht.Helper.ApiService;
 import com.example.inventory_system_ht.Helper.AppDao;
 import com.example.inventory_system_ht.Helper.AppDatabase;
 import com.example.inventory_system_ht.Helper.PrefManager;
-import com.example.inventory_system_ht.Models.AuthModels;
-import com.example.inventory_system_ht.Models.GeneralResponse;
-import com.example.inventory_system_ht.Models.TagModels;
 import com.example.inventory_system_ht.R;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-
 public class HomeActivity extends BaseScannerActivity {
-    private ImageView ivProfile;
-    private LinearLayout btnStockIn, btnStockPrep, btnStockTaking, btnTagRegis, btnSearchItem, btnStockOut;
-    private TextView tvNamaOperator, tvRoleOperator, textViewStatusReader;
-    private CardView cardStatus;
+    private LinearLayout btnStockIn, btnStockPrep, btnStockTaking, btnTagRegis, btnSearchItem;
+    private TextView tvNamaOperator, tvRoleOperator;
     private PrefManager prefManager;
-    private ImageButton btnSyncData;
+    private ImageButton btnLogout;
     private AppDao appDao;
 
     private CommScanner mCommScanner;
@@ -75,8 +54,6 @@ public class HomeActivity extends BaseScannerActivity {
             return;
         }
 
-        // findViewById
-        ivProfile       = findViewById(R.id.ivProfile);
         btnStockIn      = findViewById(R.id.ButtonStockIn);
         btnStockPrep    = findViewById(R.id.ButtonStockPreparation);
         btnStockTaking  = findViewById(R.id.ButtonStockTaking);
@@ -84,7 +61,7 @@ public class HomeActivity extends BaseScannerActivity {
         btnSearchItem   = findViewById(R.id.ButtonSearchItem);
         tvNamaOperator  = findViewById(R.id.textViewNamaOperator);
         tvRoleOperator  = findViewById(R.id.textViewRoleOperator);
-        btnSyncData     = findViewById(R.id.btnSyncData);
+        btnLogout       = findViewById(R.id.btnLogout);
 
         appDao = AppDatabase.getDatabase(this).appDao();
 
@@ -94,15 +71,13 @@ public class HomeActivity extends BaseScannerActivity {
         tvNamaOperator.setText("Welcome " + fullName);
         tvRoleOperator.setText(roleName);
 
-        ivProfile.setOnClickListener(v -> showLogoutPopup(v));
-
-        if (btnSyncData != null) {
-            btnSyncData.setOnClickListener(v -> syncOfflineData());
+        if (btnLogout != null) {
+            btnLogout.setOnClickListener(v -> showLogoutConfirmationDialog());
         }
 
         View.OnClickListener menuClickListener = v -> {
             if (!isNetworkConnected()) {
-                showSagaFeedback("Warning: You're offline! Check your connection..", false);
+                showWarning("You're offline!");
             }
 
             int id = v.getId();
@@ -140,59 +115,8 @@ public class HomeActivity extends BaseScannerActivity {
         btnStockIn.setOnClickListener(menuClickListener);
         btnStockPrep.setOnClickListener(menuClickListener);
         btnStockTaking.setOnClickListener(menuClickListener);
-        if (btnStockOut != null) {
-            btnStockOut.setOnClickListener(menuClickListener);
-        }
         btnTagRegis.setOnClickListener(menuClickListener);
         btnSearchItem.setOnClickListener(menuClickListener);
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private void showLogoutPopup(View anchorView) {
-        CardView cardView = new CardView(this);
-        cardView.setCardBackgroundColor(ContextCompat.getColor(this,R.color.merah));
-        cardView.setRadius(40f);
-        cardView.setCardElevation(8f);
-
-        TextView tvLogout = new TextView(this);
-        tvLogout.setText("Logout");
-        tvLogout.setTextColor(Color.WHITE);
-        tvLogout.setTextSize(16f);
-        tvLogout.setPadding(50, 20, 50, 20);
-
-        Typeface typeface = ResourcesCompat.getFont(this, R.font.raleway_bold);
-        tvLogout.setTypeface(typeface);
-        cardView.addView(tvLogout);
-
-        PopupWindow popupWindow = new PopupWindow(cardView,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                true);
-
-        popupWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        popupWindow.showAsDropDown(anchorView, 0, -20);
-
-        cardView.setOnTouchListener((v, event) -> {
-            if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
-                cardView.setCardBackgroundColor(Color.parseColor("#8E1C1C"));
-                cardView.animate().scaleX(0.95f).scaleY(0.95f).setDuration(50).start();
-            } else if (event.getAction() == android.view.MotionEvent.ACTION_UP ||
-                    event.getAction() == android.view.MotionEvent.ACTION_CANCEL) {
-                cardView.setCardBackgroundColor(Color.parseColor("#C62828"));
-                cardView.animate().scaleX(1f).scaleY(1f).setDuration(50).start();
-            }
-            return false;
-        });
-
-        cardView.setOnClickListener(v -> {
-            popupWindow.dismiss();
-            showLogoutConfirmationDialog();
-        });
-        btnSyncData = findViewById(R.id.btnSyncData);
-
-        if (btnSyncData != null) {
-            btnSyncData.setOnClickListener(v -> syncOfflineData());
-        }
     }
 
     private void showLogoutConfirmationDialog() {
@@ -205,84 +129,28 @@ public class HomeActivity extends BaseScannerActivity {
             dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
 
-        Button btnNo = dialog.findViewById(R.id.btnNo);
+        Button btnNo  = dialog.findViewById(R.id.btnNo);
         Button btnYes = dialog.findViewById(R.id.btnYes);
 
         btnNo.setOnClickListener(v -> dialog.dismiss());
 
         btnYes.setOnClickListener(v -> {
-                    dialog.dismiss();
-                    prefManager.clearSession();
+            dialog.dismiss();
+            prefManager.clearSession();
 
-                    Intent intent = new Intent(HomeActivity.this, LoginActivity.class);
-                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    startActivity(intent);
-                    finish();
-                });
+            Intent intent = new Intent(HomeActivity.this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+        });
 
-            dialog.show();
+        dialog.show();
+    }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateReaderBattery(findViewById(R.id.ivReaderBattery));
     }
 
-    private void syncOfflineData() {
-        if (!isNetworkConnected()) {
-            showSagaFeedback("Still offline! Let's find Wi-Fi first.", false);
-            playScanFeedback(2);
-            return;
-        }
 
-        showLoading();
-        showSagaFeedback("Search for offline data...", true);
-
-        new Thread(() -> {
-            List<TagModels.TagModel> pendingTags = appDao.getPendingTags();
-
-            runOnUiThread(() -> {
-                if (pendingTags == null || pendingTags.isEmpty()) {
-                    hideLoading();
-                    showSagaFeedback("All data has been synchronized, it's safe.!", true);
-                    playScanFeedback(0);
-                    return;
-                }
-
-                List<String> tagsToSync = new ArrayList<>();
-                for (TagModels.TagModel tag : pendingTags) {
-                    tagsToSync.add(tag.getEpcTag());
-                }
-
-                showSagaFeedback("Syncing " + tagsToSync.size() + " data to the server...", true);
-
-                ApiService api = ApiClient.getClient(HomeActivity.this).create(ApiService.class);
-                String token = "Bearer " + prefManager.getToken();
-
-                api.registerTags(token, new AuthModels.RegisterRequest(tagsToSync)).enqueue(new Callback<GeneralResponse>() {
-                    @Override
-                    public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
-                        if (response.isSuccessful()) {
-                            new Thread(() -> {
-                                for (String epc : tagsToSync) {
-                                    appDao.markTagAsSynced(epc);
-                                }
-                                appDao.clearSyncedTags();
-
-                                runOnUiThread(() -> {
-                                    hideLoading();
-                                    showSagaFeedback("Synchronization Complete! Data is safe on the Server.", true);
-                                    playScanFeedback(0);
-                                });
-                            }).start();
-                        } else {
-                            handleApiError(response.code());
-                            playScanFeedback(2);
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(Call<GeneralResponse> call, Throwable t) {
-                        handleFailure(t);
-                        playScanFeedback(2);
-                    }
-                });
-            });
-        }).start();
-    }
 }

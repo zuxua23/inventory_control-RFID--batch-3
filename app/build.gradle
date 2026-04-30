@@ -52,4 +52,6 @@ dependencies {
     annotationProcessor "androidx.room:room-compiler:$room_version"
     implementation "androidx.security:security-crypto:1.0.0"
     implementation 'com.github.franmontiel:PersistentCookieJar:v1.0.1'
+    implementation "androidx.work:work-runtime:2.9.0"
+
 }

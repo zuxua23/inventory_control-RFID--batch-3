@@ -88,7 +88,7 @@ public class HomeActivity extends BaseScannerActivity {
             } else if (id == R.id.ButtonStockPreparation) {
                 intent = new Intent(HomeActivity.this, StockPrepActivity.class);
             } else if (id == R.id.ButtonStockTaking) {
-                intent = new Intent(HomeActivity.this, StockTakingActivity.class);
+                intent = new Intent(HomeActivity.this, StockTakingListActivity.class);
             } else if (id == R.id.ButtonTagRegis) {
                 intent = new Intent(HomeActivity.this, TagRegisActivity.class);
             } else if (id == R.id.ButtonSearchItem) {

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="20dp"
+    app:cardBackgroundColor="@color/blue_theme"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?android:attr/selectableItemBackground"
+    android:stateListAnimator="@animator/card_click_animator"
+    tools:ignore="all">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="12dp">
+
+        <TextView
+            android:id="@+id/tvSttId"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            android:fontFamily="@font/raleway_bold"
+            tools:text="STT-001"
+            tools:ignore="TextContrastCheck" />
+
+        <TextView
+            android:id="@+id/tvSttRemark"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#CCFFFFFF"
+            android:textSize="11sp"
+            android:fontFamily="@font/raleway_bold"
+            android:layout_marginTop="2dp"
+            tools:text="PT Sato Routine Inventory"
+            tools:ignore="TextContrastCheck" />
+
+        <TextView
+            android:id="@+id/tvSttStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#01C470"
+            android:textSize="11sp"
+            android:fontFamily="@font/raleway_bold"
+            android:layout_marginTop="4dp"
+            tools:text="● OPEN"
+            tools:ignore="TextContrastCheck" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

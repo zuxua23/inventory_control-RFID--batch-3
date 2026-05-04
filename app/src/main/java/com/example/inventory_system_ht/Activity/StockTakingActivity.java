@@ -1,6 +1,7 @@
 package com.example.inventory_system_ht.Activity;
 
 import android.app.Dialog;
+import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.media.AudioManager;
@@ -18,6 +19,7 @@ import android.widget.ImageView;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -30,15 +32,12 @@ import com.densowave.scannersdk.Listener.RFIDDataDelegate;
 import com.densowave.scannersdk.RFID.RFIDData;
 import com.densowave.scannersdk.RFID.RFIDDataReceivedEvent;
 
-import com.example.inventory_system_ht.Adapter.TagAdapter;
+import com.example.inventory_system_ht.Adapter.StockTakingItemAdapter;
 import com.example.inventory_system_ht.Helper.ApiClient;
 import com.example.inventory_system_ht.Helper.ApiService;
-import com.example.inventory_system_ht.Helper.AppDao;
-import com.example.inventory_system_ht.Helper.AppDatabase;
 import com.example.inventory_system_ht.Helper.PrefManager;
 import com.example.inventory_system_ht.Models.GeneralResponse;
 import com.example.inventory_system_ht.Models.StockTakingModels;
-import com.example.inventory_system_ht.Models.TagModels;
 import com.example.inventory_system_ht.R;
 
 import java.util.ArrayList;
@@ -48,74 +47,126 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class StockTakingActivity extends BaseScannerActivity implements BarcodeDataDelegate, RFIDDataDelegate {
-    private ImageView btnBack;
-    private Switch switchRfid;
-    private CardView btnRefresh, btnFinalize;
-    private EditText resultScan;
+/**
+ * Detail halaman Stock Taking.
+ *
+ * Flow:
+ * 1. Terima sttId + remark dari Intent (dari StockTakingListActivity)
+ * 2. Load snapshot tags dari API → simpan ke sessionItems (in-memory)
+ * 3. Semua operasi (scan, remove, manual add) hanya ubah state lokal
+ * 4. Finalize → kirim bulk scan + remove + manual add → finalize API
+ * 5. Kembali dengan ada perubahan → dialog konfirmasi, jika keluar data dibuang
+ */
+public class StockTakingActivity extends BaseScannerActivity
+        implements BarcodeDataDelegate, RFIDDataDelegate {
+
+    // ── Views ─────────────────────────────────────────────────────
+    private ImageView   btnBack;
+    private Switch      switchRfid;
+    private CardView    btnFinalize;
+    private EditText    resultScan;
     private RecyclerView rvTags;
+    private TextView    tvRemark, tvLocation, tvQty;
+
+    // ── Scanner ───────────────────────────────────────────────────
     private CommScanner mCommScanner;
     private ToneGenerator toneGen;
-    private Handler handler = new Handler(Looper.getMainLooper());
-    private AppDao appDao;
-    private TagAdapter adapter;
-    private List<TagModels.TagModel> masterStockList;
-    private ApiService api;
-    private String token;
-    private String activeSttId = "";
-    private TagModels.TagModel selectedTag = null;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+
+    // ── Data ──────────────────────────────────────────────────────
+    private ApiService  api;
+    private String      token;
+    private String      sttId  = "";
+    private String      remark = "";
+
+    /** Snapshot lokal: semua tag dalam sesi ini */
+    private final List<StockTakingModels.SessionItem> sessionItems = new ArrayList<>();
+
+    /** Tag yang sudah di-remove (untuk dikirim ke API saat finalize) */
+    private final List<String> removedTagIds = new ArrayList<>();
+
+    /** Entry manual add (untuk dikirim ke API saat finalize) */
+    private final List<StockTakingModels.ManualAddReq> manualEntries = new ArrayList<>();
+
+    private boolean hasChanges = false;
+
+    private StockTakingItemAdapter adapter;
+
+    // ─────────────────────────────────────────────────────────────
 
     @Override
-    protected CommScanner getScannerInstance() {
-        return mCommScanner;
-    }
+    protected CommScanner getScannerInstance() { return mCommScanner; }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_stock_taking_adjustment);
 
+        // Ambil data dari intent
+        sttId  = getIntent().getStringExtra("sttId");
+        remark = getIntent().getStringExtra("remark");
+        if (sttId == null)  sttId  = "";
+        if (remark == null) remark = "";
+
         PrefManager pref = new PrefManager(this);
         token = "Bearer " + pref.getToken();
-        api = ApiClient.getClient(this).create(ApiService.class);
+        api   = ApiClient.getClient(this).create(ApiService.class);
 
-        try { toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100); } catch (Exception e) {}
+        try { toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100); } catch (Exception e) { /* ignore */ }
 
-        btnBack = findViewById(R.id.btnBack);
+        // Bind views
+        btnBack    = findViewById(R.id.btnBack);
         switchRfid = findViewById(R.id.switchRfid);
-        btnRefresh = findViewById(R.id.btnRefresh);
         btnFinalize = findViewById(R.id.btnSave);
         resultScan = findViewById(R.id.resultScan);
-        rvTags = findViewById(R.id.rvTags);
+        rvTags     = findViewById(R.id.rvTags);
+        tvRemark   = findViewById(R.id.tvRemark);
+        tvLocation = findViewById(R.id.tvLocation);
+        tvQty      = findViewById(R.id.tvQty);
 
-        masterStockList = new ArrayList<>();
-        adapter = new TagAdapter(masterStockList);
-        appDao = AppDatabase.getDatabase(this).appDao();
-        rvTags.setLayoutManager(new LinearLayoutManager(this));
-
+        // Setup adapter
+        adapter = new StockTakingItemAdapter(sessionItems);
         adapter.setOnItemClickListener(this::showAdjustmentDialog);
+        rvTags.setLayoutManager(new LinearLayoutManager(this));
         rvTags.setAdapter(adapter);
 
-        switchRfid.setChecked(false);
+        // Tampilkan remark
+        tvRemark.setText("Note: " + (remark.isEmpty() ? "-" : remark));
+
+        // Handle back gesture (AndroidX OnBackPressedDispatcher)
+        getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                handleBackPressed();
+            }
+        });
+
         setupScanner();
         setupListeners();
+
+        // Load data sesi dari API
+        if (!sttId.isEmpty()) {
+            loadSessionTags();
+        } else {
+            showError("Session ID tidak ditemukan!");
+        }
     }
 
+    // ── Setup ─────────────────────────────────────────────────────
+
     private void setupListeners() {
-        btnBack.setOnClickListener(v -> finish());
+        // Back → jika ada perubahan, tanya konfirmasi
+        btnBack.setOnClickListener(v -> handleBackPressed());
 
         CardView btnPowerDropdown = findViewById(R.id.btnPowerDropdown);
         TextView tvPowerLevel     = findViewById(R.id.tvPowerLevel);
-
         setupPowerDropdown(btnPowerDropdown, switchRfid, tvPowerLevel);
 
-        switchRfid.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            CommScanner currentScanner = getScannerInstance();
-
+        switchRfid.setOnCheckedChangeListener((btn, isChecked) -> {
             if (isChecked) {
-                boolean isRfidReady = (currentScanner != null && currentScanner.getRFIDScanner() != null);
-                if (!isRfidReady) {
-                    showError("HT is not connected to the RFID Reader yet!");
+                CommScanner s = getScannerInstance();
+                if (s == null || s.getRFIDScanner() == null) {
+                    showError("HT belum terhubung ke RFID Reader!");
                     switchRfid.setChecked(false);
                     return;
                 }
@@ -123,188 +174,335 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
             } else {
                 btnPowerDropdown.setVisibility(View.GONE);
             }
-
             showSuccess(isChecked ? "RFID Mode Active" : "Barcode Mode Active");
             resultScan.requestFocus();
         });
 
-        btnRefresh.setOnClickListener(v -> {
-            if (!isNetworkConnected()) {
-                showWarning("No internet connection, please check your network.");
-                return;
-            }
-            startStockTakingSession();
-        });
-
         btnFinalize.setOnClickListener(v -> {
-            if (activeSttId.isEmpty()) {
-                showWarning("No active session yet!");
+            if (sttId.isEmpty()) {
+                showWarning("Tidak ada sesi aktif!");
                 return;
             }
-            finalizeSession();
+            showFinalizeConfirmDialog();
         });
 
         resultScan.setOnEditorActionListener((v, actionId, event) -> {
             String data = resultScan.getText().toString().trim();
             if (!data.isEmpty()) {
-                processScanResult(data);
+                processScan(data);
                 resultScan.setText("");
             }
             return true;
         });
     }
 
-    private void startStockTakingSession() {
-        showLoading();
-        showWarning("Opening a session...");
-        TextView etNote = findViewById(R.id.tvRemark);
-        String note = etNote.getText().toString().trim();
-
-        StockTakingModels.CreateReq req = new StockTakingModels.CreateReq(note.isEmpty() ? "PT Sato Routine Inventory" : note);
-        api.createStockTaking(token, req).enqueue(new Callback<StockTakingModels.CreateRes>() {
-            @Override
-            public void onResponse(Call<StockTakingModels.CreateRes> call, Response<StockTakingModels.CreateRes> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    activeSttId = response.body().stockTakingId;
-                    fetchMasterStock();
-                } else {
-                    hideLoading();
-                    showError("Failed to create session!");
-                }
-            }
-            @Override
-            public void onFailure(Call<StockTakingModels.CreateRes> call, Throwable t) {
-                hideLoading();
-                showError("Connection timeout: " + t.getMessage());
-            }
-        });
-    }
-
-    private void fetchMasterStock() {
-        showLoading();
-        api.getStockData(token).enqueue(new Callback<List<TagModels.TagModel>>() {
-            @Override
-            public void onResponse(Call<List<TagModels.TagModel>> call, Response<List<TagModels.TagModel>> response) {
-                hideLoading();
-                if (response.isSuccessful() && response.body() != null) {
-                    masterStockList.clear();
-                    masterStockList.addAll(response.body());
-                    adapter.notifyDataSetChanged();
-                    showSuccess("Loaded " + masterStockList.size() + " items successfully!");
-                }
-            }
-            @Override
-            public void onFailure(Call<List<TagModels.TagModel>> call, Throwable t) {
-                hideLoading();
-                showError("Failed to retrieve master data!");
-            }
-        });
-    }
-
-    private void processScanResult(String data) {
-        if (activeSttId.isEmpty()) {
-            playScanFeedback(2);
-            return;
+    private void setupScanner() {
+        if (mCommScanner != null) {
+            try {
+                mCommScanner.getRFIDScanner().setDataDelegate(this);
+                mCommScanner.getBarcodeScanner().setDataDelegate(this);
+            } catch (Exception e) { /* ignore */ }
         }
+    }
 
+    // ── Load Data ─────────────────────────────────────────────────
+
+    private void loadSessionTags() {
         if (!isNetworkConnected()) {
-            playScanFeedback(0);
-            showWarning("Offline! Data saved locally.");
-
-            new Thread(() -> {
-                TagModels.TagModel offlineTag = new TagModels.TagModel(data, data, "STT_OFFLINE", "Stock Taking", activeSttId, 0);
-                appDao.insertScannedTag(offlineTag);
-
-                runOnUiThread(() -> markItemAsScanned(data));
-            }).start();
+            showWarning("Tidak ada koneksi internet.");
             return;
         }
-
-        StockTakingModels.ScanReq req = new StockTakingModels.ScanReq(activeSttId, data);
-        api.scanStockTaking(token, req).enqueue(new Callback<GeneralResponse>() {
+        showLoading();
+        api.getSessionTags(token, sttId).enqueue(new Callback<List<StockTakingModels.SessionItem>>() {
             @Override
-            public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
-                if (response.isSuccessful()) {
-                    playScanFeedback(0);
-                    markItemAsScanned(data);
+            public void onResponse(Call<List<StockTakingModels.SessionItem>> call,
+                                   Response<List<StockTakingModels.SessionItem>> response) {
+                hideLoading();
+                if (response.isSuccessful() && response.body() != null) {
+                    sessionItems.clear();
+                    removedTagIds.clear();
+                    manualEntries.clear();
+                    hasChanges = false;
+
+                    for (StockTakingModels.SessionItem item : response.body()) {
+                        item.state = "PENDING";
+                        sessionItems.add(item);
+                    }
+
+                    adapter.notifyDataSetChanged();
+                    updateInfo();
+                    showSuccess("Loaded " + sessionItems.size() + " items");
                 } else {
                     handleApiError(response.code());
-                    playScanFeedback(2);
                 }
             }
+
             @Override
-            public void onFailure(Call<GeneralResponse> call, Throwable t) {
-                playScanFeedback(2);
+            public void onFailure(Call<List<StockTakingModels.SessionItem>> call, Throwable t) {
+                hideLoading();
+                handleFailure(t);
             }
         });
     }
 
-    private void finalizeSession() {
-        if (!isNetworkConnected()) {
-            showWarning("You're still offline! Find a signal first to finalize.");
+    // ── Scan Processing ───────────────────────────────────────────
+
+    private void processScan(String epcOrBarcode) {
+        if (sttId.isEmpty()) {
             playScanFeedback(2);
             return;
         }
 
-        showLoading();
-        showWarning("Checking offline data...");
+        // Cari EPC di sessionItems
+        for (int i = 0; i < sessionItems.size(); i++) {
+            StockTakingModels.SessionItem item = sessionItems.get(i);
 
-        new Thread(() -> {
-            List<TagModels.TagModel> pendingTags = appDao.getPendingTags();
-            List<String> tagsToSync = new ArrayList<>();
-
-            for (TagModels.TagModel tag : pendingTags) {
-                if (tag.getProductName().equals("Stock Taking") && tag.getDoIdRef().equals(activeSttId)) {
-                    tagsToSync.add(tag.getEpcTag());
-                }
-            }
-
-            runOnUiThread(() -> {
-                if (!tagsToSync.isEmpty()) {
-                    showWarning("Syncing " + tagsToSync.size() + " offline item(s)...");
-                    syncStockTakingData(tagsToSync, 0);
+            if (epcOrBarcode.equalsIgnoreCase(item.epcTag)) {
+                if ("PENDING".equals(item.state)) {
+                    // Valid & belum discanned → mark FOUND
+                    item.state = "FOUND";
+                    hasChanges = true;
+                    adapter.notifyItemChanged(i);
+                    rvTags.smoothScrollToPosition(i);
+                    updateInfo();
+                    playScanFeedback(0); // success beep
                 } else {
-                    executeFinalizeAPI();
+                    // Sudah scanned sebelumnya → ignore, feedback netral
+                    showWarning("Item sudah discanned.");
                 }
-            });
-        }).start();
-    }
-
-    private void syncStockTakingData(List<String> tags, int currentIndex) {
-        if (currentIndex >= tags.size()) {
-            new Thread(() -> {
-                for (String epc : tags) appDao.markTagAsSynced(epc);
-                runOnUiThread(this::executeFinalizeAPI);
-            }).start();
-            return;
+                return;
+            }
         }
 
-        StockTakingModels.ScanReq req = new StockTakingModels.ScanReq(activeSttId, tags.get(currentIndex));
-        api.scanStockTaking(token, req).enqueue(new Callback<GeneralResponse>() {
+        // EPC tidak ditemukan dalam list
+        playScanFeedback(2); // error beep
+        showWarning("Tag tidak ada dalam daftar sesi ini.");
+    }
+
+    // ── UI Update ─────────────────────────────────────────────────
+
+    private void updateInfo() {
+        int total   = sessionItems.size();
+        int scanned = countScanned();
+
+        // Qty counter
+        tvQty.setText("Qty: " + scanned + "/" + total);
+
+        // Kumpulkan lokasi unik
+        List<String> locations = new ArrayList<>();
+        for (StockTakingModels.SessionItem item : sessionItems) {
+            if (item.location != null && !item.location.isEmpty()
+                    && !locations.contains(item.location)) {
+                locations.add(item.location);
+            }
+        }
+        tvLocation.setText("Lokasi: " + (locations.isEmpty() ? "-" : String.join(", ", locations)));
+    }
+
+    private int countScanned() {
+        int count = 0;
+        for (StockTakingModels.SessionItem item : sessionItems) {
+            if ("FOUND".equals(item.state) || "MANUAL_ADD".equals(item.state)) count++;
+        }
+        return count;
+    }
+
+    // ── Adjustment Dialog ─────────────────────────────────────────
+
+    private void showAdjustmentDialog(StockTakingModels.SessionItem selectedItem, int position) {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_adj);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        ImageButton btnFaq      = dialog.findViewById(R.id.btnFaq);
+        Button      btnRemove   = dialog.findViewById(R.id.btnRemove);
+        Button      btnAddManual = dialog.findViewById(R.id.btnAddManual);
+
+        btnFaq.setOnClickListener(v -> showFaqDialog());
+
+        // ── Remove ──
+        btnRemove.setOnClickListener(v -> {
+            dialog.dismiss();
+            showRemoveConfirmDialog(selectedItem, position);
+        });
+
+        // ── Manual Add ──
+        btnAddManual.setOnClickListener(v -> {
+            dialog.dismiss();
+            showManualAddDialog(selectedItem, position);
+        });
+
+        dialog.show();
+    }
+
+    private void showRemoveConfirmDialog(StockTakingModels.SessionItem item, int position) {
+        new AlertDialog.Builder(this)
+                .setTitle("Hapus Item")
+                .setMessage("Yakin mau hapus item ini dari daftar?\nQty akan berkurang.")
+                .setPositiveButton("Ya, Hapus", (d, w) -> {
+                    // Catat tagId untuk dikirim ke API saat finalize
+                    if (item.tagId != null && !item.tagId.isEmpty()) {
+                        removedTagIds.add(item.tagId);
+                    }
+                    // Hapus dari list
+                    sessionItems.remove(position);
+                    adapter.notifyItemRemoved(position);
+                    adapter.notifyItemRangeChanged(position, sessionItems.size());
+                    hasChanges = true;
+                    updateInfo();
+                    showSuccess("Item dihapus dari daftar.");
+                })
+                .setNegativeButton("Batal", null)
+                .show();
+    }
+
+    private void showManualAddDialog(StockTakingModels.SessionItem item, int position) {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_manual_add);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            int w = (int)(getResources().getDisplayMetrics().widthPixels * 0.90);
+            dialog.getWindow().setLayout(w, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        EditText etItemId = dialog.findViewById(R.id.etManualItemId);
+        EditText etRemark = dialog.findViewById(R.id.etManualRemark);
+        Button   btnCancel = dialog.findViewById(R.id.btnCancelManual);
+        Button   btnSave   = dialog.findViewById(R.id.btnSaveManual);
+
+        // Pre-fill item ID yang dipilih
+        etItemId.setText(item.itemId != null ? item.itemId : "");
+        etItemId.setEnabled(false); // item sudah diketahui dari list
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnSave.setOnClickListener(v -> {
+            String remarkText = etRemark.getText().toString().trim();
+            if (remarkText.isEmpty()) {
+                showWarning("Remark tidak boleh kosong!");
+                return;
+            }
+
+            // Simpan untuk dikirim ke API saat finalize
+            manualEntries.add(new StockTakingModels.ManualAddReq(sttId, item.itemId, remarkText));
+
+            // Update state lokal → hijau
+            item.state        = "MANUAL_ADD";
+            item.manualRemark = remarkText;
+            hasChanges        = true;
+
+            adapter.notifyItemChanged(position);
+            updateInfo();
+            playScanFeedback(0);
+            showSuccess("Manual add berhasil!");
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    // ── Finalize ──────────────────────────────────────────────────
+
+    private void showFinalizeConfirmDialog() {
+        int scanned = countScanned();
+        int total   = sessionItems.size() + removedTagIds.size(); // total awal = sekarang + yg dihapus
+        new AlertDialog.Builder(this)
+                .setTitle("Selesaikan Stock Taking")
+                .setMessage("Yakin ingin finalisasi?\nScanned: " + scanned
+                        + "\nRemoved: " + removedTagIds.size()
+                        + "\nManual Add: " + manualEntries.size())
+                .setPositiveButton("Finalize", (d, w) -> startFinalize())
+                .setNegativeButton("Batal", null)
+                .show();
+    }
+
+    private void startFinalize() {
+        showLoading();
+        showWarning("Mengirim data scan...");
+
+        // Kumpulkan semua EPC yang FOUND
+        List<String> foundEpcs = new ArrayList<>();
+        for (StockTakingModels.SessionItem item : sessionItems) {
+            if ("FOUND".equals(item.state)) {
+                foundEpcs.add(item.epcTag);
+            }
+        }
+
+        if (!foundEpcs.isEmpty()) {
+            sendBulkScan(foundEpcs);
+        } else {
+            sendRemoves(0);
+        }
+    }
+
+    private void sendBulkScan(List<String> epcs) {
+        StockTakingModels.BulkScanReq req = new StockTakingModels.BulkScanReq(sttId, epcs);
+        api.bulkScanStockTaking(token, req).enqueue(new Callback<GeneralResponse>() {
             @Override
             public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
-                syncStockTakingData(tags, currentIndex + 1);
+                // Lanjut kirim removes meski ada error (best-effort)
+                sendRemoves(0);
             }
             @Override
             public void onFailure(Call<GeneralResponse> call, Throwable t) {
-                syncStockTakingData(tags, currentIndex + 1);
+                sendRemoves(0);
             }
         });
     }
 
-    private void executeFinalizeAPI() {
-        showWarning("Finalizing session...");
-        StockTakingModels.FinalizeReq req = new StockTakingModels.FinalizeReq(activeSttId);
+    private void sendRemoves(int index) {
+        if (index >= removedTagIds.size()) {
+            sendManualAdds(0);
+            return;
+        }
+        StockTakingModels.RemoveReq req = new StockTakingModels.RemoveReq(sttId, removedTagIds.get(index));
+        api.removeStockTaking(token, req).enqueue(new Callback<GeneralResponse>() {
+            @Override
+            public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
+                sendRemoves(index + 1);
+            }
+            @Override
+            public void onFailure(Call<GeneralResponse> call, Throwable t) {
+                sendRemoves(index + 1);
+            }
+        });
+    }
+
+    private void sendManualAdds(int index) {
+        if (index >= manualEntries.size()) {
+            sendFinalize();
+            return;
+        }
+        StockTakingModels.ManualAddReq req = manualEntries.get(index);
+        api.manualAddStockTaking(token, req).enqueue(new Callback<GeneralResponse>() {
+            @Override
+            public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
+                sendManualAdds(index + 1);
+            }
+            @Override
+            public void onFailure(Call<GeneralResponse> call, Throwable t) {
+                sendManualAdds(index + 1);
+            }
+        });
+    }
+
+    private void sendFinalize() {
+        showWarning("Finalisasi sesi...");
+        StockTakingModels.FinalizeReq req = new StockTakingModels.FinalizeReq(sttId);
         api.finalizeStockTaking(token, req).enqueue(new Callback<GeneralResponse>() {
             @Override
             public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
                 hideLoading();
-                if(response.isSuccessful()) {
-                    showSuccess("Session completed and data saved!");
+                if (response.isSuccessful()) {
+                    showSuccess("Stock Taking selesai!");
                     playScanFeedback(0);
-                    activeSttId = "";
-                    masterStockList.clear();
-                    adapter.notifyDataSetChanged();
+                    hasChanges = false;
+                    finish(); // Kembali ke list
                 } else {
                     handleApiError(response.code());
                     playScanFeedback(2);
@@ -319,156 +517,50 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
         });
     }
 
-    private void markItemAsScanned(String epcOrBarcode) {
-        for (int i = 0; i < masterStockList.size(); i++) {
-            TagModels.TagModel tag = masterStockList.get(i);
-            if (tag.getEpcTag().equalsIgnoreCase(epcOrBarcode) || tag.getTagId().equalsIgnoreCase(epcOrBarcode)) {
+    // ── Back Handling ─────────────────────────────────────────────
 
-                tag.setScanned(true);
-                adapter.notifyItemChanged(i);
-                rvTags.smoothScrollToPosition(i);
-                break;
-            }
-        }
-    }
-
-    public void showAdjustmentDialog(TagModels.TagModel tagToAdjust) {
-        this.selectedTag = tagToAdjust;
-
-        Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_adj);
-
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-
-        ImageButton btnFaq = dialog.findViewById(R.id.btnFaq);
-        Button btnRemove = dialog.findViewById(R.id.btnRemove);
-        Button btnAddManual = dialog.findViewById(R.id.btnAddManual);
-
-        btnFaq.setOnClickListener(v -> showFaqDialog());
-
-        btnRemove.setOnClickListener(v -> {
-            if (activeSttId.isEmpty() || selectedTag == null) return;
-
-            showLoading();
-            StockTakingModels.RemoveReq req = new StockTakingModels.RemoveReq(activeSttId, selectedTag.getTagId());
-            api.removeStockTaking(token, req).enqueue(new Callback<GeneralResponse>() {
-                @Override
-                public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
-                    hideLoading();
-                    if (response.isSuccessful()) {
-                        showSuccess("Item removed!");
-                        dialog.dismiss();
-                        fetchMasterStock();
-                    } else {
-                        handleApiError(response.code());
-                    }
-                }
-                @Override
-                public void onFailure(Call<GeneralResponse> call, Throwable t) {
-                    handleFailure(t);
-                }
-            });
-        });
-
-        btnAddManual.setOnClickListener(v -> {
-            dialog.dismiss();
-            showManualAddDialog();
-        });
-
-        dialog.show();
-    }
-
-    private void showManualAddDialog() {
-        if (activeSttId.isEmpty()) {
-            showWarning("Please open a session before adding manually!");
+    private void handleBackPressed() {
+        if (!hasChanges) {
+            finish();
             return;
         }
-
-        Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_manual_add);
-
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            int width = (int)(getResources().getDisplayMetrics().widthPixels * 0.90);
-            dialog.getWindow().setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-
-        EditText inputItemId = dialog.findViewById(R.id.etManualItemId);
-        EditText inputRemark = dialog.findViewById(R.id.etManualRemark);
-        Button btnCancel = dialog.findViewById(R.id.btnCancelManual);
-        Button btnSave = dialog.findViewById(R.id.btnSaveManual);
-
-        btnCancel.setOnClickListener(v -> dialog.dismiss());
-
-        btnSave.setOnClickListener(v -> {
-            String itemId = inputItemId.getText().toString().trim();
-            String remark = inputRemark.getText().toString().trim();
-
-            if (itemId.isEmpty()) {
-                showWarning("Item ID cannot be empty!");
-                return;
-            }
-            showLoading();
-            showWarning("Saving manual data...");
-
-            StockTakingModels.ManualAddReq req = new StockTakingModels.ManualAddReq(activeSttId, itemId, remark);
-            api.manualAddStockTaking(token, req).enqueue(new Callback<GeneralResponse>() {
-                @Override
-                public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
-                    hideLoading();
-                    if(response.isSuccessful()) {
-                        showSuccess("Manual add successful!");
-                        playScanFeedback(0);
-                        dialog.dismiss();
-                    } else {
-                        handleApiError(response.code());
-                        playScanFeedback(2);
-                    }
-                }
-                @Override
-                public void onFailure(Call<GeneralResponse> call, Throwable t) {
-                    handleFailure(t);
-                    playScanFeedback(2);
-                }
-            });
-        });
-
-        dialog.show();
+        new AlertDialog.Builder(this)
+                .setTitle("Keluar")
+                .setMessage("Yakin mau keluar? Semua perubahan (scan, hapus, manual add) akan dibatalkan.")
+                .setPositiveButton("Keluar", (d, w) -> {
+                    // Buang semua perubahan, kembali ke list
+                    sessionItems.clear();
+                    removedTagIds.clear();
+                    manualEntries.clear();
+                    hasChanges = false;
+                    finish();
+                })
+                .setNegativeButton("Batal", null)
+                .show();
     }
+
+    // ── FAQ ───────────────────────────────────────────────────────
 
     private void showFaqDialog() {
         Dialog faqDialog = new Dialog(this);
         faqDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         faqDialog.setContentView(R.layout.dialog_faq);
-
         if (faqDialog.getWindow() != null) {
             faqDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            int width = (int)(getResources().getDisplayMetrics().widthPixels * 0.90);
-            faqDialog.getWindow().setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
+            int w = (int)(getResources().getDisplayMetrics().widthPixels * 0.90);
+            faqDialog.getWindow().setLayout(w, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
         faqDialog.show();
     }
 
-    private void setupScanner() {
-        if (mCommScanner != null) {
-            try {
-                mCommScanner.getRFIDScanner().setDataDelegate(this);
-                mCommScanner.getBarcodeScanner().setDataDelegate(this);
-            } catch (Exception e) {}
-        }
-    }
+    // ── Scanner Callbacks ─────────────────────────────────────────
 
     @Override
     public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
         if (!switchRfid.isChecked()) return;
         for (RFIDData data : event.getRFIDData()) {
             String epc = bytesToHexString(data.getUII());
-            handler.post(() -> processScanResult(epc));
+            handler.post(() -> processScan(epc));
         }
     }
 
@@ -478,23 +570,24 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
         List<BarcodeData> dataList = event.getBarcodeData();
         if (!dataList.isEmpty()) {
             String barcode = new String(dataList.get(0).getData());
-            handler.post(() -> processScanResult(barcode));
+            handler.post(() -> processScan(barcode));
         }
     }
 
     private String bytesToHexString(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) { sb.append(String.format("%02X", b)); }
+        for (byte b : bytes) sb.append(String.format("%02X", b));
         return sb.toString();
     }
+
+    // ── Lifecycle ─────────────────────────────────────────────────
 
     @Override
     protected void onResume() {
         super.onResume();
         setupScanner();
-
         if (getHTBatteryLevel() <= 15) {
-            showWarning("HT Battery at " + getHTBatteryLevel() + "%, please charge now!");
+            showWarning("Baterai HT " + getHTBatteryLevel() + "%, segera charge!");
             playScanFeedback(2);
         }
     }
@@ -504,15 +597,9 @@ public class StockTakingActivity extends BaseScannerActivity implements BarcodeD
         super.onPause();
         if (mCommScanner != null) {
             try {
-                if (mCommScanner.getRFIDScanner() != null) {
-                    mCommScanner.getRFIDScanner().setDataDelegate(null);
-                }
-                if (mCommScanner.getBarcodeScanner() != null) {
-                    mCommScanner.getBarcodeScanner().setDataDelegate(null);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+                if (mCommScanner.getRFIDScanner()  != null) mCommScanner.getRFIDScanner().setDataDelegate(null);
+                if (mCommScanner.getBarcodeScanner() != null) mCommScanner.getBarcodeScanner().setDataDelegate(null);
+            } catch (Exception e) { e.printStackTrace(); }
         }
     }
 

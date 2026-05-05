@@ -28,10 +28,8 @@ public class PrefManager {
 
     public PrefManager(Context context) {
         this._context = context;
-        // Untuk base URL — pakai SharedPreferences biasa
         pref = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
 
-        // Untuk session/token — pakai EncryptedSharedPreferences
         try {
             String masterKey = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC);
             securePref = EncryptedSharedPreferences.create(
@@ -42,8 +40,20 @@ public class PrefManager {
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             );
         } catch (GeneralSecurityException | IOException e) {
-            // Fallback ke SharedPreferences biasa kalau gagal
-            securePref = context.getSharedPreferences(SECURE_PREF + "_fb", Context.MODE_PRIVATE);
+            try {
+                context.getSharedPreferences(SECURE_PREF, Context.MODE_PRIVATE)
+                        .edit().clear().apply();
+                String masterKey = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC);
+                securePref = EncryptedSharedPreferences.create(
+                        SECURE_PREF,
+                        masterKey,
+                        context,
+                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                );
+            } catch (Exception e2) {
+                securePref = context.getSharedPreferences(SECURE_PREF, Context.MODE_PRIVATE);
+            }
         }
     }
 

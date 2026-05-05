@@ -26,8 +26,16 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/tvTagId"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#CCFFFFFF"
+                android:textSize="10sp"
+                android:fontFamily="@font/raleway_bold"/>
+
+            <TextView
                 android:id="@+id/tvProductName"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/tv_product_name"
                 android:textColor="@color/white"

@@ -1,16 +1,10 @@
 package com.example.inventory_system_ht.Activity;
 
-import android.app.Dialog;
 import android.content.Intent;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -35,9 +29,9 @@ import retrofit2.Response;
 
 public class StockTakingListActivity extends BaseScannerActivity {
 
-    private TextView tvEmpty;
+    private TextView   tvEmpty;
     private ApiService api;
-    private String token;
+    private String     token;
 
     private final List<StockTakingModels.ActiveRes> sessionList = new ArrayList<>();
     private SessionAdapter adapter;
@@ -54,15 +48,16 @@ public class StockTakingListActivity extends BaseScannerActivity {
         token = "Bearer " + pref.getToken();
         api   = ApiClient.getClient(this).create(ApiService.class);
 
-        ImageView btnBack    = findViewById(R.id.btnBack);
-        CardView btnRefresh = findViewById(R.id.btnRefresh);
+        ImageView  btnBack    = findViewById(R.id.btnBack);
+        CardView   btnRefresh = findViewById(R.id.btnRefresh);
         RecyclerView rvSessions = findViewById(R.id.rvTags);
-        tvEmpty    = findViewById(R.id.tvEmpty);
+        tvEmpty = findViewById(R.id.tvEmpty);
 
         adapter = new SessionAdapter(sessionList, session -> {
+            android.util.Log.d("STT", "Clicked sttId: " + session.sttId); // DEBUG
             Intent i = new Intent(this, StockTakingActivity.class);
             i.putExtra("sttId",  session.sttId);
-            i.putExtra("remark", session.remark);
+            i.putExtra("remark", session.remark != null ? session.remark : "");
             startActivity(i);
         });
 
@@ -103,64 +98,12 @@ public class StockTakingListActivity extends BaseScannerActivity {
             }
 
             @Override
-            public void onFailure(@NonNull Call<StockTakingModels.ActiveRes> call, @NonNull Throwable t) {
+            public void onFailure(@NonNull Call<StockTakingModels.ActiveRes> call,
+                                  @NonNull Throwable t) {
                 hideLoading();
-                showError("Gagal memuat sesi: " + t.getMessage());
+                showError("Failed to load session: " + t.getMessage());
                 tvEmpty.setVisibility(View.VISIBLE);
                 adapter.notifyDataSetChanged();
-            }
-        });
-    }
-
-    @SuppressWarnings("unused")
-    private void showCreateSessionDialog() {
-        Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_manual_add);
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            int w = (int)(getResources().getDisplayMetrics().widthPixels * 0.90);
-            dialog.getWindow().setLayout(w, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-
-        EditText etRemark  = dialog.findViewById(R.id.etManualItemId);
-        EditText etRemark2 = dialog.findViewById(R.id.etManualRemark);
-        Button   btnCancel = dialog.findViewById(R.id.btnCancelManual);
-        Button   btnSave   = dialog.findViewById(R.id.btnSaveManual);
-
-        etRemark.setHint("Remark / Keterangan");
-        etRemark2.setVisibility(View.GONE);
-
-        btnCancel.setOnClickListener(v -> dialog.dismiss());
-        btnSave.setOnClickListener(v -> {
-            String remark = etRemark.getText().toString().trim();
-            if (remark.isEmpty()) remark = "PT Sato Routine Inventory";
-            dialog.dismiss();
-            createNewSession(remark);
-        });
-
-        dialog.show();
-    }
-
-    private void createNewSession(String remark) {
-        showLoading();
-        StockTakingModels.CreateReq req = new StockTakingModels.CreateReq(remark);
-        api.createNewStockTaking(token, req).enqueue(new Callback<StockTakingModels.CreateRes>() {
-            @Override
-            public void onResponse(@NonNull Call<StockTakingModels.CreateRes> call,
-                                   @NonNull Response<StockTakingModels.CreateRes> response) {
-                hideLoading();
-                if (response.isSuccessful() && response.body() != null) {
-                    showSuccess("Sesi berhasil dibuat!");
-                    loadActiveSession();
-                } else {
-                    handleApiError(response.code());
-                }
-            }
-            @Override
-            public void onFailure(@NonNull Call<StockTakingModels.CreateRes> call, @NonNull Throwable t) {
-                hideLoading();
-                handleFailure(t);
             }
         });
     }
@@ -190,7 +133,8 @@ public class StockTakingListActivity extends BaseScannerActivity {
         public void onBindViewHolder(@NonNull VH h, int position) {
             StockTakingModels.ActiveRes s = list.get(position);
             h.tvSttId.setText(s.sttId != null
-                    ? "ID: " + s.sttId.substring(0, Math.min(8, s.sttId.length())) + (s.sttId.length() > 8 ? "..." : "")
+                    ? "ID: " + s.sttId.substring(0, Math.min(8, s.sttId.length()))
+                    + (s.sttId.length() > 8 ? "..." : "")
                     : "-");
             h.tvLocation.setText(s.location != null ? s.location : "-");
             h.itemView.setOnClickListener(v -> click.onClick(s));

@@ -77,11 +77,7 @@ public class TagRegisActivity extends BaseScannerActivity implements BarcodeData
         btnClear = findViewById(R.id.btnClear);
         btnSubmitRegis = findViewById(R.id.btnSubmitRegis);
         rvTags = findViewById(R.id.rvTags);
-
-        ((androidx.recyclerview.widget.SimpleItemAnimator) rvTags.getItemAnimator())
-                .setSupportsChangeAnimations(false);
-        rvTags.getItemAnimator().setAddDuration(50);
-        rvTags.getItemAnimator().setMoveDuration(50);
+        rvTags.setItemAnimator(null);
 
         toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
         vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);

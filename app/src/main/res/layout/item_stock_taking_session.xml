@@ -23,20 +23,20 @@
 
         <TextView
             android:id="@+id/tvSttId"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="@color/white"
-            android:textSize="13sp"
+            android:textColor="#CCFFFFFF"
+            android:textSize="11sp"
             android:fontFamily="@font/raleway_extra_bold"
             tools:text="STT-001"
             tools:ignore="TextContrastCheck" />
 
         <TextView
             android:id="@+id/tvSttLocation"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#CCFFFFFF"
-            android:textSize="11sp"
+            android:textColor="@color/white"
+            android:textSize="13sp"
             android:fontFamily="@font/raleway_bold"
             android:layout_marginTop="4dp"
             tools:text="Rack A, Rack B"

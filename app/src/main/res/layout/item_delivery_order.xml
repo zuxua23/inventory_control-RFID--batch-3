@@ -23,7 +23,7 @@
 
         <TextView
             android:id="@+id/tvDoNo"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/do_no"
             android:textColor="@color/white"
@@ -33,7 +33,7 @@
 
         <TextView
             android:id="@+id/tvDoName"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/do_name"
             android:textColor="@color/white"

@@ -129,8 +129,17 @@
                 android:text="@string/qtystocktakingadj"
                 android:textColor="@color/blue_theme"
                 android:fontFamily="@font/raleway_bold"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:paddingBottom="5dp"/>
 
+            <TextView
+                android:id="@+id/tvSyncStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="✓ All synced"
+                android:textColor="#01C470"
+                android:fontFamily="@font/raleway_bold"
+                android:textSize="12sp" />
 
         </LinearLayout>
     </androidx.cardview.widget.CardView>

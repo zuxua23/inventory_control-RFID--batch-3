@@ -8,6 +8,8 @@ import androidx.room.RoomDatabase;
 
 import com.example.inventory_system_ht.Models.DOModels;
 import com.example.inventory_system_ht.Models.PendingSubmitEntity;
+import com.example.inventory_system_ht.Models.StockInScanEntity;
+import com.example.inventory_system_ht.Models.StockTakingModels;
 import com.example.inventory_system_ht.Models.TagModels;
 
 @Database(
@@ -16,13 +18,17 @@ import com.example.inventory_system_ht.Models.TagModels;
                 TagModels.TagModel.class,
                 TagModels.SearchItemEntity.class,
                 TagModels.TagCacheEntity.class,
-                PendingSubmitEntity.class
+                PendingSubmitEntity.class,
+                StockTakingModels.ScanQueueEntity.class,
+                StockTakingModels.SessionItemEntity.class,
+                StockInScanEntity.class          // ← tambah
         },
-        version = 3,
+        version = 6,                             // ← bump version
         exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
     public abstract AppDao appDao();
+
     private static volatile AppDatabase INSTANCE;
 
     public static AppDatabase getDatabase(final Context context) {
@@ -34,7 +40,7 @@ public abstract class AppDatabase extends RoomDatabase {
                                     AppDatabase.class,
                                     "sato_inventory_db")
                             .allowMainThreadQueries()
-                            .fallbackToDestructiveMigration() // wipe & recreate kalau versi naik
+                            .fallbackToDestructiveMigration()
                             .build();
                 }
             }

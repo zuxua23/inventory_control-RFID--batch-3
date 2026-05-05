@@ -144,7 +144,7 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
 
         fetchLocations();
         fetchDoDetail();
-        cleanPendingForCurrentDO();
+        restoreScannedTagsFromRoom();
         setupListeners();
     }
 
@@ -172,12 +172,7 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         rvTags.setLayoutManager(new LinearLayoutManager(this));
         rvTags.setAdapter(adapter);
 
-        if (rvTags.getItemAnimator() != null) {
-            ((androidx.recyclerview.widget.SimpleItemAnimator) rvTags.getItemAnimator())
-                    .setSupportsChangeAnimations(false);
-            rvTags.getItemAnimator().setAddDuration(50);
-            rvTags.getItemAnimator().setMoveDuration(50);
-        }
+        rvTags.setItemAnimator(null);
 
         adapter.setOnItemClickListener(item -> {
             if (!isListProductTab) return;
@@ -736,27 +731,19 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
         btnYes.setOnClickListener(v -> {
             dialog.dismiss();
-            if (position < 0 || position >= scannedList.size()) return;
-            final TagModels.TagModel removed = scannedList.remove(position);
-            scanCount--;
-            scannedEpcSet.remove(removed.getEpcTag().toUpperCase());
-            scannedRawSet.remove(removed.getEpcTag().toUpperCase());
-
             new Thread(() -> {
-                try { appDao.deleteScannedTagByEpc(removed.getEpcTag()); } catch (Exception ignored) {}
+                for (TagModels.TagModel t : new ArrayList<>(scannedList)) {
+                    try { appDao.deleteScannedTagByEpc(t.getEpcTag()); } catch (Exception ignored) {}
+                }
+                runOnUiThread(() -> {
+                    scannedList.clear();
+                    scannedRawSet.clear();
+                    scannedEpcSet.clear();
+                    inFlightSet.clear();
+                    scanCount = 0;
+                    finish();
+                });
             }).start();
-
-            if (isListProductTab) {
-                adapter.notifyItemRemoved(position);
-                adapter.notifyItemRangeChanged(position, scannedList.size());
-            } else {
-                buildSumProductList();
-                if (sumAdapter != null) sumAdapter.updateData(sumProductList);
-            }
-
-            tvScanned.setText("Scanned : " + scanCount);
-            showSuccess("Item removed from list");
-            resultScan.requestFocus();
         });
         dialog.show();
     }
@@ -804,24 +791,41 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         dialog.show();
     }
 
-    private void cleanPendingForCurrentDO() {
+    private void restoreScannedTagsFromRoom() {
         new Thread(() -> {
             try {
-                List<TagModels.TagModel> pending = appDao.getPendingTags();
-                for (TagModels.TagModel t : pending) {
+                List<TagModels.TagModel> savedTags = appDao.getPendingTags();
+                List<TagModels.TagModel> forThisDO = new ArrayList<>();
+
+                for (TagModels.TagModel t : savedTags) {
                     if (currentDoNo != null && currentDoNo.equalsIgnoreCase(t.getDoIdRef())) {
-                        appDao.deleteScannedTagByEpc(t.getEpcTag());
+                        forThisDO.add(t);
                     }
                 }
-            } catch (Exception ignored) {}
-            runOnUiThread(() -> {
-                scannedList.clear();
-                scannedRawSet.clear();
-                scannedEpcSet.clear();
-                scanCount = 0;
-                adapter.notifyDataSetChanged();
-                tvScanned.setText("Scanned : 0");
-            });
+
+                runOnUiThread(() -> {
+                    scannedList.clear();
+                    scannedRawSet.clear();
+                    scannedEpcSet.clear();
+                    scanCount = 0;
+
+                    for (TagModels.TagModel t : forThisDO) {
+                        scannedList.add(t);
+                        scannedEpcSet.add(t.getEpcTag().toUpperCase());
+                        scannedRawSet.add(t.getEpcTag().toUpperCase());
+                        scanCount++;
+                    }
+
+                    adapter.notifyDataSetChanged();
+                    tvScanned.setText("Scanned : " + scanCount);
+
+                    if (!forThisDO.isEmpty()) {
+                        showWarning("Restored " + forThisDO.size() + " unsaved item(s) from local storage.");
+                    }
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }).start();
     }
 

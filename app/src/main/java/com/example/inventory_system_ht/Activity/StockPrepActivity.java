@@ -15,10 +15,12 @@ import com.densowave.scannersdk.Listener.BarcodeDataDelegate;
 import com.example.inventory_system_ht.Adapter.DOAdapter;
 import com.example.inventory_system_ht.Helper.ApiClient;
 import com.example.inventory_system_ht.Helper.ApiService;
-import com.example.inventory_system_ht.Helper.PrefManager;
-import com.example.inventory_system_ht.Models.DOModels;
 import com.example.inventory_system_ht.Helper.AppDatabase;
 import com.example.inventory_system_ht.Helper.AppDao;
+import com.example.inventory_system_ht.Helper.PrefManager;
+import com.example.inventory_system_ht.Helper.RfidBulkHelper;
+import com.example.inventory_system_ht.Helper.ScannerManager;
+import com.example.inventory_system_ht.Models.DOModels;
 import com.example.inventory_system_ht.R;
 
 import java.util.ArrayList;
@@ -27,16 +29,17 @@ import java.util.List;
 import retrofit2.Call;
 
 public class StockPrepActivity extends BaseScannerActivity implements BarcodeDataDelegate {
+
     private RecyclerView rvTags;
     private DOAdapter adapter;
     private List<DOModels.DOModel> doList;
-    private CommScanner mCommScanner;
-    private Handler handler = new Handler(Looper.getMainLooper());
+    private final Handler handler = new Handler(Looper.getMainLooper());
     private AppDao appDao;
 
+    // ── Scanner via ScannerManager ────────────────────────────────
     @Override
     protected CommScanner getScannerInstance() {
-        return mCommScanner;
+        return ScannerManager.getInstance().getScanner();
     }
 
     @Override
@@ -54,7 +57,6 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
         rvTags.setLayoutManager(new LinearLayoutManager(this));
         rvTags.setAdapter(adapter);
 
-        setupScanner();
         loadDataFromLocalDB();
 
         findViewById(R.id.btnRefresh).setOnClickListener(v -> fetchDOFromServer());
@@ -86,42 +88,40 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
         }
 
         showLoading();
+        String token = "Bearer " + new PrefManager(this).getToken();
 
-        PrefManager pref = new PrefManager(this);
-        String token = "Bearer " + pref.getToken();
-
-        ApiService apiService = ApiClient.getClient(this).create(ApiService.class);
-
-        apiService.getDo(token).enqueue(new retrofit2.Callback<List<DOModels.DOModel>>() {
-            @Override
-            public void onResponse(Call<List<DOModels.DOModel>> call, retrofit2.Response<List<DOModels.DOModel>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    List<DOModels.DOModel> remoteDOs = response.body();
-                    new Thread(() -> {
-                        // Bersihin data DO lama biar status preparation gak nyampah
-                        try { appDao.deleteAllDO(); } catch (Exception ignored) {}
-                        appDao.insertDOList(remoteDOs);
-                        runOnUiThread(() -> {
+        ApiClient.getClient(this).create(ApiService.class)
+                .getDo(token)
+                .enqueue(new retrofit2.Callback<List<DOModels.DOModel>>() {
+                    @Override
+                    public void onResponse(Call<List<DOModels.DOModel>> call,
+                                           retrofit2.Response<List<DOModels.DOModel>> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            List<DOModels.DOModel> remoteDOs = response.body();
+                            new Thread(() -> {
+                                try { appDao.deleteAllDO(); } catch (Exception ignored) {}
+                                appDao.insertDOList(remoteDOs);
+                                runOnUiThread(() -> {
+                                    hideLoading();
+                                    showSuccess("DO list updated");
+                                    playScanFeedback(0);
+                                    loadDataFromLocalDB();
+                                });
+                            }).start();
+                        } else {
                             hideLoading();
-                            showSuccess("DO list updated");
-                            playScanFeedback(0);
-                            loadDataFromLocalDB();
-                        });
-                    }).start();
-                } else {
-                    hideLoading();
-                    handleApiError(response);
-                    playScanFeedback(2);
-                }
-            }
+                            handleApiError(response);
+                            playScanFeedback(2);
+                        }
+                    }
 
-            @Override
-            public void onFailure(Call<List<DOModels.DOModel>> call, Throwable t) {
-                hideLoading();
-                handleFailure(t);
-                playScanFeedback(2);
-            }
-        });
+                    @Override
+                    public void onFailure(Call<List<DOModels.DOModel>> call, Throwable t) {
+                        hideLoading();
+                        handleFailure(t);
+                        playScanFeedback(2);
+                    }
+                });
     }
 
     private void openDetailDO(DOModels.DOModel item) {
@@ -132,14 +132,7 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
         startActivity(intent);
     }
 
-    private void setupScanner() {
-        if (mCommScanner != null) {
-            try {
-                mCommScanner.getBarcodeScanner().setDataDelegate(this);
-            } catch (Exception e) { e.printStackTrace(); }
-        }
-    }
-
+    // ── Barcode Callback ──────────────────────────────────────────
     @Override
     public void onBarcodeDataReceived(CommScanner scanner, BarcodeDataReceivedEvent event) {
         List<BarcodeData> dataList = event.getBarcodeData();
@@ -165,10 +158,16 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
         }
     }
 
+    // ── Lifecycle ─────────────────────────────────────────────────
     @Override
     protected void onResume() {
         super.onResume();
-        setupScanner();
+        CommScanner scanner = getScannerInstance();
+        updateReaderBattery(findViewById(R.id.ivReaderBattery));
+
+        // Activity ini hanya pakai barcode (scan nomor DO)
+        if (scanner != null) RfidBulkHelper.openBarcode(scanner, this);
+
         loadDataFromLocalDB();
 
         if (getHTBatteryLevel() <= 15) {
@@ -180,17 +179,6 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
     @Override
     protected void onPause() {
         super.onPause();
-        if (mCommScanner != null) {
-            try {
-                if (mCommScanner.getRFIDScanner() != null) {
-                    mCommScanner.getRFIDScanner().setDataDelegate(null);
-                }
-                if (mCommScanner.getBarcodeScanner() != null) {
-                    mCommScanner.getBarcodeScanner().setDataDelegate(null);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
+        RfidBulkHelper.closeBarcode(getScannerInstance());
     }
 }

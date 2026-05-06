@@ -17,6 +17,7 @@ import com.densowave.scannersdk.Common.CommScanner;
 import com.example.inventory_system_ht.Helper.ApiClient;
 import com.example.inventory_system_ht.Helper.ApiService;
 import com.example.inventory_system_ht.Helper.PrefManager;
+import com.example.inventory_system_ht.Helper.ScannerManager;
 import com.example.inventory_system_ht.Models.StockTakingModels;
 import com.example.inventory_system_ht.R;
 
@@ -36,25 +37,26 @@ public class StockTakingListActivity extends BaseScannerActivity {
     private final List<StockTakingModels.ActiveRes> sessionList = new ArrayList<>();
     private SessionAdapter adapter;
 
+    // Activity ini tidak pakai scanner langsung
     @Override
-    protected CommScanner getScannerInstance() { return null; }
+    protected CommScanner getScannerInstance() {
+        return ScannerManager.getInstance().getScanner();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_stock_taking_list);
 
-        PrefManager pref = new PrefManager(this);
-        token = "Bearer " + pref.getToken();
+        token = "Bearer " + new PrefManager(this).getToken();
         api   = ApiClient.getClient(this).create(ApiService.class);
 
-        ImageView  btnBack    = findViewById(R.id.btnBack);
-        CardView   btnRefresh = findViewById(R.id.btnRefresh);
-        RecyclerView rvSessions = findViewById(R.id.rvTags);
+        ImageView    btnBack     = findViewById(R.id.btnBack);
+        CardView     btnRefresh  = findViewById(R.id.btnRefresh);
+        RecyclerView rvSessions  = findViewById(R.id.rvTags);
         tvEmpty = findViewById(R.id.tvEmpty);
 
         adapter = new SessionAdapter(sessionList, session -> {
-            android.util.Log.d("STT", "Clicked sttId: " + session.sttId); // DEBUG
             Intent i = new Intent(this, StockTakingActivity.class);
             i.putExtra("sttId",  session.sttId);
             i.putExtra("remark", session.remark != null ? session.remark : "");
@@ -73,6 +75,7 @@ public class StockTakingListActivity extends BaseScannerActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        updateReaderBattery(findViewById(R.id.ivReaderBattery));
         loadActiveSession();
     }
 
@@ -101,7 +104,7 @@ public class StockTakingListActivity extends BaseScannerActivity {
             public void onFailure(@NonNull Call<StockTakingModels.ActiveRes> call,
                                   @NonNull Throwable t) {
                 hideLoading();
-                showError("Failed to load session: " + t.getMessage());
+                handleFailure(t);
                 tvEmpty.setVisibility(View.VISIBLE);
                 adapter.notifyDataSetChanged();
             }
@@ -147,7 +150,7 @@ public class StockTakingListActivity extends BaseScannerActivity {
             TextView tvSttId, tvLocation;
             VH(View v) {
                 super(v);
-                tvSttId   = v.findViewById(R.id.tvSttId);
+                tvSttId    = v.findViewById(R.id.tvSttId);
                 tvLocation = v.findViewById(R.id.tvSttLocation);
             }
         }

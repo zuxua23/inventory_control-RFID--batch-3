@@ -251,12 +251,6 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
                 showPowerDropdownPopup(btnPowerDropdown, powerList, tvPowerLevel));
     }
 
-    /**
-     * Apply power level ke RFID scanner via SDK.
-     * Denso SDK: scan.powerLevelRead & scan.powerLevelWrite, range 4–30 dBm (langsung int dBm).
-     *
-     * @param dbm nilai dBm yang dipilih user (10, 15, 20, 25, 27)
-     */
     public void applyRfidPower(int dbm) {
         CommScanner scanner = getScannerInstance();
         if (scanner == null || scanner.getRFIDScanner() == null) {
@@ -302,9 +296,6 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Update indikator baterai RFID reader (sudah ada sebelumnya, tetap dipertahankan).
-     */
     public void updateReaderBattery(ImageView ivBattery) {
         if (ivBattery == null) return;
         CommScanner scanner = getScannerInstance();
@@ -327,7 +318,7 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
 
     // ── Power Popup ───────────────────────────────────────────────
 
-    private void showPowerDropdownPopup(View anchor, List<String> items, TextView tvPowerLevel) {
+    protected void showPowerDropdownPopup(View anchor, List<String> items, TextView tvPowerLevel) {
         View popupView = getLayoutInflater().inflate(R.layout.dropdown_popup, null);
         RecyclerView rv = popupView.findViewById(R.id.rvDropdown);
         rv.setLayoutManager(new LinearLayoutManager(this));

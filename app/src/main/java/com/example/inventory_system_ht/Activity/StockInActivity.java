@@ -1,12 +1,11 @@
 package com.example.inventory_system_ht.Activity;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
-import android.media.AudioManager;
-import android.media.ToneGenerator;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -39,6 +38,8 @@ import com.example.inventory_system_ht.Helper.ApiService;
 import com.example.inventory_system_ht.Helper.AppDatabase;
 import com.example.inventory_system_ht.Helper.ErrorParser;
 import com.example.inventory_system_ht.Helper.PrefManager;
+import com.example.inventory_system_ht.Helper.RfidBulkHelper;
+import com.example.inventory_system_ht.Helper.ScannerManager;
 import com.example.inventory_system_ht.Models.GeneralResponse;
 import com.example.inventory_system_ht.Models.ItemModels;
 import com.example.inventory_system_ht.Models.LocationModels;
@@ -57,7 +58,9 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class StockInActivity extends BaseScannerActivity implements BarcodeDataDelegate, RFIDDataDelegate {
+@SuppressLint("UseSwitchCompatOrMaterialCode")
+public class StockInActivity extends BaseScannerActivity
+        implements BarcodeDataDelegate, RFIDDataDelegate {
 
     // ─── Views ────────────────────────────────────────────────────
     private ImageView btnBack;
@@ -73,28 +76,29 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     // ─── Adapters & Data ──────────────────────────────────────────
     private ItemAdapter adapter;
     private SumProductAdapter sumAdapter;
-    private List<ItemModels.ItemModel> scannedItemsList = new ArrayList<>();
+    private final List<ItemModels.ItemModel> scannedItemsList = new ArrayList<>();
     private List<ItemModels.SumProductModel> sumProductList = new ArrayList<>();
     private List<LocationModels.LocationModel> masterLocationList = new ArrayList<>();
-    private List<String> locationList = new ArrayList<>();
+    private final List<String> locationList = new ArrayList<>();
     private final List<String> powerList = new ArrayList<>(Arrays.asList(
             "10 dBm", "15 dBm", "20 dBm", "25 dBm", "27 dBm"
     ));
 
     // ─── State ────────────────────────────────────────────────────
-    private CommScanner mCommScanner;
-    private ToneGenerator toneGen;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private AppDatabase db;
     private PopupWindow activePopup = null;
 
     private int totalScanCount = 0;
     private boolean isListProductTab = true;
-    private String selectedLocation = "";
+    private String selectedLocation   = "";
     private String selectedLocationId = "";
 
+    // ─── Scanner via ScannerManager ───────────────────────────────
     @Override
-    protected CommScanner getScannerInstance() { return mCommScanner; }
+    protected CommScanner getScannerInstance() {
+        return ScannerManager.getInstance().getScanner();
+    }
 
     // ─── Lifecycle ────────────────────────────────────────────────
 
@@ -104,20 +108,17 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         setContentView(R.layout.activity_stock_in);
 
         db = AppDatabase.getDatabase(this);
-        try { toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100); } catch (Exception ignored) {}
 
         bindViews();
         setupRecyclerView();
         setupTabButtons();
         setupLocationDropdown();
-        setupScanner();
-        setupPowerDropdown(btnPowerDropdown, switchRfid, tvPowerLevel);
+        setupSwitchRfid();         // ← ganti setupScanner + setupPowerDropdown
+        setupBarcodeTextWatcher();
+        setupButtonListeners();
 
         resultScan.setShowSoftInputOnFocus(false);
         resultScan.postDelayed(() -> resultScan.requestFocus(), 100);
-
-        setupBarcodeTextWatcher();
-        setupButtonListeners();
 
         fetchLocations();
         fetchMasterItems();
@@ -127,8 +128,15 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     @Override
     protected void onResume() {
         super.onResume();
-        setupScanner();
+        CommScanner scanner = getScannerInstance();
+
         updateReaderBattery(findViewById(R.id.ivReaderBattery));
+
+        // Buka barcode by default saat masuk (jika RFID switch OFF)
+        if (!switchRfid.isChecked() && scanner != null) {
+            RfidBulkHelper.openBarcode(scanner, this);
+        }
+
         if (getHTBatteryLevel() <= 15) {
             showWarning("HT Battery " + getHTBatteryLevel() + "%, segera charge!");
             playScanFeedback(2);
@@ -139,20 +147,9 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     protected void onPause() {
         super.onPause();
         if (activePopup != null && activePopup.isShowing()) activePopup.dismiss();
-        if (mCommScanner != null) {
-            try {
-                if (mCommScanner.getRFIDScanner() != null)
-                    mCommScanner.getRFIDScanner().setDataDelegate(null);
-                if (mCommScanner.getBarcodeScanner() != null)
-                    mCommScanner.getBarcodeScanner().setDataDelegate(null);
-            } catch (Exception ignored) {}
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (toneGen != null) { toneGen.release(); toneGen = null; }
+        CommScanner scanner = getScannerInstance();
+        RfidBulkHelper.closeInventory(scanner);
+        RfidBulkHelper.closeBarcode(scanner);
     }
 
     // ─── Init ─────────────────────────────────────────────────────
@@ -176,6 +173,48 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         switchRfid.setChecked(false);
         btnPowerDropdown.setVisibility(View.GONE);
         rvTags.setItemAnimator(null);
+    }
+
+    // ─── Switch RFID ──────────────────────────────────────────────
+
+    private void setupSwitchRfid() {
+        switchRfid.setOnCheckedChangeListener((btn, isChecked) -> {
+            CommScanner scanner = getScannerInstance();
+
+            // Update icon battery tiap toggle
+            updateReaderBattery(findViewById(R.id.ivReaderBattery));
+
+            if (isChecked) {
+                if (scanner == null) {
+                    showError("SP1 Reader not connected!");
+                    switchRfid.setChecked(false);
+                    updateReaderBattery(findViewById(R.id.ivReaderBattery));
+                    return;
+                }
+                RfidBulkHelper.closeBarcode(scanner);
+                int power = parsePower(tvPowerLevel.getText().toString(), 27);
+                boolean ok = RfidBulkHelper.openInventory(scanner, this, power);
+                if (ok) {
+                    showSuccess("RFID Bulk Scan: ON");
+                    resultScan.setEnabled(false);
+                    btnPowerDropdown.setVisibility(View.VISIBLE);
+                } else {
+                    showError("Failed to start RFID inventory");
+                    switchRfid.setChecked(false);
+                }
+            } else {
+                RfidBulkHelper.closeInventory(scanner);
+                if (scanner != null) RfidBulkHelper.openBarcode(scanner, this);
+                showSagaFeedback("RFID Bulk Scan: OFF", true);
+                resultScan.setEnabled(true);
+                resultScan.requestFocus();
+                btnPowerDropdown.setVisibility(View.GONE);
+            }
+        });
+
+        // Power dropdown popup
+        btnPowerDropdown.setOnClickListener(v ->
+                showPowerDropdownPopup(btnPowerDropdown, powerList, tvPowerLevel));
     }
 
     private void setupRecyclerView() {
@@ -229,15 +268,6 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         });
     }
 
-    private void setupScanner() {
-        if (mCommScanner != null) {
-            try {
-                mCommScanner.getRFIDScanner().setDataDelegate(this);
-                mCommScanner.getBarcodeScanner().setDataDelegate(this);
-            } catch (Exception ignored) {}
-        }
-    }
-
     // ─── Restore Session ──────────────────────────────────────────
 
     private void restoreFromRoom() {
@@ -276,7 +306,6 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
                         }
                     }
                 }
-
                 showWarning(totalScanCount + " item tersimpan dari sesi sebelumnya");
             });
         }).start();
@@ -285,7 +314,6 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     // ─── Scan ─────────────────────────────────────────────────────
 
     private void enqueueScan(String scannedData) {
-        // Cek duplikat in-memory
         for (ItemModels.ItemModel t : scannedItemsList) {
             if (t.getEpcTag().equalsIgnoreCase(scannedData)) {
                 playScanFeedback(1);
@@ -299,12 +327,10 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
             return;
         }
 
-        // Tambah placeholder ke UI dulu
         addItemToList(new ItemModels.ItemModel(scannedData, "", "Loading...", 1));
         playScanFeedback(0);
 
         if (!isNetworkConnected()) {
-            // Simpan ke Room langsung tanpa resolve (offline)
             new Thread(() -> {
                 StockInScanEntity entity = buildEntity(scannedData, "", "Loading...", false);
                 db.appDao().insertStockInScan(entity);
@@ -313,7 +339,6 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
             return;
         }
 
-        // Online → resolve tag dulu baru simpan ke Room
         String token = "Bearer " + new PrefManager(this).getToken();
         String type  = switchRfid.isChecked() ? "RFID" : "QR";
 
@@ -325,17 +350,14 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
                                            Response<TagModels.TagResponseDto> response) {
                         if (response.isSuccessful() && response.body() != null) {
                             TagModels.TagResponseDto tag = response.body();
-                            // Simpan ke Room (resolved)
                             new Thread(() -> {
                                 StockInScanEntity entity = buildEntity(
                                         scannedData, tag.getItemId(), tag.getItemName(), true);
                                 db.appDao().insertStockInScan(entity);
                             }).start();
-                            // Update UI
                             runOnUiThread(() ->
                                     updateItemInList(scannedData, tag.getItemId(), tag.getItemName()));
                         } else {
-                            // Tidak dikenali → hapus dari UI, jangan simpan ke Room
                             runOnUiThread(() -> {
                                 removeItemFromList(scannedData);
                                 playScanFeedback(2);
@@ -346,7 +368,6 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
 
                     @Override
                     public void onFailure(Call<TagModels.TagResponseDto> call, Throwable t) {
-                        // Simpan ke Room tanpa resolve, tampilkan warning
                         new Thread(() -> {
                             StockInScanEntity entity = buildEntity(scannedData, "", "Loading...", false);
                             db.appDao().insertStockInScan(entity);
@@ -356,7 +377,8 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
                 });
     }
 
-    private StockInScanEntity buildEntity(String epc, String itemId, String itemName, boolean resolved) {
+    private StockInScanEntity buildEntity(String epc, String itemId,
+                                          String itemName, boolean resolved) {
         StockInScanEntity e = new StockInScanEntity();
         e.epcTag      = epc;
         e.itemId      = itemId;
@@ -369,7 +391,7 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         return e;
     }
 
-    // ─── Save: Room dulu → cek internet → kirim API ───────────────
+    // ─── Save ─────────────────────────────────────────────────────
 
     private void showSaveConfirmDialog() {
         new AlertDialog.Builder(this)
@@ -386,34 +408,30 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         String type = switchRfid.isChecked() ? "RFID" : "QR";
 
         new Thread(() -> {
-            // Pastikan semua item tersimpan di Room dengan locationId & scannerType terbaru
             List<StockInScanEntity> existing = db.appDao().getAllStockInScans();
             for (ItemModels.ItemModel item : scannedItemsList) {
                 boolean alreadyInRoom = false;
                 for (StockInScanEntity e : existing) {
-                    if (e.epcTag.equalsIgnoreCase(item.getEpcTag())) { alreadyInRoom = true; break; }
+                    if (e.epcTag.equalsIgnoreCase(item.getEpcTag())) {
+                        alreadyInRoom = true;
+                        break;
+                    }
                 }
                 if (!alreadyInRoom) {
                     db.appDao().insertStockInScan(buildEntity(
                             item.getEpcTag(), item.getItemId(), item.getItemName(),
-                            !item.getItemName().equals("Loading...") && !item.getItemName().equals("Pending...")
+                            !item.getItemName().equals("Loading...")
+                                    && !item.getItemName().equals("Pending...")
                     ));
                 }
             }
-            // Update locationId & scannerType semua pending row
             db.appDao().updateStockInLocation(selectedLocationId);
             db.appDao().updateStockInScannerType(type);
 
             handler.post(() -> {
                 hideLoading();
-                if (isNetworkConnected()) {
-                    // Ada internet → kirim ke API
-                    hitApiStockIn(type);
-                } else {
-                    // Tidak ada internet → data sudah di Room, selesai
-                    showWarning("Tidak ada jaringan – data tersimpan lokal");
-                    resultScan.requestFocus();
-                }
+                if (isNetworkConnected()) hitApiStockIn(type);
+                else showWarning("Tidak ada jaringan – data tersimpan lokal");
             });
         }).start();
     }
@@ -430,16 +448,15 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
                 .stockIn(token, request)
                 .enqueue(new Callback<GeneralResponse>() {
                     @Override
-                    public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
+                    public void onResponse(Call<GeneralResponse> call,
+                                           Response<GeneralResponse> response) {
                         hideLoading();
                         if (response.isSuccessful()) {
-                            // Berhasil → hapus dari Room
                             new Thread(() -> db.appDao().clearAllStockInScans()).start();
                             showSuccess("Success: " + response.body().getMessage());
                             playScanFeedback(0);
                             clearAllData();
                         } else {
-                            // Gagal → data tetap di Room
                             handleApiErrorFriendly(response);
                             playScanFeedback(2);
                         }
@@ -521,7 +538,8 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
                 map.get(item.getItemId()).addCount(1);
             else
                 map.put(item.getItemId(),
-                        new ItemModels.SumProductModel(item.getItemId(), item.getItemName(), 1));
+                        new ItemModels.SumProductModel(
+                                item.getItemId(), item.getItemName(), 1));
         }
         sumProductList = new ArrayList<>(map.values());
     }
@@ -532,7 +550,8 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         dialog.setContentView(R.layout.dialog_regist);
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            dialog.getWindow().setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
 
         ((TextView) dialog.findViewById(R.id.tvTitle))
@@ -573,7 +592,8 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
                     @Override
                     public void onResponse(Call<List<ItemModels.ItemResponseDto>> call,
                                            Response<List<ItemModels.ItemResponseDto>> response) {}
-                    @Override public void onFailure(Call<List<ItemModels.ItemResponseDto>> call, Throwable t) {}
+                    @Override
+                    public void onFailure(Call<List<ItemModels.ItemResponseDto>> call, Throwable t) {}
                 });
     }
 
@@ -591,7 +611,6 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
                             locationList.clear();
                             for (LocationModels.LocationModel loc : masterLocationList)
                                 locationList.add(loc.getName());
-                            // Restore label lokasi kalau ada selectedLocationId dari Room
                             if (!selectedLocationId.isEmpty() && selectedLocation.isEmpty()) {
                                 for (LocationModels.LocationModel loc : masterLocationList) {
                                     if (loc.getId().equals(selectedLocationId)) {
@@ -603,7 +622,8 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
                             }
                         }
                     }
-                    @Override public void onFailure(Call<List<LocationModels.LocationModel>> call, Throwable t) {}
+                    @Override
+                    public void onFailure(Call<List<LocationModels.LocationModel>> call, Throwable t) {}
                 });
     }
 
@@ -617,7 +637,11 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     }
 
     private void showDropdownPopup(View anchor, List<String> items) {
-        if (items.isEmpty()) { showWarning("Loading location..."); fetchLocations(); return; }
+        if (items.isEmpty()) {
+            showWarning("Loading location...");
+            fetchLocations();
+            return;
+        }
         if (activePopup != null && activePopup.isShowing()) activePopup.dismiss();
 
         View popupView = getLayoutInflater().inflate(R.layout.dropdown_popup, null);
@@ -638,15 +662,15 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
                     selectedLocation   = masterLocationList.get(position).getName();
                     selectedLocationId = masterLocationList.get(position).getId();
                     etLocation.setText(selectedLocation);
-                    // Update locationId di Room untuk semua scan yang sudah ada
-                    new Thread(() -> db.appDao().updateStockInLocation(selectedLocationId)).start();
+                    new Thread(() ->
+                            db.appDao().updateStockInLocation(selectedLocationId)).start();
                     if (activePopup != null) activePopup.dismiss();
                 });
             }
             @Override public int getItemCount() { return items.size(); }
         });
 
-        int maxHeight = (int)(56 * getResources().getDisplayMetrics().density) * 4;
+        int maxHeight = (int) (56 * getResources().getDisplayMetrics().density) * 4;
         PopupWindow popup = new PopupWindow(
                 popupView, anchor.getWidth(), ViewGroup.LayoutParams.WRAP_CONTENT, true);
         popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -690,10 +714,12 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
     private void setTabActive(boolean listActive) {
         btnListProduct.setBackgroundTintList(ColorStateList.valueOf(
                 getColor(listActive ? R.color.blue_theme : R.color.white)));
-        btnListProduct.setTextColor(getColor(listActive ? R.color.white : R.color.blue_theme));
+        btnListProduct.setTextColor(
+                getColor(listActive ? R.color.white : R.color.blue_theme));
         btnSumProduct.setBackgroundTintList(ColorStateList.valueOf(
                 getColor(listActive ? R.color.white : R.color.blue_theme)));
-        btnSumProduct.setTextColor(getColor(listActive ? R.color.blue_theme : R.color.white));
+        btnSumProduct.setTextColor(
+                getColor(listActive ? R.color.blue_theme : R.color.white));
     }
 
     // ─── Error Handling ───────────────────────────────────────────
@@ -714,29 +740,31 @@ public class StockInActivity extends BaseScannerActivity implements BarcodeDataD
         return "Something went wrong, please try again";
     }
 
-    // ─── RFID / Barcode ───────────────────────────────────────────
+    // ─── RFID / Barcode Callbacks ─────────────────────────────────
 
     @Override
     public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
-        if (!switchRfid.isChecked()) return;
         for (RFIDData data : event.getRFIDData()) {
-            String epc = bytesToHex(data.getUII());
-            handler.post(() -> enqueueScan(epc));
+            String epc = RfidBulkHelper.bytesToHex(data.getUII());
+            if (!epc.isEmpty()) handler.post(() -> enqueueScan(epc));
         }
     }
 
     @Override
     public void onBarcodeDataReceived(CommScanner scanner, BarcodeDataReceivedEvent event) {
-        if (switchRfid.isChecked()) return;
         if (!event.getBarcodeData().isEmpty()) {
             String barcode = new String(event.getBarcodeData().get(0).getData());
             handler.post(() -> enqueueScan(barcode));
         }
     }
 
-    private String bytesToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) sb.append(String.format("%02X", b));
-        return sb.toString();
+    // ─── Helper ───────────────────────────────────────────────────
+
+    private int parsePower(String text, int defaultVal) {
+        try {
+            return Integer.parseInt(text.replace(" dBm", "").trim());
+        } catch (NumberFormatException e) {
+            return defaultVal;
+        }
     }
 }

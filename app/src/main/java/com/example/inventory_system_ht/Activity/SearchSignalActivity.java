@@ -22,8 +22,13 @@ import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.example.inventory_system_ht.Helper.ApiClient;
 import com.example.inventory_system_ht.Helper.ApiService;
 import com.example.inventory_system_ht.Helper.PrefManager;
+import com.example.inventory_system_ht.Helper.RfidBulkHelper;
+import com.example.inventory_system_ht.Helper.ScannerManager;
 import com.example.inventory_system_ht.Models.TagModels;
 import com.example.inventory_system_ht.R;
+
+import java.util.Arrays;
+import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -36,32 +41,34 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
 
     private LinearLayout containerSignalBars;
     private TextView tvItemTitle, tvRssiValue;
-    private Button btnStopSearch;
     private CardView btnPowerDropdown;
-    private ImageView btnBack;
-    private CommScanner mCommScanner;
+    private TextView tvPowerLevel;
 
     private ApiService api;
     private String token;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private BottomSheetDialog currentDialog;
 
+    private final List<String> powerList = Arrays.asList(
+            "10 dBm", "15 dBm", "20 dBm", "25 dBm", "27 dBm"
+    );
+
+    // ── Scanner via ScannerManager ────────────────────────────────
     @Override
-    protected CommScanner getScannerInstance() { return mCommScanner; }
+    protected CommScanner getScannerInstance() {
+        return ScannerManager.getInstance().getScanner();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search_signal);
 
-        PrefManager pref = new PrefManager(this);
-        token = "Bearer " + pref.getToken();
+        token = "Bearer " + new PrefManager(this).getToken();
         api   = ApiClient.getClient(this).create(ApiService.class);
 
         selectedItem   = (TagModels.SearchItemListDto) getIntent().getSerializableExtra("SELECTED_ITEM");
-        selectedDetail = (TagModels.TagDetailDto) getIntent().getSerializableExtra("SELECTED_DETAIL");
-
-        btnPowerDropdown = findViewById(R.id.btnPowerDropdown);
+        selectedDetail = (TagModels.TagDetailDto)      getIntent().getSerializableExtra("SELECTED_DETAIL");
 
         initUI();
 
@@ -71,40 +78,32 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
             tvItemTitle.setText("Locating: " + selectedItem.getItemName() + " | " + location);
         }
 
-        setupScanner();
-
-        TextView tvPowerLevel = findViewById(R.id.tvPowerLevel);
-        setupPowerDropdown(btnPowerDropdown, null, tvPowerLevel);
+        // Power dropdown — activity ini RFID only, selalu visible
         btnPowerDropdown.setVisibility(View.VISIBLE);
+        btnPowerDropdown.setOnClickListener(v ->
+                showPowerDropdownPopup(btnPowerDropdown, powerList, tvPowerLevel));
+
+        findViewById(R.id.btnStopSearch).setOnClickListener(v -> finish());
+        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
 
         showWarning("Pull trigger to locate item via RFID");
-
-        btnStopSearch.setOnClickListener(v -> finish());
-        btnBack.setOnClickListener(v -> finish());
     }
 
     private void initUI() {
         containerSignalBars = findViewById(R.id.containerSignalBars);
         tvItemTitle         = findViewById(R.id.tvItemTitle);
         tvRssiValue         = findViewById(R.id.tvRssiValue);
-        btnStopSearch       = findViewById(R.id.btnStopSearch);
-        btnBack             = findViewById(R.id.btnBack);
+        btnPowerDropdown    = findViewById(R.id.btnPowerDropdown);
+        tvPowerLevel        = findViewById(R.id.tvPowerLevel);
     }
 
-    private void setupScanner() {
-        if (mCommScanner == null) return;
-        try {
-            mCommScanner.getRFIDScanner().setDataDelegate(this);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
+    // ── RFID Callback ─────────────────────────────────────────────
+    // Activity ini hanya listen RFID signal dari 1 tag spesifik (locating)
     @Override
     public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
         for (RFIDData data : event.getRFIDData()) {
-            String epc  = bytesToHexString(data.getUII());
-            float  rssi = data.getRSSI();
+            String epc  = RfidBulkHelper.bytesToHex(data.getUII());
+            float  rssi = data.getRSSI() / 10f; // SDK return x10, e.g. -605 = -60.5 dBm
 
             if (selectedItem != null && epc.equalsIgnoreCase(selectedItem.getEpcTag())) {
                 handler.post(() -> {
@@ -115,37 +114,7 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         }
     }
 
-    private void showTagDetailBottomSheet(TagModels.TagDetailDto detail) {
-        if (currentDialog != null && currentDialog.isShowing())
-            currentDialog.dismiss();
-
-        currentDialog = new BottomSheetDialog(this);
-        View view = LayoutInflater.from(this).inflate(R.layout.dialog_tag_detail, null);
-
-        ((TextView) view.findViewById(R.id.tvDetailItemName)).setText(detail.getItemName());
-        ((TextView) view.findViewById(R.id.tvDetailTagId)).setText(detail.getTagId());
-        ((TextView) view.findViewById(R.id.tvDetailEpc)).setText(detail.getEpcTag());
-        ((TextView) view.findViewById(R.id.tvDetailLocation)).setText(detail.getLocation());
-
-        TextView tvStatus = view.findViewById(R.id.tvDetailStatus);
-        CardView cvStatus = view.findViewById(R.id.cvDetailStatus);
-        tvStatus.setText(detail.getStatus());
-        cvStatus.setCardBackgroundColor(statusColor(detail.getStatus()));
-
-        view.findViewById(R.id.btnSearchSignal).setVisibility(View.GONE);
-
-        currentDialog.setContentView(view);
-        currentDialog.show();
-    }
-
-    private int statusColor(String status) {
-        if (status == null) return Color.parseColor("#9E9E9E");
-        switch (status.toUpperCase()) {
-            case "STOCK IN":    return Color.parseColor("#28a745");
-            case "PREPARATION": return Color.parseColor("#ffc107");
-            default:            return Color.parseColor("#9E9E9E");
-        }
-    }
+    // ── Signal Bars ───────────────────────────────────────────────
 
     public void updateSignalBars(float rssi) {
         int level;
@@ -171,34 +140,72 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         });
     }
 
-    private String bytesToHexString(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) sb.append(String.format("%02X", b));
-        return sb.toString();
+    // ── Bottom Sheet Detail ───────────────────────────────────────
+
+    private void showTagDetailBottomSheet(TagModels.TagDetailDto detail) {
+        if (currentDialog != null && currentDialog.isShowing()) currentDialog.dismiss();
+        currentDialog = new BottomSheetDialog(this);
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_tag_detail, null);
+
+        ((TextView) view.findViewById(R.id.tvDetailItemName)).setText(detail.getItemName());
+        ((TextView) view.findViewById(R.id.tvDetailTagId)).setText(detail.getTagId());
+        ((TextView) view.findViewById(R.id.tvDetailEpc)).setText(detail.getEpcTag());
+        ((TextView) view.findViewById(R.id.tvDetailLocation)).setText(detail.getLocation());
+
+        TextView tvStatus = view.findViewById(R.id.tvDetailStatus);
+        CardView cvStatus = view.findViewById(R.id.cvDetailStatus);
+        tvStatus.setText(detail.getStatus());
+        cvStatus.setCardBackgroundColor(statusColor(detail.getStatus()));
+        view.findViewById(R.id.btnSearchSignal).setVisibility(View.GONE);
+
+        currentDialog.setContentView(view);
+        currentDialog.show();
     }
+
+    private int statusColor(String status) {
+        if (status == null) return Color.parseColor("#9E9E9E");
+        switch (status.toUpperCase()) {
+            case "STOCK IN":    return Color.parseColor("#28a745");
+            case "PREPARATION": return Color.parseColor("#ffc107");
+            default:            return Color.parseColor("#9E9E9E");
+        }
+    }
+
+    // ── Lifecycle ─────────────────────────────────────────────────
 
     @Override
     protected void onResume() {
         super.onResume();
-        setupScanner();
+        CommScanner scanner = getScannerInstance();
         updateReaderBattery(findViewById(R.id.ivReaderBattery));
+
+        // Activity ini RFID only — langsung openInventory saat resume
+        if (scanner != null) {
+            int power = parsePower(tvPowerLevel.getText().toString(), 20);
+            RfidBulkHelper.closeBarcode(scanner);
+            RfidBulkHelper.openInventory(scanner, this, power);
+        } else {
+            showWarning("SP1 Reader not connected!");
+        }
+
         if (getHTBatteryLevel() <= 15) {
-            showSagaFeedback("Battery " + getHTBatteryLevel() + "%, charge now!", false);
+            showWarning("Battery " + getHTBatteryLevel() + "%, charge now!");
             playScanFeedback(2);
         }
-        if (selectedItem != null)
-            showWarning("Battery " + getHTBatteryLevel() + "%, charge now!");
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        if (mCommScanner != null) {
-            try {
-                mCommScanner.getRFIDScanner().setDataDelegate(null);
-            } catch (Exception ignored) {}
-        }
-        if (currentDialog != null && currentDialog.isShowing())
-            currentDialog.dismiss();
+        CommScanner scanner = getScannerInstance();
+        RfidBulkHelper.closeInventory(scanner);
+        if (currentDialog != null && currentDialog.isShowing()) currentDialog.dismiss();
+    }
+
+    // ── Helper ────────────────────────────────────────────────────
+
+    private int parsePower(String text, int defaultVal) {
+        try { return Integer.parseInt(text.replace(" dBm", "").trim()); }
+        catch (NumberFormatException e) { return defaultVal; }
     }
 }

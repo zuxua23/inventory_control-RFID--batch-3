@@ -29,6 +29,8 @@ import com.example.inventory_system_ht.Helper.ApiClient;
 import com.example.inventory_system_ht.Helper.ApiService;
 import com.example.inventory_system_ht.Helper.AppDatabase;
 import com.example.inventory_system_ht.Helper.PrefManager;
+import com.example.inventory_system_ht.Helper.RfidBulkHelper;
+import com.example.inventory_system_ht.Helper.ScannerManager;
 import com.example.inventory_system_ht.Models.TagModels;
 import com.example.inventory_system_ht.R;
 
@@ -39,38 +41,37 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class SearchItemActivity extends BaseScannerActivity implements BarcodeDataDelegate, RFIDDataDelegate {
+public class SearchItemActivity extends BaseScannerActivity
+        implements BarcodeDataDelegate, RFIDDataDelegate {
 
-    private ImageView btnBack;
     private EditText etSearchItem;
     private RecyclerView rvTags;
-    private CardView btnRefresh;
     private SearchItemAdapter adapter;
     private List<TagModels.SearchItemListDto> allItemList;
     private List<TagModels.SearchItemListDto> filteredList;
-    private CommScanner mCommScanner;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private ApiService api;
     private String token;
     private AppDatabase db;
 
+    // ── Scanner via ScannerManager ────────────────────────────────
     @Override
-    protected CommScanner getScannerInstance() { return mCommScanner; }
+    protected CommScanner getScannerInstance() {
+        return ScannerManager.getInstance().getScanner();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search_item);
 
-        PrefManager pref = new PrefManager(this);
-        token = "Bearer " + pref.getToken();
+        token = "Bearer " + new PrefManager(this).getToken();
         api   = ApiClient.getClient(this).create(ApiService.class);
         db    = AppDatabase.getDatabase(this);
 
-        btnBack      = findViewById(R.id.btnBack);
         etSearchItem = findViewById(R.id.searchItem);
         rvTags       = findViewById(R.id.rvTags);
-        btnRefresh   = findViewById(R.id.btnRefresh);
+        CardView btnRefresh = findViewById(R.id.btnRefresh);
 
         allItemList  = new ArrayList<>();
         filteredList = new ArrayList<>();
@@ -79,14 +80,10 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
         rvTags.setLayoutManager(new LinearLayoutManager(this));
         rvTags.setAdapter(adapter);
 
-        setupScanner();
         loadFromLocal();
 
-        if (isNetworkConnected()) {
-            fetchData();
-        } else {
-            showWarning("Offline Mode.");
-        }
+        if (isNetworkConnected()) fetchData();
+        else showWarning("Offline Mode.");
 
         etSearchItem.requestFocus();
 
@@ -102,15 +99,14 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
         adapter.setOnItemClickListener(this::fetchAndShowDetail);
 
         btnRefresh.setOnClickListener(v -> {
-            if (!isNetworkConnected()) {
-                showWarning("No internet connection!");
-                return;
-            }
+            if (!isNetworkConnected()) { showWarning("No internet connection!"); return; }
             fetchData();
         });
 
-        btnBack.setOnClickListener(v -> finish());
+        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
     }
+
+    // ── Local DB ──────────────────────────────────────────────────
 
     private void loadFromLocal() {
         List<TagModels.SearchItemEntity> cached = db.appDao().getAllSearchItems();
@@ -126,27 +122,29 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
         filteredList.clear();
         filteredList.addAll(allItemList);
         adapter.notifyDataSetChanged();
-        if (!allItemList.isEmpty())
-            showSuccess("Loaded " + allItemList.size());
+        if (!allItemList.isEmpty()) showSuccess("Loaded " + allItemList.size());
     }
 
     private void saveToLocal(List<TagModels.SearchItemListDto> items) {
-        db.appDao().deleteAllSearchItems();
-        List<TagModels.SearchItemEntity> entities = new ArrayList<>();
-        for (TagModels.SearchItemListDto dto : items) {
-            TagModels.SearchItemEntity e = new TagModels.SearchItemEntity();
-            e.tagId    = dto.getTagId();
-            e.epcTag   = dto.getEpcTag();
-            e.itemName = dto.getItemName();
-            e.location = dto.getLocation();
-            entities.add(e);
-        }
-        db.appDao().insertSearchItems(entities);
+        new Thread(() -> {
+            db.appDao().deleteAllSearchItems();
+            List<TagModels.SearchItemEntity> entities = new ArrayList<>();
+            for (TagModels.SearchItemListDto dto : items) {
+                TagModels.SearchItemEntity e = new TagModels.SearchItemEntity();
+                e.tagId    = dto.getTagId();
+                e.epcTag   = dto.getEpcTag();
+                e.itemName = dto.getItemName();
+                e.location = dto.getLocation();
+                entities.add(e);
+            }
+            db.appDao().insertSearchItems(entities);
+        }).start();
     }
+
+    // ── Fetch Data ────────────────────────────────────────────────
 
     private void fetchData() {
         showLoading();
-
         api.getSearchItems(token).enqueue(new Callback<List<TagModels.SearchItemListDto>>() {
             @Override
             public void onResponse(Call<List<TagModels.SearchItemListDto>> call,
@@ -154,15 +152,14 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
                 hideLoading();
                 if (response.isSuccessful() && response.body() != null) {
                     List<TagModels.SearchItemListDto> data = response.body();
-                    saveToLocal(data); // simpan ke lokal
+                    saveToLocal(data);
                     allItemList.clear();
                     allItemList.addAll(data);
                     filteredList.clear();
                     filteredList.addAll(allItemList);
                     adapter.notifyDataSetChanged();
                 } else {
-                    handleApiError(response.code());
-                    showError("Failed to retrieve data!");
+                    handleApiError(response);
                 }
             }
 
@@ -170,52 +167,47 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
             public void onFailure(Call<List<TagModels.SearchItemListDto>> call, Throwable t) {
                 hideLoading();
                 handleFailure(t);
-                showError("Failed to connect: " + t.getMessage());
             }
         });
     }
 
     private void fetchAndShowDetail(TagModels.SearchItemListDto item) {
-        if (!isNetworkConnected()) {
-            showWarning("Offline: Cannot view detail.");
-            return;
-        }
+        if (!isNetworkConnected()) { showWarning("Offline: Cannot view detail."); return; }
         showLoading();
-        api.getTagDetailSearchItem(token, item.getTagId()).enqueue(new Callback<TagModels.TagDetailDto>() {
-            @Override
-            public void onResponse(Call<TagModels.TagDetailDto> call,
-                                   Response<TagModels.TagDetailDto> response) {
-                hideLoading();
-                if (response.isSuccessful() && response.body() != null) {
-                    handler.post(() -> showTagDetailDialog(item, response.body()));
-                } else {
-                    showError("Tag not found or deleted");
-                }
-            }
+        api.getTagDetailSearchItem(token, item.getTagId())
+                .enqueue(new Callback<TagModels.TagDetailDto>() {
+                    @Override
+                    public void onResponse(Call<TagModels.TagDetailDto> call,
+                                           Response<TagModels.TagDetailDto> response) {
+                        hideLoading();
+                        if (response.isSuccessful() && response.body() != null)
+                            handler.post(() -> showTagDetailDialog(item, response.body()));
+                        else showError("Tag not found or deleted");
+                    }
 
-            @Override
-            public void onFailure(Call<TagModels.TagDetailDto> call, Throwable t) {
-                hideLoading();
-                showError("Error: " + t.getMessage());
-            }
-        });
+                    @Override
+                    public void onFailure(Call<TagModels.TagDetailDto> call, Throwable t) {
+                        hideLoading(); showError("Error: " + t.getMessage());
+                    }
+                });
     }
 
-    private void showTagDetailDialog(TagModels.SearchItemListDto selectedItem, TagModels.TagDetailDto detail) {
+    // ── Dialog Detail ─────────────────────────────────────────────
+
+    private void showTagDetailDialog(TagModels.SearchItemListDto selectedItem,
+                                     TagModels.TagDetailDto detail) {
         android.app.Dialog dialog = new android.app.Dialog(this);
         dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
         dialog.setContentView(R.layout.dialog_tag_detail);
-
         if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
             dialog.getWindow().setLayout(
                     (int) (getResources().getDisplayMetrics().widthPixels * 0.9),
-                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-            );
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
         }
 
         View view = dialog.getWindow().getDecorView();
-
         ((TextView) view.findViewById(R.id.tvDetailItemName)).setText(detail.getItemName());
         ((TextView) view.findViewById(R.id.tvDetailTagId)).setText(detail.getTagId());
         ((TextView) view.findViewById(R.id.tvDetailEpc)).setText(detail.getEpcTag());
@@ -227,9 +219,8 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
         cvStatus.setCardBackgroundColor(statusColor(detail.getStatus()));
 
         view.findViewById(R.id.btnSearchSignal).setOnClickListener(v -> {
-            CommScanner cs = getScannerInstance();
-            boolean rfidReady = (cs != null && cs.getRFIDScanner() != null);
-            if (!rfidReady) {
+            CommScanner scanner = getScannerInstance();
+            if (scanner == null || scanner.getRFIDScanner() == null) {
                 showError("RFID reader not connected!");
                 playScanFeedback(2);
                 return;
@@ -243,14 +234,7 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
         dialog.show();
     }
 
-    private int statusColor(String status) {
-        if (status == null) return Color.parseColor("#9E9E9E");
-        switch (status.toUpperCase()) {
-            case "STOCK IN":    return Color.parseColor("#28a745");
-            case "PREPARATION": return Color.parseColor("#ffc107");
-            default:            return Color.parseColor("#9E9E9E");
-        }
-    }
+    // ── Filter ────────────────────────────────────────────────────
 
     private void filter(String text) {
         filteredList.clear();
@@ -263,27 +247,24 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
                 String epc      = item.getEpcTag()   != null ? item.getEpcTag().toLowerCase()   : "";
                 String tid      = item.getTagId()    != null ? item.getTagId().toLowerCase()    : "";
                 String location = item.getLocation() != null ? item.getLocation().toLowerCase() : "";
-                if (name.contains(query) || epc.contains(query) || tid.contains(query) || location.contains(query))
+                if (name.contains(query) || epc.contains(query)
+                        || tid.contains(query) || location.contains(query))
                     filteredList.add(item);
             }
         }
         adapter.notifyDataSetChanged();
     }
 
-    private void setupScanner() {
-        if (mCommScanner != null) {
-            try {
-                mCommScanner.getRFIDScanner().setDataDelegate(this);
-                mCommScanner.getBarcodeScanner().setDataDelegate(this);
-            } catch (Exception e) { e.printStackTrace(); }
-        }
-    }
+    // ── Scan Callbacks ────────────────────────────────────────────
 
     @Override
     public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
         for (RFIDData data : event.getRFIDData()) {
-            String epc = bytesToHexString(data.getUII());
-            handler.post(() -> { etSearchItem.setText(epc); moveScannedItemToTop(epc); });
+            String epc = RfidBulkHelper.bytesToHex(data.getUII());
+            handler.post(() -> {
+                etSearchItem.setText(epc);
+                moveScannedItemToTop(epc);
+            });
         }
     }
 
@@ -303,7 +284,8 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
     private void moveScannedItemToTop(String code) {
         TagModels.SearchItemListDto found = null;
         for (TagModels.SearchItemListDto item : allItemList) {
-            if (code.equalsIgnoreCase(item.getEpcTag()) || code.equalsIgnoreCase(item.getTagId())) {
+            if (code.equalsIgnoreCase(item.getEpcTag())
+                    || code.equalsIgnoreCase(item.getTagId())) {
                 found = item; break;
             }
         }
@@ -321,16 +303,18 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
         }
     }
 
-    private String bytesToHexString(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) sb.append(String.format("%02X", b));
-        return sb.toString();
-    }
+    // ── Lifecycle ─────────────────────────────────────────────────
 
     @Override
     protected void onResume() {
         super.onResume();
-        setupScanner();
+        CommScanner scanner = getScannerInstance();
+        updateReaderBattery(findViewById(R.id.ivReaderBattery));
+
+        // SearchItem pakai barcode by default
+        // RFID hanya aktif saat masuk SearchSignalActivity
+        if (scanner != null) RfidBulkHelper.openBarcode(scanner, this);
+
         if (getHTBatteryLevel() <= 15) {
             showWarning("Battery " + getHTBatteryLevel() + "%, charge now!");
             playScanFeedback(2);
@@ -342,11 +326,17 @@ public class SearchItemActivity extends BaseScannerActivity implements BarcodeDa
     @Override
     protected void onPause() {
         super.onPause();
-        if (mCommScanner != null) {
-            try {
-                mCommScanner.getRFIDScanner().setDataDelegate(null);
-                mCommScanner.getBarcodeScanner().setDataDelegate(null);
-            } catch (Exception e) { e.printStackTrace(); }
+        RfidBulkHelper.closeBarcode(getScannerInstance());
+    }
+
+    // ── Helper ────────────────────────────────────────────────────
+
+    private int statusColor(String status) {
+        if (status == null) return Color.parseColor("#9E9E9E");
+        switch (status.toUpperCase()) {
+            case "STOCK IN":    return Color.parseColor("#28a745");
+            case "PREPARATION": return Color.parseColor("#ffc107");
+            default:            return Color.parseColor("#9E9E9E");
         }
     }
 }

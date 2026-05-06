@@ -1,5 +1,6 @@
 package com.example.inventory_system_ht.Activity;
 
+import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
@@ -44,6 +45,8 @@ import com.example.inventory_system_ht.Helper.AppDao;
 import com.example.inventory_system_ht.Helper.AppDatabase;
 import com.example.inventory_system_ht.Helper.ErrorParser;
 import com.example.inventory_system_ht.Helper.PrefManager;
+import com.example.inventory_system_ht.Helper.RfidBulkHelper;
+import com.example.inventory_system_ht.Helper.ScannerManager;
 import com.example.inventory_system_ht.Helper.SyncWorker;
 import com.example.inventory_system_ht.Models.DOModels;
 import com.example.inventory_system_ht.Models.GeneralResponse;
@@ -70,8 +73,11 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class StockPrepProductActivity extends BaseScannerActivity implements BarcodeDataDelegate, RFIDDataDelegate {
+@SuppressLint("UseSwitchCompatOrMaterialCode")
+public class StockPrepProductActivity extends BaseScannerActivity
+        implements BarcodeDataDelegate, RFIDDataDelegate {
 
+    // ── Views ─────────────────────────────────────────────────────
     private EditText resultScan;
     private TextView tvScanned, tvNoDo, tvDateDo, tvPowerLevel, etLocation;
     private Switch switchRfid;
@@ -80,43 +86,45 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
     private CardView btnLocationDropdown, btnPowerDropdown;
     private Button btnListProduct, btnSumProduct;
 
+    // ── Adapters & Data ───────────────────────────────────────────
     private TagAdapter adapter;
     private SumProductPrepAdapter sumAdapter;
     private List<TagModels.TagModel> scannedList;
     private List<ItemModels.SumProductModel> sumProductList = new ArrayList<>();
 
-    private Map<String, Integer> requiredQtyMap = new HashMap<>();
-    private Map<String, String> itemNameMap = new HashMap<>();
+    private final Map<String, Integer> requiredQtyMap = new HashMap<>();
+    private final Map<String, String> itemNameMap = new HashMap<>();
 
     private final Set<String> scannedRawSet = new HashSet<>();
     private final Set<String> scannedEpcSet = new HashSet<>();
-    private final Set<String> inFlightSet = new HashSet<>();
+    private final Set<String> inFlightSet   = new HashSet<>();
 
+    // ── State ─────────────────────────────────────────────────────
     private int scanCount = 0;
     private boolean isListProductTab = true;
-    private String selectedLocation = "";
+    private String selectedLocation   = "";
     private String selectedLocationId = "";
-    private String selectedPower = "20 dBm";
-    private PopupWindow activePopup = null;
+    private String selectedPower      = "20 dBm";
+    private PopupWindow activePopup   = null;
     private String currentDoId = "";
     private String currentDoNo = "";
 
-    private CommScanner mCommScanner;
     private ToneGenerator toneGen;
-    private Handler handler = new Handler(Looper.getMainLooper());
+    private final Handler handler = new Handler(Looper.getMainLooper());
     private ApiService api;
     private String token;
     private AppDao appDao;
 
     private List<LocationModels.LocationModel> masterLocationList = new ArrayList<>();
-    private List<String> locationList = new ArrayList<>();
+    private final List<String> locationList = new ArrayList<>();
     private final List<String> powerList = new ArrayList<>(Arrays.asList(
             "10 dBm", "15 dBm", "20 dBm", "25 dBm", "27 dBm"
     ));
 
+    // ── Scanner via ScannerManager ────────────────────────────────
     @Override
     protected CommScanner getScannerInstance() {
-        return mCommScanner;
+        return ScannerManager.getInstance().getScanner();
     }
 
     @Override
@@ -125,12 +133,11 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         setContentView(R.layout.activity_stock_prep_product);
 
         appDao = AppDatabase.getDatabase(this).appDao();
-        PrefManager pref = new PrefManager(this);
-        token = "Bearer " + pref.getToken();
-        api = ApiClient.getClient(this).create(ApiService.class);
+        token  = "Bearer " + new PrefManager(this).getToken();
+        api    = ApiClient.getClient(this).create(ApiService.class);
 
         initUI();
-        setupScanner();
+        setupSwitchRfid();       // ← ganti setupScanner + setupPowerDropdown
         setupTabButtons();
         setupLocationDropdown();
 
@@ -148,50 +155,87 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         setupListeners();
     }
 
+    // ── UI Init ───────────────────────────────────────────────────
+
     private void initUI() {
         try { toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100); } catch (Exception ignored) {}
 
-        tvScanned = findViewById(R.id.tvScanned);
-        tvNoDo = findViewById(R.id.tvNoDo);
-        tvDateDo = findViewById(R.id.tvDateDo);
-        resultScan = findViewById(R.id.resultScan);
-        switchRfid = findViewById(R.id.switchRfid);
-        rvTags = findViewById(R.id.rvTags);
-        btnLocationDropdown = findViewById(R.id.btnLocationDropdown);
-        btnPowerDropdown = findViewById(R.id.btnPowerDropdown);
-        tvPowerLevel = findViewById(R.id.tvPowerLevel);
-        btnListProduct = findViewById(R.id.btnListProduct);
-        btnSumProduct = findViewById(R.id.btnSumProduct);
-        etLocation = findViewById(R.id.etLocation);
-        ivLocationArrow = findViewById(R.id.ivLocationArrow);
+        tvScanned          = findViewById(R.id.tvScanned);
+        tvNoDo             = findViewById(R.id.tvNoDo);
+        tvDateDo           = findViewById(R.id.tvDateDo);
+        resultScan         = findViewById(R.id.resultScan);
+        switchRfid         = findViewById(R.id.switchRfid);
+        rvTags             = findViewById(R.id.rvTags);
+        btnLocationDropdown= findViewById(R.id.btnLocationDropdown);
+        btnPowerDropdown   = findViewById(R.id.btnPowerDropdown);
+        tvPowerLevel       = findViewById(R.id.tvPowerLevel);
+        btnListProduct     = findViewById(R.id.btnListProduct);
+        btnSumProduct      = findViewById(R.id.btnSumProduct);
+        etLocation         = findViewById(R.id.etLocation);
+        ivLocationArrow    = findViewById(R.id.ivLocationArrow);
 
         btnPowerDropdown.setVisibility(View.GONE);
+        switchRfid.setChecked(false);
 
         scannedList = new ArrayList<>();
         adapter = new TagAdapter(scannedList);
         rvTags.setLayoutManager(new LinearLayoutManager(this));
         rvTags.setAdapter(adapter);
-
         rvTags.setItemAnimator(null);
 
         adapter.setOnItemClickListener(item -> {
             if (!isListProductTab) return;
-            int position = scannedList.indexOf(item);
-            if (position != -1) showDeleteItemDialog(item, position);
+            int pos = scannedList.indexOf(item);
+            if (pos != -1) showDeleteItemDialog(item, pos);
         });
 
         resultScan.setShowSoftInputOnFocus(false);
         resultScan.postDelayed(() -> resultScan.requestFocus(), 100);
     }
 
-    private void setupLocationDropdown() {
-        View.OnClickListener showDropdownListener = v ->
-                showDropdownPopup(btnLocationDropdown, locationList, true);
+    // ── Switch RFID ───────────────────────────────────────────────
 
-        btnLocationDropdown.setOnClickListener(showDropdownListener);
-        etLocation.setOnClickListener(showDropdownListener);
-        ivLocationArrow.setOnClickListener(showDropdownListener);
+    private void setupSwitchRfid() {
+        switchRfid.setOnCheckedChangeListener((btn, isChecked) -> {
+            CommScanner scanner = getScannerInstance();
+
+            // Update icon battery tiap toggle
+            updateReaderBattery(findViewById(R.id.ivReaderBattery));
+
+            if (isChecked) {
+                if (scanner == null) {
+                    showError("SP1 Reader not connected!");
+                    switchRfid.setChecked(false);
+                    updateReaderBattery(findViewById(R.id.ivReaderBattery));
+                    return;
+                }
+                RfidBulkHelper.closeBarcode(scanner);
+                int power = parsePower(tvPowerLevel.getText().toString(), 20);
+                boolean ok = RfidBulkHelper.openInventory(scanner, this, power);
+                if (ok) {
+                    showSuccess("RFID Bulk Scan: ON");
+                    resultScan.setEnabled(false);
+                    btnPowerDropdown.setVisibility(View.VISIBLE);
+                } else {
+                    showError("Failed to start RFID inventory");
+                    switchRfid.setChecked(false);
+                }
+            } else {
+                RfidBulkHelper.closeInventory(scanner);
+                if (scanner != null) RfidBulkHelper.openBarcode(scanner, this);
+                showSagaFeedback("RFID Bulk Scan: OFF", true);
+                resultScan.setEnabled(true);
+                resultScan.requestFocus();
+                btnPowerDropdown.setVisibility(View.GONE);
+            }
+        });
+
+        // Power dropdown popup
+        btnPowerDropdown.setOnClickListener(v ->
+                showPowerDropdownPopup(btnPowerDropdown, powerList, tvPowerLevel));
     }
+
+    // ── Listeners ─────────────────────────────────────────────────
 
     private void setupListeners() {
         findViewById(R.id.btnBack).setOnClickListener(v -> confirmExit());
@@ -201,10 +245,10 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
 
             @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
             @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
+
             @Override
             public void afterTextChanged(Editable s) {
                 if (switchRfid.isChecked() || isProcessing) return;
-
                 String data = s.toString().trim();
                 if (data.length() < 8) return;
 
@@ -212,7 +256,6 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
                 resultScan.removeTextChangedListener(this);
                 resultScan.setText("");
                 resultScan.addTextChangedListener(this);
-
                 processScan(data);
                 isProcessing = false;
             }
@@ -222,16 +265,11 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         resultScan.setOnFocusChangeListener((v, hasFocus) -> {
             if (!hasFocus) {
                 resultScan.postDelayed(() -> {
-                    if (activePopup == null || !activePopup.isShowing()) {
+                    if (activePopup == null || !activePopup.isShowing())
                         resultScan.requestFocus();
-                    }
                 }, 150);
             }
         });
-
-        switchRfid.setFocusable(false);
-        switchRfid.setFocusableInTouchMode(false);
-        setupPowerDropdown(btnPowerDropdown, switchRfid, tvPowerLevel);
 
         findViewById(R.id.btnSave).setOnClickListener(v -> confirmSubmit());
 
@@ -247,12 +285,8 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
                     scannedEpcSet.clear();
                     inFlightSet.clear();
                     buildSumProductList();
-
-                    if (isListProductTab) {
-                        adapter.notifyDataSetChanged();
-                    } else {
-                        if (sumAdapter != null) sumAdapter.updateData(sumProductList);
-                    }
+                    if (isListProductTab) adapter.notifyDataSetChanged();
+                    else if (sumAdapter != null) sumAdapter.updateData(sumProductList);
                     scanCount = 0;
                     tvScanned.setText("Scanned : 0");
                     showSuccess("List has been cleared");
@@ -261,142 +295,19 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         });
     }
 
-    private void setupTabButtons() {
-        setTabActive(true);
+    // ── Location Dropdown ─────────────────────────────────────────
 
-        btnListProduct.setOnClickListener(v -> {
-            if (!isListProductTab) {
-                isListProductTab = true;
-                setTabActive(true);
-                rvTags.setAdapter(adapter);
-            }
-        });
-
-        btnSumProduct.setOnClickListener(v -> {
-            if (isListProductTab) {
-                isListProductTab = false;
-                setTabActive(false);
-                buildSumProductList();
-                sumAdapter = new SumProductPrepAdapter(sumProductList);
-                rvTags.setAdapter(sumAdapter);
-            }
-        });
+    private void setupLocationDropdown() {
+        View.OnClickListener listener = v -> showDropdownPopup(btnLocationDropdown, locationList);
+        btnLocationDropdown.setOnClickListener(listener);
+        etLocation.setOnClickListener(listener);
+        ivLocationArrow.setOnClickListener(listener);
     }
 
-    private void setTabActive(boolean listProductActive) {
-        if (listProductActive) {
-            btnListProduct.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.blue_theme)));
-            btnListProduct.setTextColor(getColor(R.color.white));
-            btnSumProduct.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.white)));
-            btnSumProduct.setTextColor(getColor(R.color.blue_theme));
-        } else {
-            btnSumProduct.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.blue_theme)));
-            btnSumProduct.setTextColor(getColor(R.color.white));
-            btnListProduct.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.white)));
-            btnListProduct.setTextColor(getColor(R.color.blue_theme));
-        }
-    }
-
-    private void buildSumProductList() {
-        Map<String, ItemModels.SumProductModel> map = new LinkedHashMap<>();
-
-        for (Map.Entry<String, Integer> e : requiredQtyMap.entrySet()) {
-            String itemId = e.getKey();
-            int required = e.getValue();
-            String name = itemNameMap.containsKey(itemId) ? itemNameMap.get(itemId) : itemId;
-            map.put(itemId, new ItemModels.SumProductModel(itemId, name, 0, required));
-        }
-
-        for (TagModels.TagModel item : scannedList) {
-            String itemId = item.getItmId();
-            if (map.containsKey(itemId)) {
-                map.get(itemId).addCount(1);
-            } else {
-                ItemModels.SumProductModel m = new ItemModels.SumProductModel(
-                        itemId, item.getProductName(), 1, 0);
-                map.put(itemId, m);
-            }
-        }
-
-        sumProductList.clear();
-        sumProductList.addAll(map.values());
-    }
-
-    private void fetchDoDetail() {
-        if (currentDoId == null || currentDoId.isEmpty()) {
-            showError("Delivery order ID is missing. Please go back and try again.");
-            return;
-        }
-        if (!isNetworkConnected()) return;
-
-        api.getPickingListById(token, currentDoId).enqueue(new Callback<DOModels.DOResponseDto>() {
-            @Override
-            public void onResponse(Call<DOModels.DOResponseDto> call, Response<DOModels.DOResponseDto> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    DOModels.DOResponseDto body = response.body();
-                    requiredQtyMap.clear();
-                    itemNameMap.clear();
-
-                    if (body.getDetails() != null && !body.getDetails().isEmpty()) {
-                        for (DOModels.DODetailResponseDto d : body.getDetails()) {
-                            requiredQtyMap.put(d.getItemId(), d.getQtyRequired());
-                            itemNameMap.put(d.getItemId(), d.getItemName());
-                        }
-                    } else {
-                        showWarning("This order doesn't have any items yet.");
-                    }
-
-                    runOnUiThread(() -> {
-                        if (isListProductTab) adapter.notifyDataSetChanged();
-                        else {
-                            buildSumProductList();
-                            if (sumAdapter != null) sumAdapter.updateData(sumProductList);
-                        }
-                    });
-                } else {
-                    showError("Failed to load order details. Please try again.");
-                    handleApiErrorFriendly(response);
-                }
-            }
-
-            @Override
-            public void onFailure(Call<DOModels.DOResponseDto> call, Throwable t) {
-                showError("Could not reach the server. Please check your connection.");
-                handleFailure(t);
-            }
-        });
-    }
-
-    private void fetchLocations() {
-        if (!isNetworkConnected()) return;
-
-        api.getLocations(token).enqueue(new Callback<List<LocationModels.LocationModel>>() {
-            @Override
-            public void onResponse(Call<List<LocationModels.LocationModel>> call, Response<List<LocationModels.LocationModel>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    masterLocationList = response.body();
-                    locationList.clear();
-                    for (LocationModels.LocationModel loc : masterLocationList) {
-                        locationList.add(loc.getName());
-                    }
-                } else {
-                    handleApiErrorFriendly(response);
-                }
-            }
-
-            @Override
-            public void onFailure(Call<List<LocationModels.LocationModel>> call, Throwable t) {
-                handleFailure(t);
-            }
-        });
-    }
-
-    private void showDropdownPopup(View anchor, List<String> items, boolean isLocation) {
+    private void showDropdownPopup(View anchor, List<String> items) {
         if (items.isEmpty()) {
-            if (isLocation) {
-                showWarning("Loading locations, please wait...");
-                fetchLocations();
-            }
+            showWarning("Loading locations, please wait...");
+            fetchLocations();
             return;
         }
         if (activePopup != null && activePopup.isShowing()) activePopup.dismiss();
@@ -415,46 +326,81 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
 
             @Override
             public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-                TextView tv = holder.itemView.findViewById(R.id.tvDropdownItem);
-                tv.setText(items.get(position));
+                ((TextView) holder.itemView.findViewById(R.id.tvDropdownItem))
+                        .setText(items.get(position));
                 holder.itemView.setOnClickListener(v -> {
-                    if (isLocation) {
-                        selectedLocation = masterLocationList.get(position).getName();
-                        selectedLocationId = masterLocationList.get(position).getId();
-                        etLocation.setText(selectedLocation);
-                    } else {
-                        selectedPower = items.get(position);
-                        tvPowerLevel.setText(selectedPower);
-                    }
+                    selectedLocation   = masterLocationList.get(position).getName();
+                    selectedLocationId = masterLocationList.get(position).getId();
+                    etLocation.setText(selectedLocation);
                     if (activePopup != null) activePopup.dismiss();
                 });
             }
 
-            @Override
-            public int getItemCount() { return items.size(); }
+            @Override public int getItemCount() { return items.size(); }
         });
 
-        int itemHeightPx = (int) (56 * getResources().getDisplayMetrics().density);
-        int maxHeight = itemHeightPx * 4;
-
+        int maxHeight = (int) (56 * getResources().getDisplayMetrics().density) * 4;
         PopupWindow popup = new PopupWindow(
-                popupView,
-                anchor.getWidth(),
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                true
-        );
+                popupView, anchor.getWidth(), ViewGroup.LayoutParams.WRAP_CONTENT, true);
         popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         popup.setElevation(16f);
         popup.setOutsideTouchable(true);
-
         popupView.measure(
                 View.MeasureSpec.makeMeasureSpec(anchor.getWidth(), View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        );
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
         popup.setHeight(Math.min(popupView.getMeasuredHeight(), maxHeight));
         popup.showAsDropDown(anchor, 0, 6);
         activePopup = popup;
     }
+
+    // ── Tab Buttons ───────────────────────────────────────────────
+
+    private void setupTabButtons() {
+        setTabActive(true);
+        btnListProduct.setOnClickListener(v -> {
+            if (!isListProductTab) {
+                isListProductTab = true;
+                setTabActive(true);
+                rvTags.setAdapter(adapter);
+            }
+        });
+        btnSumProduct.setOnClickListener(v -> {
+            if (isListProductTab) {
+                isListProductTab = false;
+                setTabActive(false);
+                buildSumProductList();
+                sumAdapter = new SumProductPrepAdapter(sumProductList);
+                rvTags.setAdapter(sumAdapter);
+            }
+        });
+    }
+
+    private void setTabActive(boolean listActive) {
+        btnListProduct.setBackgroundTintList(ColorStateList.valueOf(
+                getColor(listActive ? R.color.blue_theme : R.color.white)));
+        btnListProduct.setTextColor(getColor(listActive ? R.color.white : R.color.blue_theme));
+        btnSumProduct.setBackgroundTintList(ColorStateList.valueOf(
+                getColor(listActive ? R.color.white : R.color.blue_theme)));
+        btnSumProduct.setTextColor(getColor(listActive ? R.color.blue_theme : R.color.white));
+    }
+
+    private void buildSumProductList() {
+        Map<String, ItemModels.SumProductModel> map = new LinkedHashMap<>();
+        for (Map.Entry<String, Integer> e : requiredQtyMap.entrySet()) {
+            String itemId = e.getKey();
+            String name   = itemNameMap.containsKey(itemId) ? itemNameMap.get(itemId) : itemId;
+            map.put(itemId, new ItemModels.SumProductModel(itemId, name, 0, e.getValue()));
+        }
+        for (TagModels.TagModel item : scannedList) {
+            String itemId = item.getItmId();
+            if (map.containsKey(itemId)) map.get(itemId).addCount(1);
+            else map.put(itemId, new ItemModels.SumProductModel(itemId, item.getProductName(), 1, 0));
+        }
+        sumProductList.clear();
+        sumProductList.addAll(map.values());
+    }
+
+    // ── Scan Logic ────────────────────────────────────────────────
 
     private void processScan(String scannedData) {
         if (selectedLocationId == null || selectedLocationId.isEmpty()) {
@@ -466,29 +412,22 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         final String key = scannedData.toUpperCase();
 
         if (scannedRawSet.contains(key) || scannedEpcSet.contains(key)) {
-            if (!isRfid) {
-                playScanFeedback(1);
-                showWarning("This item is already in the list.");
-            }
+            if (!isRfid) { playScanFeedback(1); showWarning("This item is already in the list."); }
             return;
         }
 
         scannedRawSet.add(key);
 
         final TagModels.TagModel placeholder = new TagModels.TagModel(
-                scannedData, scannedData, "PENDING", "Validating...", currentDoNo, 0
-        );
+                scannedData, scannedData, "PENDING", "Validating...", currentDoNo, 0);
         scannedList.add(0, placeholder);
-        if (adapter != null) {
-            adapter.setLastScannedPosition(0);
-            adapter.notifyItemInserted(0);
-        }
+        if (adapter != null) { adapter.setLastScannedPosition(0); adapter.notifyItemInserted(0); }
         rvTags.scrollToPosition(0);
         scanCount++;
         tvScanned.setText("Scanned : " + scanCount);
         playScanFeedback(0);
 
-        // OFFLINE: cari di cache lokal
+        // OFFLINE
         if (!isNetworkConnected()) {
             new Thread(() -> {
                 TagModels.TagCacheEntity cached = appDao.getTagCacheByKey(key);
@@ -506,7 +445,6 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
                             rollbackScan(placeholder, key, "This item is already in the list.", isRfid);
                             return;
                         }
-
                         int idx = scannedList.indexOf(placeholder);
                         if (idx != -1) {
                             TagModels.TagModel real = new TagModels.TagModel(
@@ -522,28 +460,29 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
                         if (!isRfid) showSuccess("Offline: validated from local cache.");
                     } else {
                         new Thread(() -> appDao.insertScannedTag(placeholder)).start();
-                        if (!isRfid) showWarning("Offline: item saved temporarily, validate when online.");
+                        if (!isRfid) showWarning("Offline: item saved temporarily.");
                     }
                 });
             }).start();
             return;
         }
 
-        // ONLINE: call API
+        // ONLINE
         api.getTagInfo(token, scannedData).enqueue(new Callback<TagModels.TagInfoDto>() {
             @Override
-            public void onResponse(Call<TagModels.TagInfoDto> call, Response<TagModels.TagInfoDto> response) {
+            public void onResponse(Call<TagModels.TagInfoDto> call,
+                                   Response<TagModels.TagInfoDto> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     TagModels.TagInfoDto info = response.body();
 
                     new Thread(() -> {
                         TagModels.TagCacheEntity cache = new TagModels.TagCacheEntity();
-                        cache.epcTag    = info.getEpcTag();
-                        cache.tagId     = info.getTagId();
-                        cache.itemId    = info.getItemId();
-                        cache.itemName  = info.getItemName();
-                        cache.status    = info.getStatus();
-                        cache.cachedAt  = System.currentTimeMillis();
+                        cache.epcTag   = info.getEpcTag();
+                        cache.tagId    = info.getTagId();
+                        cache.itemId   = info.getItemId();
+                        cache.itemName = info.getItemName();
+                        cache.status   = info.getStatus();
+                        cache.cachedAt = System.currentTimeMillis();
                         appDao.insertTagCache(cache);
                     }).start();
 
@@ -552,7 +491,7 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
                         return;
                     }
                     if (!"IN_STOCK".equals(info.getStatus())) {
-                        rollbackScan(placeholder, key, "This item is not ready to be shipped yet. Please check its status.", isRfid);
+                        rollbackScan(placeholder, key, "This item is not ready to be shipped yet.", isRfid);
                         return;
                     }
                     if (scannedEpcSet.contains(info.getEpcTag().toUpperCase())) {
@@ -586,22 +525,61 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         });
     }
 
+    private void rollbackScan(TagModels.TagModel placeholder, String key,
+                              String message, boolean isRfid) {
+        int idx = scannedList.indexOf(placeholder);
+        if (idx != -1) {
+            scannedList.remove(idx);
+            if (isListProductTab) adapter.notifyItemRemoved(idx);
+            else { buildSumProductList(); if (sumAdapter != null) sumAdapter.updateData(sumProductList); }
+        }
+        scannedRawSet.remove(key);
+        scanCount = Math.max(0, scanCount - 1);
+        tvScanned.setText("Scanned : " + scanCount);
+        if (message != null && !isRfid) { showError(message); playScanFeedback(2); }
+    }
+
+    // ── Submit ────────────────────────────────────────────────────
+
+    private void confirmSubmit() {
+        if (scannedList.isEmpty()) { showWarning("No items have been scanned yet."); return; }
+        if (selectedLocationId == null || selectedLocationId.isEmpty()) {
+            showWarning("Please select a destination location first."); return;
+        }
+        for (TagModels.TagModel t : scannedList) {
+            if ("PENDING".equals(t.getItmId())) {
+                showWarning("Some items are still being validated."); return;
+            }
+        }
+
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_regist);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+        ((TextView) dialog.findViewById(R.id.tvTitle))
+                .setText("Save " + scannedList.size() + " item(s) to \"" + selectedLocation + "\"?");
+        Button btnYes = dialog.findViewById(R.id.btnSave);
+        btnYes.setText("Save");
+        btnYes.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.green_button)));
+        dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
+        btnYes.setOnClickListener(v -> { dialog.dismiss(); submitToBackend(); });
+        dialog.show();
+    }
+
     private void submitToBackend() {
-        final boolean isRfid = switchRfid.isChecked();
-        final String scannerType = isRfid ? "RFID" : "QR";
+        final boolean isRfid      = switchRfid.isChecked();
+        final String  scannerType = isRfid ? "RFID" : "QR";
 
         List<String> codes = new ArrayList<>();
         for (TagModels.TagModel t : scannedList) {
             String code = isRfid ? t.getEpcTag() : t.getTagId();
             if (code != null && !code.isEmpty()) codes.add(code);
         }
+        if (codes.isEmpty()) { showWarning("No valid items to save."); return; }
 
-        if (codes.isEmpty()) {
-            showWarning("No valid items to save.");
-            return;
-        }
-
-        // OFFLINE: simpan ke pending submit, sync nanti pakai WorkManager
         if (!isNetworkConnected()) {
             new Thread(() -> {
                 PendingSubmitEntity pending = new PendingSubmitEntity();
@@ -612,261 +590,224 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
                 pending.createdAt    = System.currentTimeMillis();
                 appDao.insertPendingSubmit(pending);
 
-                Constraints constraints = new Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build();
-
-                OneTimeWorkRequest syncRequest = new OneTimeWorkRequest.Builder(SyncWorker.class)
-                        .setConstraints(constraints)
-                        .build();
-
-                WorkManager.getInstance(getApplicationContext()).enqueue(syncRequest);
+                WorkManager.getInstance(getApplicationContext()).enqueue(
+                        new OneTimeWorkRequest.Builder(SyncWorker.class)
+                                .setConstraints(new Constraints.Builder()
+                                        .setRequiredNetworkType(NetworkType.CONNECTED).build())
+                                .build());
 
                 for (TagModels.TagModel t : new ArrayList<>(scannedList)) {
                     try { appDao.deleteScannedTagByEpc(t.getEpcTag()); } catch (Exception ignored) {}
                 }
 
                 runOnUiThread(() -> {
-                    showSuccess("Offline: Data saved locally, will sync when connected.");
+                    showSuccess("Offline: saved locally, will sync when connected.");
                     playScanFeedback(0);
-                    scannedList.clear();
-                    sumProductList.clear();
-                    scannedRawSet.clear();
-                    scannedEpcSet.clear();
-                    buildSumProductList();
-                    adapter.notifyDataSetChanged();
-                    if (sumAdapter != null) sumAdapter.updateData(sumProductList);
-                    scanCount = 0;
-                    tvScanned.setText("Scanned : 0");
+                    clearScannedData();
                     finish();
                 });
             }).start();
             return;
         }
 
-        // ONLINE: kirim langsung
         showLoading();
-        StockPrepBulkRequest request = new StockPrepBulkRequest(
-                currentDoId, codes, scannerType, selectedLocationId);
-
-        api.submitStockPrep(token, request).enqueue(new Callback<GeneralResponse>() {
-            @Override
-            public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
-                hideLoading();
-                if (response.isSuccessful()) {
-                    new Thread(() -> {
-                        for (TagModels.TagModel t : new ArrayList<>(scannedList)) {
-                            try { appDao.deleteScannedTagByEpc(t.getEpcTag()); } catch (Exception ignored) {}
+        api.submitStockPrep(token, new StockPrepBulkRequest(
+                        currentDoId, codes, scannerType, selectedLocationId))
+                .enqueue(new Callback<GeneralResponse>() {
+                    @Override
+                    public void onResponse(Call<GeneralResponse> call,
+                                           Response<GeneralResponse> response) {
+                        hideLoading();
+                        if (response.isSuccessful()) {
+                            new Thread(() -> {
+                                for (TagModels.TagModel t : new ArrayList<>(scannedList)) {
+                                    try { appDao.deleteScannedTagByEpc(t.getEpcTag()); } catch (Exception ignored) {}
+                                }
+                                runOnUiThread(() -> {
+                                    showSuccess("Items saved successfully!");
+                                    playScanFeedback(0);
+                                    clearScannedData();
+                                    finish();
+                                });
+                            }).start();
+                        } else {
+                            handleApiErrorFriendly(response);
+                            playScanFeedback(2);
                         }
-                        runOnUiThread(() -> {
-                            showSuccess("Items saved successfully!");
-                            playScanFeedback(0);
-                            scannedList.clear();
-                            sumProductList.clear();
-                            scannedRawSet.clear();
-                            scannedEpcSet.clear();
-                            buildSumProductList();
-                            adapter.notifyDataSetChanged();
-                            if (sumAdapter != null) sumAdapter.updateData(sumProductList);
-                            scanCount = 0;
-                            tvScanned.setText("Scanned : 0");
-                            finish();
-                        });
-                    }).start();
+                    }
+
+                    @Override
+                    public void onFailure(Call<GeneralResponse> call, Throwable t) {
+                        hideLoading(); handleFailure(t); playScanFeedback(2);
+                    }
+                });
+    }
+
+    private void clearScannedData() {
+        scannedList.clear();
+        sumProductList.clear();
+        scannedRawSet.clear();
+        scannedEpcSet.clear();
+        inFlightSet.clear();
+        buildSumProductList();
+        adapter.notifyDataSetChanged();
+        if (sumAdapter != null) sumAdapter.updateData(sumProductList);
+        scanCount = 0;
+        tvScanned.setText("Scanned : 0");
+    }
+
+    // ── Fetch Data ────────────────────────────────────────────────
+
+    private void fetchDoDetail() {
+        if (currentDoId == null || currentDoId.isEmpty() || !isNetworkConnected()) return;
+        api.getPickingListById(token, currentDoId).enqueue(new Callback<DOModels.DOResponseDto>() {
+            @Override
+            public void onResponse(Call<DOModels.DOResponseDto> call,
+                                   Response<DOModels.DOResponseDto> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    requiredQtyMap.clear();
+                    itemNameMap.clear();
+                    DOModels.DOResponseDto body = response.body();
+                    if (body.getDetails() != null) {
+                        for (DOModels.DODetailResponseDto d : body.getDetails()) {
+                            requiredQtyMap.put(d.getItemId(), d.getQtyRequired());
+                            itemNameMap.put(d.getItemId(), d.getItemName());
+                        }
+                    } else {
+                        showWarning("This order doesn't have any items yet.");
+                    }
+                    runOnUiThread(() -> {
+                        if (isListProductTab) adapter.notifyDataSetChanged();
+                        else { buildSumProductList(); if (sumAdapter != null) sumAdapter.updateData(sumProductList); }
+                    });
                 } else {
                     handleApiErrorFriendly(response);
-                    playScanFeedback(2);
                 }
             }
 
             @Override
-            public void onFailure(Call<GeneralResponse> call, Throwable t) {
-                hideLoading();
-                handleFailure(t);
-                playScanFeedback(2);
-            }
+            public void onFailure(Call<DOModels.DOResponseDto> call, Throwable t) { handleFailure(t); }
         });
     }
 
-    private void rollbackScan(TagModels.TagModel placeholder, String key, String message, boolean isRfid) {
-        int idx = scannedList.indexOf(placeholder);
-        if (idx != -1) {
-            scannedList.remove(idx);
-            if (isListProductTab) adapter.notifyItemRemoved(idx);
-            else {
-                buildSumProductList();
-                if (sumAdapter != null) sumAdapter.updateData(sumProductList);
-            }
-        }
-        scannedRawSet.remove(key);
-        scanCount = Math.max(0, scanCount - 1);
-        tvScanned.setText("Scanned : " + scanCount);
-        if (message != null && !isRfid) {
-            showError(message);
-            playScanFeedback(2);
-        }
-    }
-
-    private void showDeleteItemDialog(TagModels.TagModel tag, int position) {
-        Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_regist);
-
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-
-        TextView tvTitle = dialog.findViewById(R.id.tvTitle);
-        String displayName = (tag.getProductName() != null
-                && !tag.getProductName().isEmpty()
-                && !"Validating...".equals(tag.getProductName()))
-                ? tag.getProductName() : "this item";
-        tvTitle.setText("Are you sure you want to remove \"" + displayName + "\" from the list?");
-
-        Button btnYes = dialog.findViewById(R.id.btnSave);
-        btnYes.setText("Remove");
-        btnYes.setBackgroundTintList(ColorStateList.valueOf(Color.RED));
-
-        dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
-        btnYes.setOnClickListener(v -> {
-            dialog.dismiss();
-            new Thread(() -> {
-                for (TagModels.TagModel t : new ArrayList<>(scannedList)) {
-                    try { appDao.deleteScannedTagByEpc(t.getEpcTag()); } catch (Exception ignored) {}
+    private void fetchLocations() {
+        if (!isNetworkConnected()) return;
+        api.getLocations(token).enqueue(new Callback<List<LocationModels.LocationModel>>() {
+            @Override
+            public void onResponse(Call<List<LocationModels.LocationModel>> call,
+                                   Response<List<LocationModels.LocationModel>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    masterLocationList = response.body();
+                    locationList.clear();
+                    for (LocationModels.LocationModel loc : masterLocationList)
+                        locationList.add(loc.getName());
                 }
-                runOnUiThread(() -> {
-                    scannedList.clear();
-                    scannedRawSet.clear();
-                    scannedEpcSet.clear();
-                    inFlightSet.clear();
-                    scanCount = 0;
-                    finish();
-                });
-            }).start();
-        });
-        dialog.show();
-    }
-
-    private void confirmSubmit() {
-        if (scannedList.isEmpty()) {
-            showWarning("No items have been scanned yet.");
-            return;
-        }
-        if (selectedLocationId == null || selectedLocationId.isEmpty()) {
-            showWarning("Please select a destination location first.");
-            return;
-        }
-        for (TagModels.TagModel t : scannedList) {
-            if ("PENDING".equals(t.getItmId())) {
-                showWarning("Please wait, some items are still being validated.");
-                return;
             }
-        }
-
-        Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_regist);
-
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setLayout(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-
-        TextView tvTitle = dialog.findViewById(R.id.tvTitle);
-        tvTitle.setText("You're about to save " + scannedList.size() + " item(s) to \""
-                + selectedLocation + "\". Confirm?");
-
-        Button btnYes = dialog.findViewById(R.id.btnSave);
-        btnYes.setText("Save");
-        btnYes.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.green_button)));
-
-        dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
-        btnYes.setOnClickListener(v -> {
-            dialog.dismiss();
-            submitToBackend();
+            @Override
+            public void onFailure(Call<List<LocationModels.LocationModel>> call, Throwable t) {}
         });
-        dialog.show();
     }
 
     private void restoreScannedTagsFromRoom() {
         new Thread(() -> {
             try {
-                List<TagModels.TagModel> savedTags = appDao.getPendingTags();
-                List<TagModels.TagModel> forThisDO = new ArrayList<>();
-
-                for (TagModels.TagModel t : savedTags) {
-                    if (currentDoNo != null && currentDoNo.equalsIgnoreCase(t.getDoIdRef())) {
-                        forThisDO.add(t);
-                    }
+                List<TagModels.TagModel> saved = appDao.getPendingTags();
+                List<TagModels.TagModel> forThis = new ArrayList<>();
+                for (TagModels.TagModel t : saved) {
+                    if (currentDoNo != null && currentDoNo.equalsIgnoreCase(t.getDoIdRef()))
+                        forThis.add(t);
                 }
-
                 runOnUiThread(() -> {
-                    scannedList.clear();
-                    scannedRawSet.clear();
-                    scannedEpcSet.clear();
-                    scanCount = 0;
-
-                    for (TagModels.TagModel t : forThisDO) {
+                    scannedList.clear(); scannedRawSet.clear(); scannedEpcSet.clear(); scanCount = 0;
+                    for (TagModels.TagModel t : forThis) {
                         scannedList.add(t);
                         scannedEpcSet.add(t.getEpcTag().toUpperCase());
                         scannedRawSet.add(t.getEpcTag().toUpperCase());
                         scanCount++;
                     }
-
                     adapter.notifyDataSetChanged();
                     tvScanned.setText("Scanned : " + scanCount);
-
-                    if (!forThisDO.isEmpty()) {
-                        showWarning("Restored " + forThisDO.size() + " unsaved item(s) from local storage.");
-                    }
+                    if (!forThis.isEmpty())
+                        showWarning("Restored " + forThis.size() + " unsaved item(s).");
                 });
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            } catch (Exception e) { e.printStackTrace(); }
         }).start();
     }
 
-    private void handleApiErrorFriendly(Response<?> response) {
-        if (response.code() == 401) {
-            handleApiError(response);
-            return;
+    // ── Dialog ────────────────────────────────────────────────────
+
+    private void showDeleteItemDialog(TagModels.TagModel tag, int position) {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_regist);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
-        hideLoading();
-        String rawMsg = ErrorParser.getMessage(response);
-        showError(humanizeError(rawMsg, response.code()));
+        String displayName = (tag.getProductName() != null && !tag.getProductName().isEmpty()
+                && !"Validating...".equals(tag.getProductName()))
+                ? tag.getProductName() : "this item";
+        ((TextView) dialog.findViewById(R.id.tvTitle))
+                .setText("Remove \"" + displayName + "\" from the list?");
+        Button btnYes = dialog.findViewById(R.id.btnSave);
+        btnYes.setText("Remove");
+        btnYes.setBackgroundTintList(ColorStateList.valueOf(Color.RED));
+        dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
+        btnYes.setOnClickListener(v -> {
+            dialog.dismiss();
+            new Thread(() -> {
+                try { appDao.deleteScannedTagByEpc(tag.getEpcTag()); } catch (Exception ignored) {}
+                runOnUiThread(() -> {
+                    scannedRawSet.remove(tag.getEpcTag().toUpperCase());
+                    scannedEpcSet.remove(tag.getEpcTag().toUpperCase());
+                    scannedList.remove(position);
+                    scanCount = Math.max(0, scanCount - 1);
+                    if (isListProductTab) {
+                        adapter.notifyItemRemoved(position);
+                        adapter.notifyItemRangeChanged(position, scannedList.size());
+                    } else {
+                        buildSumProductList();
+                        if (sumAdapter != null) sumAdapter.updateData(sumProductList);
+                    }
+                    tvScanned.setText("Scanned : " + scanCount);
+                    showSuccess("Item removed");
+                });
+            }).start();
+        });
+        dialog.show();
     }
 
-    private String humanizeError(String rawMsg, int statusCode) {
-        if (rawMsg == null) rawMsg = "";
-
-        if (statusCode == 403) return "You don't have permission to do this. Please contact admin.";
-        if (statusCode == 404) return "Data not found. Please refresh and try again.";
-        if (statusCode >= 500) return "The server is having a problem. Please try again in a few minutes.";
-
-        if (!rawMsg.isEmpty()
-                && !rawMsg.toLowerCase().contains("exception")
-                && !rawMsg.toLowerCase().contains("null")
-                && rawMsg.length() < 100) {
-            return rawMsg;
+    private void confirmExit() {
+        if (scannedList.isEmpty()) { finish(); return; }
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_regist);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
-        return "Something went wrong. Please try again.";
+        ((TextView) dialog.findViewById(R.id.tvTitle))
+                .setText("Leave? Scanned items are saved locally.");
+        Button btnYes = dialog.findViewById(R.id.btnSave);
+        btnYes.setText("Leave");
+        btnYes.setBackgroundTintList(ColorStateList.valueOf(Color.RED));
+        dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
+        btnYes.setOnClickListener(v -> { dialog.dismiss(); finish(); });
+        dialog.show();
     }
+
+    // ── RFID / Barcode Callbacks ──────────────────────────────────
 
     @Override
     public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
-        if (!switchRfid.isChecked()) return;
         for (RFIDData data : event.getRFIDData()) {
-            String epc = bytesToHexString(data.getUII());
-            handler.post(() -> processScan(epc));
+            String epc = RfidBulkHelper.bytesToHex(data.getUII());
+            if (!epc.isEmpty()) handler.post(() -> processScan(epc));
         }
     }
 
     @Override
     public void onBarcodeDataReceived(CommScanner scanner, BarcodeDataReceivedEvent event) {
-        if (switchRfid.isChecked()) return;
         List<BarcodeData> dataList = event.getBarcodeData();
         if (!dataList.isEmpty()) {
             String barcode = new String(dataList.get(0).getData());
@@ -874,27 +815,17 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         }
     }
 
-    private String bytesToHexString(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) sb.append(String.format("%02X", b));
-        return sb.toString();
-    }
-
-    private void setupScanner() {
-        if (mCommScanner != null) {
-            try {
-                mCommScanner.getRFIDScanner().setDataDelegate(this);
-                mCommScanner.getBarcodeScanner().setDataDelegate(this);
-            } catch (Exception ignored) {}
-        }
-    }
+    // ── Lifecycle ─────────────────────────────────────────────────
 
     @Override
     protected void onResume() {
         super.onResume();
-        setupScanner();
+        CommScanner scanner = getScannerInstance();
         updateReaderBattery(findViewById(R.id.ivReaderBattery));
-        updateReaderBattery(findViewById(R.id.ivReaderBattery));
+
+        if (!switchRfid.isChecked() && scanner != null)
+            RfidBulkHelper.openBarcode(scanner, this);
+
         if (getHTBatteryLevel() <= 15) {
             showWarning("HT Battery at " + getHTBatteryLevel() + "%, please charge now!");
             playScanFeedback(2);
@@ -905,14 +836,9 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
     protected void onPause() {
         super.onPause();
         if (activePopup != null && activePopup.isShowing()) activePopup.dismiss();
-        if (mCommScanner != null) {
-            try {
-                if (mCommScanner.getRFIDScanner() != null)
-                    mCommScanner.getRFIDScanner().setDataDelegate(null);
-                if (mCommScanner.getBarcodeScanner() != null)
-                    mCommScanner.getBarcodeScanner().setDataDelegate(null);
-            } catch (Exception e) { e.printStackTrace(); }
-        }
+        CommScanner scanner = getScannerInstance();
+        RfidBulkHelper.closeInventory(scanner);
+        RfidBulkHelper.closeBarcode(scanner);
     }
 
     @Override
@@ -921,64 +847,41 @@ public class StockPrepProductActivity extends BaseScannerActivity implements Bar
         if (toneGen != null) { toneGen.release(); toneGen = null; }
     }
 
-    private String formatToEnglishDate(String rawDate) {
-        try {
-            SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
-            SimpleDateFormat outputFormat = new SimpleDateFormat("dd MMMM yyyy", Locale.ENGLISH);
-            java.util.Date date = inputFormat.parse(rawDate);
-            return outputFormat.format(date);
-        } catch (Exception e) {
-            return rawDate;
-        }
-    }
-
     @Override
     public void onBackPressed() {
         super.onBackPressed();
         confirmExit();
     }
 
-    private void confirmExit() {
-        if (scannedList.isEmpty()) {
-            finish();
-            return;
-        }
+    // ── Helper ────────────────────────────────────────────────────
 
-        Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_regist);
+    private int parsePower(String text, int defaultVal) {
+        try { return Integer.parseInt(text.replace(" dBm", "").trim()); }
+        catch (NumberFormatException e) { return defaultVal; }
+    }
 
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setLayout(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
+    private void handleApiErrorFriendly(Response<?> response) {
+        if (response.code() == 401) { handleApiError(response); return; }
+        hideLoading();
+        showError(humanizeError(ErrorParser.getMessage(response), response.code()));
+    }
 
-        TextView tvTitle = dialog.findViewById(R.id.tvTitle);
-        tvTitle.setText("Are you sure you want to leave? All scanned items will be lost.");
+    private String humanizeError(String rawMsg, int code) {
+        if (code == 403) return "You don't have permission to do this.";
+        if (code == 404) return "Data not found. Please refresh and try again.";
+        if (code >= 500) return "Server error. Please try again later.";
+        if (rawMsg != null && !rawMsg.isEmpty()
+                && !rawMsg.toLowerCase().contains("exception")
+                && !rawMsg.toLowerCase().contains("null")
+                && rawMsg.length() < 100) return rawMsg;
+        return "Something went wrong. Please try again.";
+    }
 
-        Button btnYes = dialog.findViewById(R.id.btnSave);
-        btnYes.setText("Leave");
-        btnYes.setBackgroundTintList(ColorStateList.valueOf(Color.RED));
-
-        dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
-        btnYes.setOnClickListener(v -> {
-            dialog.dismiss();
-            new Thread(() -> {
-                for (TagModels.TagModel t : new ArrayList<>(scannedList)) {
-                    try { appDao.deleteScannedTagByEpc(t.getEpcTag()); } catch (Exception ignored) {}
-                }
-                runOnUiThread(() -> {
-                    scannedList.clear();
-                    scannedRawSet.clear();
-                    scannedEpcSet.clear();
-                    inFlightSet.clear();
-                    scanCount = 0;
-                    finish();
-                });
-            }).start();
-        });
-        dialog.show();
+    private String formatToEnglishDate(String rawDate) {
+        try {
+            SimpleDateFormat in  = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+            SimpleDateFormat out = new SimpleDateFormat("dd MMMM yyyy", Locale.ENGLISH);
+            return out.format(in.parse(rawDate));
+        } catch (Exception e) { return rawDate; }
     }
 }

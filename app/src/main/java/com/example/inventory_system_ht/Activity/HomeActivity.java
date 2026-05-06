@@ -54,14 +54,14 @@ public class HomeActivity extends BaseScannerActivity {
             return;
         }
 
-        btnStockIn      = findViewById(R.id.ButtonStockIn);
-        btnStockPrep    = findViewById(R.id.ButtonStockPreparation);
-        btnStockTaking  = findViewById(R.id.ButtonStockTaking);
-        btnTagRegis     = findViewById(R.id.ButtonTagRegis);
-        btnSearchItem   = findViewById(R.id.ButtonSearchItem);
-        tvNamaOperator  = findViewById(R.id.textViewNamaOperator);
-        tvRoleOperator  = findViewById(R.id.textViewRoleOperator);
-        btnLogout       = findViewById(R.id.btnLogout);
+        btnStockIn = findViewById(R.id.ButtonStockIn);
+        btnStockPrep = findViewById(R.id.ButtonStockPreparation);
+        btnStockTaking = findViewById(R.id.ButtonStockTaking);
+        btnTagRegis = findViewById(R.id.ButtonTagRegis);
+        btnSearchItem = findViewById(R.id.ButtonSearchItem);
+        tvNamaOperator = findViewById(R.id.textViewNamaOperator);
+        tvRoleOperator = findViewById(R.id.textViewRoleOperator);
+        btnLogout = findViewById(R.id.btnLogout);
 
         appDao = AppDatabase.getDatabase(this).appDao();
 
@@ -129,7 +129,7 @@ public class HomeActivity extends BaseScannerActivity {
             dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
 
-        Button btnNo  = dialog.findViewById(R.id.btnNo);
+        Button btnNo = dialog.findViewById(R.id.btnNo);
         Button btnYes = dialog.findViewById(R.id.btnYes);
 
         btnNo.setOnClickListener(v -> dialog.dismiss());
@@ -146,11 +146,19 @@ public class HomeActivity extends BaseScannerActivity {
 
         dialog.show();
     }
+
     @Override
     protected void onResume() {
         super.onResume();
-        updateReaderBattery(findViewById(R.id.ivReaderBattery));
+
+        // ← tambah ini
+        if (!prefManager.isSessionValid()) {
+            prefManager.clearSession();
+            Intent intent = new Intent(HomeActivity.this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+            return;
+        }
     }
-
-
 }

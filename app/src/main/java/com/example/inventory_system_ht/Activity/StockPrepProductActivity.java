@@ -114,7 +114,7 @@ public class StockPrepProductActivity extends BaseScannerActivity
     private List<LocationModels.LocationModel> masterLocationList = new ArrayList<>();
     private final List<String> locationList = new ArrayList<>();
     private final List<String> powerList = new ArrayList<>(Arrays.asList(
-            "10 dBm", "15 dBm", "20 dBm", "25 dBm", "27 dBm"
+            "5 dBm", "10 dBm", "15 dBm", "18 dBm", "21 dBm", "24 dBm", "27 dBm", "30 dBm"
     ));
 
     @Override

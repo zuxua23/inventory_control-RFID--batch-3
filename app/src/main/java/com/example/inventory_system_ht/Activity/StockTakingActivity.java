@@ -71,8 +71,8 @@ public class StockTakingActivity extends BaseScannerActivity
     private final List<StockTakingModels.SessionItem>  sessionItems  = new ArrayList<>();
     private final Map<String, Integer>                  epcIndexMap   = new HashMap<>();
     private final List<String> powerList = Arrays.asList(
-            "10 dBm", "15 dBm", "20 dBm", "25 dBm", "27 dBm");
-
+            "5 dBm", "10 dBm", "15 dBm", "18 dBm", "21 dBm", "24 dBm", "27 dBm", "30 dBm"
+    );
     private boolean hasChanges = false;
     private StockTakingItemAdapter adapter;
     private final Handler handler = new Handler(Looper.getMainLooper());

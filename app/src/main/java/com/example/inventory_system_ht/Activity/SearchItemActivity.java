@@ -54,7 +54,6 @@ public class SearchItemActivity extends BaseScannerActivity
     private String token;
     private AppDatabase db;
 
-    // ── Scanner via ScannerManager ────────────────────────────────
     @Override
     protected CommScanner getScannerInstance() {
         return ScannerManager.getInstance().getScanner();
@@ -106,8 +105,6 @@ public class SearchItemActivity extends BaseScannerActivity
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
     }
 
-    // ── Local DB ──────────────────────────────────────────────────
-
     private void loadFromLocal() {
         List<TagModels.SearchItemEntity> cached = db.appDao().getAllSearchItems();
         allItemList.clear();
@@ -122,7 +119,7 @@ public class SearchItemActivity extends BaseScannerActivity
         filteredList.clear();
         filteredList.addAll(allItemList);
         adapter.notifyDataSetChanged();
-        if (!allItemList.isEmpty()) showSuccess("Loaded " + allItemList.size());
+        if (!allItemList.isEmpty()) showSuccess("Loaded ");
     }
 
     private void saveToLocal(List<TagModels.SearchItemListDto> items) {
@@ -140,8 +137,6 @@ public class SearchItemActivity extends BaseScannerActivity
             db.appDao().insertSearchItems(entities);
         }).start();
     }
-
-    // ── Fetch Data ────────────────────────────────────────────────
 
     private void fetchData() {
         showLoading();
@@ -192,8 +187,6 @@ public class SearchItemActivity extends BaseScannerActivity
                 });
     }
 
-    // ── Dialog Detail ─────────────────────────────────────────────
-
     private void showTagDetailDialog(TagModels.SearchItemListDto selectedItem,
                                      TagModels.TagDetailDto detail) {
         android.app.Dialog dialog = new android.app.Dialog(this);
@@ -234,8 +227,6 @@ public class SearchItemActivity extends BaseScannerActivity
         dialog.show();
     }
 
-    // ── Filter ────────────────────────────────────────────────────
-
     private void filter(String text) {
         filteredList.clear();
         String query = text.toLowerCase().trim();
@@ -254,8 +245,6 @@ public class SearchItemActivity extends BaseScannerActivity
         }
         adapter.notifyDataSetChanged();
     }
-
-    // ── Scan Callbacks ────────────────────────────────────────────
 
     @Override
     public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
@@ -303,16 +292,11 @@ public class SearchItemActivity extends BaseScannerActivity
         }
     }
 
-    // ── Lifecycle ─────────────────────────────────────────────────
-
     @Override
     protected void onResume() {
         super.onResume();
         CommScanner scanner = getScannerInstance();
         updateReaderBattery(findViewById(R.id.ivReaderBattery));
-
-        // SearchItem pakai barcode by default
-        // RFID hanya aktif saat masuk SearchSignalActivity
         if (scanner != null) RfidBulkHelper.openBarcode(scanner, this);
 
         if (getHTBatteryLevel() <= 15) {
@@ -329,14 +313,12 @@ public class SearchItemActivity extends BaseScannerActivity
         RfidBulkHelper.closeBarcode(getScannerInstance());
     }
 
-    // ── Helper ────────────────────────────────────────────────────
-
     private int statusColor(String status) {
         if (status == null) return Color.parseColor("#9E9E9E");
         switch (status.toUpperCase()) {
-            case "STOCK IN":    return Color.parseColor("#28a745");
+            case "STOCK IN": return Color.parseColor("#28a745");
             case "PREPARATION": return Color.parseColor("#ffc107");
-            default:            return Color.parseColor("#9E9E9E");
+            default: return Color.parseColor("#9E9E9E");
         }
     }
 }

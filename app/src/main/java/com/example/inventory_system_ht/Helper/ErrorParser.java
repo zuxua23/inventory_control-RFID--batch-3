@@ -8,10 +8,6 @@ import retrofit2.Response;
 
 public class ErrorParser {
 
-    /**
-     * Ambil pesan error dari response body.
-     * Backend lu return { "message": "..." } pas error.
-     */
     public static String getMessage(Response<?> response) {
         if (response == null) return "Unknown error occurred";
 
@@ -21,17 +17,11 @@ public class ErrorParser {
             String bodyStr = errorBody.string();
             if (bodyStr.isEmpty()) return getFallbackMessage(response.code());
 
-            // Coba parse sebagai JSON { "message": "..." }
             try {
                 JsonObject json = JsonParser.parseString(bodyStr).getAsJsonObject();
-                if (json.has("message")) {
-                    return json.get("message").getAsString();
-                }
-                if (json.has("error")) {
-                    return json.get("error").getAsString();
-                }
+                if (json.has("message")) return json.get("message").getAsString();
+                if (json.has("error"))   return json.get("error").getAsString();
             } catch (Exception ignore) {
-                // bukan JSON, return raw body kalo ga kosong
                 if (bodyStr.length() < 200) return bodyStr;
             }
 
@@ -41,9 +31,6 @@ public class ErrorParser {
         }
     }
 
-    /**
-     * Fallback message per status code — TANPA angka.
-     */
     private static String getFallbackMessage(int code) {
         if (code == 401) return "Session expired, please login again";
         if (code == 403) return "You don't have permission for this action";

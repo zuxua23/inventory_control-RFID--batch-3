@@ -13,20 +13,20 @@ import java.util.List;
 
 public class StockTakingModels {
 
-    // ── Request Models ────────────────────────────────────────────
-
     public static class ScanReq {
         public String sttId;
         public String epc;
+
         public ScanReq(String sttId, String epc) {
             this.sttId = sttId;
-            this.epc   = epc;
+            this.epc = epc;
         }
     }
 
     public static class RemoveReq {
         public String sttId;
         public String tagId;
+
         public RemoveReq(String sttId, String tagId) {
             this.sttId = sttId;
             this.tagId = tagId;
@@ -37,8 +37,9 @@ public class StockTakingModels {
         public String sttId;
         public String itemId;
         public String remark;
+
         public ManualAddReq(String sttId, String itemId, String remark) {
-            this.sttId  = sttId;
+            this.sttId = sttId;
             this.itemId = itemId;
             this.remark = remark;
         }
@@ -46,6 +47,7 @@ public class StockTakingModels {
 
     public static class FinalizeReq {
         public String sttId;
+
         public FinalizeReq(String sttId) { this.sttId = sttId; }
     }
 
@@ -67,72 +69,64 @@ public class StockTakingModels {
     public static class BulkItemDto {
         public String epc;
     }
-
-    // ── Response Models ───────────────────────────────────────────
-
     public static class ActiveRes implements Serializable {
-        @SerializedName("sttId")    public String sttId;
-        @SerializedName("remark")   public String remark;
-        @SerializedName("status")   public String status;
+        @SerializedName("sttId") public String sttId;
+        @SerializedName("remark") public String remark;
+        @SerializedName("status") public String status;
         @SerializedName("location") public String location;
     }
 
     public static class SessionItem implements Serializable {
-        @SerializedName("tagId")    public String tagId;
-        @SerializedName("epcTag")   public String epcTag;
-        @SerializedName("itemId")   public String itemId;
+        @SerializedName("tagId") public String tagId;
+        @SerializedName("epcTag") public String epcTag;
+        @SerializedName("itemId") public String itemId;
         @SerializedName("itemName") public String itemName;
         @SerializedName("location") public String location;
 
-        public transient String state        = "PENDING";
+        public transient String state = "PENDING";
         public transient String manualRemark = "";
     }
 
-    // ── Room Entity ───────────────────────────────────────────────
-
     @Entity(tableName = "tb_scan_queue")
     public static class ScanQueueEntity {
-        @PrimaryKey(autoGenerate = true)
-        public int id;
-
-        @ColumnInfo(name = "stt_id")     public String  sttId;
-        @ColumnInfo(name = "epc_tag")    public String  epcTag;
-        @ColumnInfo(name = "action")     public String  action;
-        @ColumnInfo(name = "item_id")    public String  itemId;
-        @ColumnInfo(name = "remark")     public String  remark;
-        @ColumnInfo(name = "is_synced")  public boolean isSynced;
-        @ColumnInfo(name = "created_at") public long    createdAt;
+        @PrimaryKey(autoGenerate = true) public int id;
+        @ColumnInfo(name = "stt_id") public String sttId;
+        @ColumnInfo(name = "epc_tag") public String epcTag;
+        @ColumnInfo(name = "action") public String action;
+        @ColumnInfo(name = "item_id") public String itemId;
+        @ColumnInfo(name = "remark") public String remark;
+        @ColumnInfo(name = "is_synced") public boolean isSynced;
+        @ColumnInfo(name = "created_at") public long createdAt;
     }
+
     @Entity(tableName = "tb_session_items")
     public static class SessionItemEntity {
         @PrimaryKey
         @NonNull
-        @ColumnInfo(name = "epc_tag")   public String epcTag  = "";
-        @ColumnInfo(name = "tag_id")    public String tagId;
-        @ColumnInfo(name = "item_id")   public String itemId;
+        @ColumnInfo(name = "epc_tag") public String epcTag  = "";
+        @ColumnInfo(name = "tag_id") public String tagId;
+        @ColumnInfo(name = "item_id") public String itemId;
         @ColumnInfo(name = "item_name") public String itemName;
-        @ColumnInfo(name = "location")  public String location;
-        @ColumnInfo(name = "stt_id")    public String sttId;
+        @ColumnInfo(name = "location") public String location;
+        @ColumnInfo(name = "stt_id") public String sttId;
 
-        // Convert to SessionItem
         public SessionItem toSessionItem() {
             SessionItem s = new SessionItem();
-            s.epcTag   = epcTag;
-            s.tagId    = tagId;
-            s.itemId   = itemId;
+            s.epcTag = epcTag;
+            s.tagId = tagId;
+            s.itemId = itemId;
             s.itemName = itemName;
             s.location = location;
-            s.state    = "PENDING";
+            s.state = "PENDING";
             return s;
         }
 
-        // Convert from SessionItem
         public static SessionItemEntity from(String sttId, SessionItem s) {
             SessionItemEntity e = new SessionItemEntity();
-            e.sttId    = sttId;
-            e.epcTag   = s.epcTag != null ? s.epcTag : "";
-            e.tagId    = s.tagId;
-            e.itemId   = s.itemId;
+            e.sttId = sttId;
+            e.epcTag = s.epcTag != null ? s.epcTag : "";
+            e.tagId = s.tagId;
+            e.itemId = s.itemId;
             e.itemName = s.itemName;
             e.location = s.location;
             return e;

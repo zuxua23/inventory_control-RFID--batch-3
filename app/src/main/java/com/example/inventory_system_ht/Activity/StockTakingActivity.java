@@ -70,7 +70,6 @@ public class StockTakingActivity extends BaseScannerActivity
 
     private final List<StockTakingModels.SessionItem>  sessionItems  = new ArrayList<>();
     private final Map<String, Integer>                  epcIndexMap   = new HashMap<>();
-    private final List<StockTakingModels.ManualAddReq> manualEntries = new ArrayList<>();
     private final List<String> powerList = Arrays.asList(
             "10 dBm", "15 dBm", "20 dBm", "25 dBm", "27 dBm");
 
@@ -149,7 +148,6 @@ public class StockTakingActivity extends BaseScannerActivity
                     }
                 });
 
-        // ── Switch RFID ───────────────────────────────────────────
         switchRfid.setOnCheckedChangeListener((btn, isChecked) -> {
             CommScanner scanner = getScannerInstance();
 
@@ -183,11 +181,9 @@ public class StockTakingActivity extends BaseScannerActivity
             }
         });
 
-        // Power dropdown
         btnPowerDropdown.setOnClickListener(v ->
                 showPowerDropdownPopup(btnPowerDropdown, powerList, tvPowerLevel));
 
-        // Save
         btnSave.setOnClickListener(v -> {
             if (sttId.isEmpty()) { showWarning("No active session!"); return; }
             showCustomConfirmDialog(
@@ -195,7 +191,6 @@ public class StockTakingActivity extends BaseScannerActivity
                     this::handleSave);
         });
 
-        // Refresh
         if (btnRefresh != null) {
             btnRefresh.setOnClickListener(v -> {
                 if (!isNetworkConnected()) {
@@ -211,7 +206,6 @@ public class StockTakingActivity extends BaseScannerActivity
             });
         }
 
-        // Manual barcode input
         resultScan.setOnEditorActionListener((v, actionId, event) -> {
             String data = resultScan.getText().toString().trim();
             if (!data.isEmpty()) {
@@ -401,7 +395,7 @@ public class StockTakingActivity extends BaseScannerActivity
                             showSuccess("Synced " + foundEpcs.size() + " scans");
                         });
                     }
-                } catch (Exception e) { /* retry nanti */ }
+                } catch (Exception ignored) {}
             }
 
             for (StockTakingModels.ScanQueueEntity q : pending) {
@@ -415,7 +409,7 @@ public class StockTakingActivity extends BaseScannerActivity
                                 new StockTakingModels.ManualAddReq(
                                         q.sttId, q.itemId, q.remark)).execute();
                     db.appDao().markSyncedById(q.id);
-                } catch (Exception e) { /* retry nanti */ }
+                } catch (Exception ignored) {}
             }
             handler.post(this::updateSyncStatus);
         }).start();
@@ -449,7 +443,7 @@ public class StockTakingActivity extends BaseScannerActivity
                 Response<GeneralResponse> res = api.bulkScanStockTaking(token,
                         new StockTakingModels.BulkScanReq(sttId, foundEpcs)).execute();
                 if (res.isSuccessful()) db.appDao().markBulkSynced(sttId, foundEpcs);
-            } catch (Exception e) { /* lanjut */ }
+            } catch (Exception ignored) {}
         }
 
         for (StockTakingModels.ScanQueueEntity q : pending) {
@@ -463,7 +457,7 @@ public class StockTakingActivity extends BaseScannerActivity
                             new StockTakingModels.ManualAddReq(
                                     q.sttId, q.itemId, q.remark)).execute();
                 db.appDao().markSyncedById(q.id);
-            } catch (Exception e) { /* lanjut */ }
+            } catch (Exception ignored) {}
         }
     }
 
@@ -553,8 +547,8 @@ public class StockTakingActivity extends BaseScannerActivity
     private void showSessionEndedDialog() {
         if (isFinishing() || isDestroyed()) return;
         new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Sesi Berakhir")
-                .setMessage("Sesi stock taking ini sudah diselesaikan oleh admin.")
+                .setTitle("Session Ended")
+                .setMessage("This stock taking session has been finalized by admin.")
                 .setCancelable(false)
                 .setPositiveButton("OK", (d, w) -> {
                     new Thread(() -> {
@@ -677,7 +671,6 @@ public class StockTakingActivity extends BaseScannerActivity
                 () -> {
                     sessionItems.clear();
                     epcIndexMap.clear();
-                    manualEntries.clear();
                     hasChanges = false;
                     finish();
                 });
@@ -759,12 +752,5 @@ public class StockTakingActivity extends BaseScannerActivity
         CommScanner scanner = getScannerInstance();
         RfidBulkHelper.closeInventory(scanner);
         RfidBulkHelper.closeBarcode(scanner);
-    }
-
-    // ── Helper ────────────────────────────────────────────────────
-
-    private int parsePower(String text, int defaultVal) {
-        try { return Integer.parseInt(text.replace(" dBm", "").trim()); }
-        catch (NumberFormatException e) { return defaultVal; }
     }
 }

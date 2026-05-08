@@ -1,13 +1,10 @@
 package com.example.inventory_system_ht.Activity;
 
-import static androidx.constraintlayout.helper.widget.MotionEffect.TAG;
-
 import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.Button;
@@ -15,7 +12,6 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 
 import com.densowave.scannersdk.Common.CommScanner;
-import com.densowave.scannersdk.Listener.RFIDDataDelegate;
 import com.example.inventory_system_ht.Helper.ApiClient;
 import com.example.inventory_system_ht.Helper.ApiService;
 import com.example.inventory_system_ht.Helper.PrefManager;
@@ -94,7 +90,6 @@ public class LoginActivity extends BaseScannerActivity {
                         fullName = user.getUsrName();
                     }
 
-                    // Serialize permissions ke JSON buat disimpen
                     String permissionsJson = new com.google.gson.Gson()
                             .toJson(user.getPermissions() != null ? user.getPermissions() : new java.util.ArrayList<>());
 

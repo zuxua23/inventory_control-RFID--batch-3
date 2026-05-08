@@ -1,19 +1,14 @@
 package com.example.inventory_system_ht.Activity;
 
-import android.annotation.SuppressLint;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.PopupWindow;
-import android.widget.Switch;
 import android.widget.TextView;
-import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import android.app.Dialog;
 import android.content.Context;
@@ -213,50 +208,12 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
         }
     }
 
-    // ── RFID Power Dropdown ───────────────────────────────────────
-
-    /**
-     * Setup power dropdown + switch RFID.
-     * Pilih power dari dropdown → langsung apply ke SDK via applyRfidPower().
-     */
-    @SuppressLint("UseSwitchCompatOrMaterialCode")
-    public void setupPowerDropdown(CardView btnPowerDropdown,
-                                   Switch switchRfid,
-                                   TextView tvPowerLevel) {
-        btnPowerDropdown.setVisibility(View.GONE);
-
-        switchRfid.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                CommScanner scanner = getScannerInstance();
-                boolean isRfidReady = (scanner != null && scanner.getRFIDScanner() != null);
-                if (!isRfidReady) {
-                    showSagaFeedback("HT not Connected to Reader RFID", false);
-                    switchRfid.setChecked(false);
-                    return;
-                }
-                btnPowerDropdown.setVisibility(View.VISIBLE);
-            } else {
-                btnPowerDropdown.setVisibility(View.GONE);
-            }
-            showSagaFeedback(isChecked ? "Mode RFID: ON" : "Mode RFID: OFF", true);
-        });
-
-        // Power options: 10–27 dBm (sesuai range SDK 4–30)
-        List<String> powerList = new ArrayList<>(Arrays.asList(
-                "10 dBm", "15 dBm", "20 dBm", "25 dBm", "27 dBm"
-        ));
-
-        btnPowerDropdown.setOnClickListener(v ->
-                showPowerDropdownPopup(btnPowerDropdown, powerList, tvPowerLevel));
-    }
-
     public void applyRfidPower(int dbm) {
         CommScanner scanner = getScannerInstance();
         if (scanner == null || scanner.getRFIDScanner() == null) {
             showError("RFID Reader not connected.");
             return;
         }
-        // Clamp ke range valid SDK (4–30 dBm)
         int safePower = Math.max(4, Math.min(30, dbm));
         try {
             RFIDScannerSettings settings = scanner.getRFIDScanner().getSettings();
@@ -266,32 +223,6 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
             showSuccess("RFID Power set to " + safePower + " dBm");
         } catch (Exception e) {
             showError("Failed to set power: " + e.getMessage());
-        }
-    }
-
-    // ── RFID Reader Indicator ─────────────────────────────────────
-
-    /**
-     * Update indikator koneksi RFID reader.
-     * Panggil di onResume() activity yang pakai RFID.
-     *
-     * @param dotView  View bulat kecil (dot indicator) — warna berubah hijau/merah
-     * @param tvStatus TextView label status (boleh null kalau tidak ada)
-     */
-    public void updateRfidIndicator(View dotView, TextView tvStatus) {
-        CommScanner scanner   = getScannerInstance();
-        boolean isConnected   = (scanner != null && scanner.getRFIDScanner() != null);
-
-        int color = Color.parseColor(isConnected ? "#4CAF50" : "#F44336");
-        String label = isConnected ? "RFID: Connected" : "RFID: Disconnected";
-
-        if (dotView != null) {
-            dotView.setBackgroundTintList(
-                    android.content.res.ColorStateList.valueOf(color));
-        }
-        if (tvStatus != null) {
-            tvStatus.setText(label);
-            tvStatus.setTextColor(color);
         }
     }
 
@@ -346,10 +277,9 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
                     String selected = items.get(position);
                     tvPowerLevel.setText(selected);
 
-                    // ← Apply ke SDK (parse "10 dBm" → 10)
                     try {
-                        int dbm = Integer.parseInt(selected.replace(" dBm", "").trim());
-                        applyRfidPower(dbm);
+                        applyRfidPower(parsePower(selected, 20));
+
                     } catch (NumberFormatException ignored) {}
 
                     if (activePowerPopup != null) activePowerPopup.dismiss();
@@ -382,7 +312,10 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
         activePowerPopup = popup;
     }
 
-    // ── Battery ───────────────────────────────────────────────────
+    protected int parsePower(String text, int defaultVal) {
+        try { return Integer.parseInt(text.replace(" dBm", "").trim()); }
+        catch (NumberFormatException e) { return defaultVal; }
+    }
 
     public int getHTBatteryLevel() {
         BatteryManager bm = (BatteryManager) getSystemService(BATTERY_SERVICE);

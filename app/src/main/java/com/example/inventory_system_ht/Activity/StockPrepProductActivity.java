@@ -5,8 +5,6 @@ import android.app.Dialog;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
-import android.media.AudioManager;
-import android.media.ToneGenerator;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -22,6 +20,7 @@ import android.widget.PopupWindow;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -97,19 +96,16 @@ public class StockPrepProductActivity extends BaseScannerActivity
 
     private final Set<String> scannedRawSet = new HashSet<>();
     private final Set<String> scannedEpcSet = new HashSet<>();
-    private final Set<String> inFlightSet   = new HashSet<>();
 
     // ── State ─────────────────────────────────────────────────────
     private int scanCount = 0;
     private boolean isListProductTab = true;
     private String selectedLocation   = "";
     private String selectedLocationId = "";
-    private String selectedPower      = "20 dBm";
     private PopupWindow activePopup   = null;
     private String currentDoId = "";
     private String currentDoNo = "";
 
-    private ToneGenerator toneGen;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private ApiService api;
     private String token;
@@ -121,7 +117,6 @@ public class StockPrepProductActivity extends BaseScannerActivity
             "10 dBm", "15 dBm", "20 dBm", "25 dBm", "27 dBm"
     ));
 
-    // ── Scanner via ScannerManager ────────────────────────────────
     @Override
     protected CommScanner getScannerInstance() {
         return ScannerManager.getInstance().getScanner();
@@ -137,7 +132,7 @@ public class StockPrepProductActivity extends BaseScannerActivity
         api    = ApiClient.getClient(this).create(ApiService.class);
 
         initUI();
-        setupSwitchRfid();       // ← ganti setupScanner + setupPowerDropdown
+        setupSwitchRfid();
         setupTabButtons();
         setupLocationDropdown();
 
@@ -158,8 +153,6 @@ public class StockPrepProductActivity extends BaseScannerActivity
     // ── UI Init ───────────────────────────────────────────────────
 
     private void initUI() {
-        try { toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100); } catch (Exception ignored) {}
-
         tvScanned          = findViewById(R.id.tvScanned);
         tvNoDo             = findViewById(R.id.tvNoDo);
         tvDateDo           = findViewById(R.id.tvDateDo);
@@ -198,7 +191,6 @@ public class StockPrepProductActivity extends BaseScannerActivity
     private void setupSwitchRfid() {
         switchRfid.setOnCheckedChangeListener((btn, isChecked) -> {
             CommScanner scanner = getScannerInstance();
-
             updateReaderBattery(findViewById(R.id.ivReaderBattery), isChecked);
 
             if (isChecked) {
@@ -229,7 +221,6 @@ public class StockPrepProductActivity extends BaseScannerActivity
             }
         });
 
-        // Power dropdown popup
         btnPowerDropdown.setOnClickListener(v ->
                 showPowerDropdownPopup(btnPowerDropdown, powerList, tvPowerLevel));
     }
@@ -238,6 +229,10 @@ public class StockPrepProductActivity extends BaseScannerActivity
 
     private void setupListeners() {
         findViewById(R.id.btnBack).setOnClickListener(v -> confirmExit());
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override public void handleOnBackPressed() { confirmExit(); }
+        });
 
         resultScan.addTextChangedListener(new TextWatcher() {
             private boolean isProcessing = false;
@@ -282,7 +277,6 @@ public class StockPrepProductActivity extends BaseScannerActivity
                     sumProductList.clear();
                     scannedRawSet.clear();
                     scannedEpcSet.clear();
-                    inFlightSet.clear();
                     buildSumProductList();
                     if (isListProductTab) adapter.notifyDataSetChanged();
                     else if (sumAdapter != null) sumAdapter.updateData(sumProductList);
@@ -341,7 +335,7 @@ public class StockPrepProductActivity extends BaseScannerActivity
         int maxHeight = (int) (56 * getResources().getDisplayMetrics().density) * 4;
         PopupWindow popup = new PopupWindow(
                 popupView, anchor.getWidth(), ViewGroup.LayoutParams.WRAP_CONTENT, true);
-        popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        popup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         popup.setElevation(16f);
         popup.setOutsideTouchable(true);
         popupView.measure(
@@ -426,7 +420,6 @@ public class StockPrepProductActivity extends BaseScannerActivity
         tvScanned.setText("Scanned : " + scanCount);
         playScanFeedback(0);
 
-        // OFFLINE
         if (!isNetworkConnected()) {
             new Thread(() -> {
                 TagModels.TagCacheEntity cached = appDao.getTagCacheByKey(key);
@@ -466,7 +459,6 @@ public class StockPrepProductActivity extends BaseScannerActivity
             return;
         }
 
-        // ONLINE
         api.getTagInfo(token, scannedData).enqueue(new Callback<TagModels.TagInfoDto>() {
             @Override
             public void onResponse(Call<TagModels.TagInfoDto> call,
@@ -647,7 +639,6 @@ public class StockPrepProductActivity extends BaseScannerActivity
         sumProductList.clear();
         scannedRawSet.clear();
         scannedEpcSet.clear();
-        inFlightSet.clear();
         buildSumProductList();
         adapter.notifyDataSetChanged();
         if (sumAdapter != null) sumAdapter.updateData(sumProductList);
@@ -840,24 +831,7 @@ public class StockPrepProductActivity extends BaseScannerActivity
         RfidBulkHelper.closeBarcode(scanner);
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (toneGen != null) { toneGen.release(); toneGen = null; }
-    }
-
-    @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-        confirmExit();
-    }
-
     // ── Helper ────────────────────────────────────────────────────
-
-    private int parsePower(String text, int defaultVal) {
-        try { return Integer.parseInt(text.replace(" dBm", "").trim()); }
-        catch (NumberFormatException e) { return defaultVal; }
-    }
 
     private void handleApiErrorFriendly(Response<?> response) {
         if (response.code() == 401) { handleApiError(response); return; }

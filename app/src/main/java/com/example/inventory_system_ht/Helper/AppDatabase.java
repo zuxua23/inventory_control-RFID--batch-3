@@ -21,9 +21,9 @@ import com.example.inventory_system_ht.Models.TagModels;
                 PendingSubmitEntity.class,
                 StockTakingModels.ScanQueueEntity.class,
                 StockTakingModels.SessionItemEntity.class,
-                StockInScanEntity.class          // ← tambah
+                StockInScanEntity.class
         },
-        version = 6,                             // ← bump version
+        version = 6,
         exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {

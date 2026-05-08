@@ -38,7 +38,7 @@ public class SyncWorker extends Worker {
         List<PendingSubmitEntity> pendingList = appDao.getAllPendingSubmit();
 
         if (pendingList == null || pendingList.isEmpty()) {
-            Log.d(TAG, "Tidak ada pending submit");
+            Log.d(TAG, "No pending submissions");
             return Result.success();
         }
 
@@ -52,28 +52,25 @@ public class SyncWorker extends Worker {
                 Response<GeneralResponse> response;
 
                 if ("TAG_REGISTRATION".equals(pending.doId)) {
-                    AuthModels.RegisterRequest regReq = new AuthModels.RegisterRequest(codes);
-                    response = api.registerTags(token, regReq).execute();
+                    response = api.registerTags(token, new AuthModels.RegisterRequest(codes)).execute();
                 } else {
-                    StockPrepBulkRequest request = new StockPrepBulkRequest(
-                            pending.doId, codes, pending.scannerType, pending.locId);
-                    response = api.submitStockPrep(token, request).execute();
+                    response = api.submitStockPrep(token, new StockPrepBulkRequest(
+                            pending.doId, codes, pending.scannerType, pending.locId)).execute();
                 }
 
                 if (response.isSuccessful()) {
                     appDao.deletePendingSubmitById(pending.id);
-                    Log.d(TAG, "Sync sukses untuk doId: " + pending.doId);
+                    Log.d(TAG, "Sync success for doId: " + pending.doId);
                 } else {
-                    Log.e(TAG, "Sync gagal " + pending.doId + " | code: " + response.code());
+                    Log.e(TAG, "Sync failed for " + pending.doId + " | code: " + response.code());
                     hasFailure = true;
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Exception saat sync: " + e.getMessage());
+                Log.e(TAG, "Sync exception: " + e.getMessage());
                 hasFailure = true;
             }
         }
 
-        // Kalau ada yang gagal, retry nanti
         return hasFailure ? Result.retry() : Result.success();
     }
 }

@@ -12,22 +12,20 @@ import java.security.GeneralSecurityException;
 public class PrefManager {
 
     private SharedPreferences securePref;
-    private SharedPreferences pref;
-    private Context _context;
+    private final SharedPreferences pref;
 
-    private static final String PREF_NAME       = "InventoryPrefsBase";
-    private static final String SECURE_PREF     = "InventoryPrefsSecure";
-    private static final String KEY_BASE_URL    = "base_url_api";
-    private static final String KEY_TOKEN       = "token";
-    private static final String KEY_USER_ID     = "user_id";
-    private static final String KEY_USERNAME    = "username";
-    private static final String KEY_FULL_NAME   = "full_name";
-    private static final String KEY_ROLE_CODE   = "role_code";
+    private static final String PREF_NAME = "InventoryPrefsBase";
+    private static final String SECURE_PREF = "InventoryPrefsSecure";
+    private static final String KEY_BASE_URL = "base_url_api";
+    private static final String KEY_TOKEN = "token";
+    private static final String KEY_USER_ID = "user_id";
+    private static final String KEY_USERNAME = "username";
+    private static final String KEY_FULL_NAME = "full_name";
+    private static final String KEY_ROLE_CODE = "role_code";
     private static final String KEY_PERMISSIONS = "permissions";
-    private static final String KEY_LOGGED_IN   = "is_logged_in";
+    private static final String KEY_LOGGED_IN = "is_logged_in";
 
     public PrefManager(Context context) {
-        this._context = context;
         pref = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
 
         try {
@@ -60,13 +58,13 @@ public class PrefManager {
     public void saveUserSession(String token, String userId, String username,
                                 String fullName, String roleCode, String permissionsJson) {
         securePref.edit()
-                .putBoolean(KEY_LOGGED_IN,   true)
-                .putString(KEY_TOKEN,        token)
-                .putString(KEY_USER_ID,      userId)
-                .putString(KEY_USERNAME,     username)
-                .putString(KEY_FULL_NAME,    fullName)
-                .putString(KEY_ROLE_CODE,    roleCode)
-                .putString(KEY_PERMISSIONS,  permissionsJson != null ? permissionsJson : "[]")
+                .putBoolean(KEY_LOGGED_IN, true)
+                .putString(KEY_TOKEN, token)
+                .putString(KEY_USER_ID, userId)
+                .putString(KEY_USERNAME, username)
+                .putString(KEY_FULL_NAME, fullName)
+                .putString(KEY_ROLE_CODE, roleCode)
+                .putString(KEY_PERMISSIONS, permissionsJson != null ? permissionsJson : "[]")
                 .apply();
     }
 
@@ -87,11 +85,11 @@ public class PrefManager {
                 .apply();
     }
 
-    public String getToken()       { return securePref.getString(KEY_TOKEN, null); }
-    public String getUserId()      { return securePref.getString(KEY_USER_ID, ""); }
-    public String getUsername()    { return securePref.getString(KEY_USERNAME, ""); }
-    public String getFullName()    { return securePref.getString(KEY_FULL_NAME, "Guest"); }
-    public String getRoleCode()    { return securePref.getString(KEY_ROLE_CODE, ""); }
+    public String getToken() { return securePref.getString(KEY_TOKEN, null); }
+    public String getUserId() { return securePref.getString(KEY_USER_ID, ""); }
+    public String getUsername() { return securePref.getString(KEY_USERNAME, ""); }
+    public String getFullName() { return securePref.getString(KEY_FULL_NAME, "Guest"); }
+    public String getRoleCode() { return securePref.getString(KEY_ROLE_CODE, ""); }
     public String getPermissions() { return securePref.getString(KEY_PERMISSIONS, "[]"); }
 
     public String getRoleName() {
@@ -107,5 +105,5 @@ public class PrefManager {
     }
 
     public String getBaseUrl() { return pref.getString(KEY_BASE_URL, ""); }
-    public String getIp()      { return getBaseUrl(); }
+    public String getIp() { return getBaseUrl(); }
 }

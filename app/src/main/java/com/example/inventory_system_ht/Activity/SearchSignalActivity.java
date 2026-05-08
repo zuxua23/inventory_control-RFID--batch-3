@@ -6,8 +6,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -19,9 +17,6 @@ import com.densowave.scannersdk.RFID.RFIDData;
 import com.densowave.scannersdk.RFID.RFIDDataReceivedEvent;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 
-import com.example.inventory_system_ht.Helper.ApiClient;
-import com.example.inventory_system_ht.Helper.ApiService;
-import com.example.inventory_system_ht.Helper.PrefManager;
 import com.example.inventory_system_ht.Helper.RfidBulkHelper;
 import com.example.inventory_system_ht.Helper.ScannerManager;
 import com.example.inventory_system_ht.Models.TagModels;
@@ -29,10 +24,6 @@ import com.example.inventory_system_ht.R;
 
 import java.util.Arrays;
 import java.util.List;
-
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
 public class SearchSignalActivity extends BaseScannerActivity implements RFIDDataDelegate {
 
@@ -43,22 +34,17 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
     private TextView tvItemTitle, tvRssiValue;
     private CardView btnPowerDropdown;
     private TextView tvPowerLevel;
-
-    private ApiService api;
-    private String token;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private BottomSheetDialog currentDialog;
-    private static final int NO_SIGNAL_TIMEOUT_MS = 8000; // 8 detik tanpa sinyal = warning
+    private static final int NO_SIGNAL_TIMEOUT_MS = 8000;
     private boolean tagFoundNotified = false;
 
-    // Perbaikan: Menggunakan Anonymous Class agar bisa memanggil dirinya sendiri (this)
     private final Runnable noSignalRunnable = new Runnable() {
         @Override
         public void run() {
-            showWarning("Tag belum terdeteksi. Coba gerakkan alat mendekati area penyimpanan.");
+            showWarning("Tag not detected. Try moving closer to the storage area.");
             playScanFeedback(2);
             resetSignalDisplay();
-            // Jadwal ulang agar warning muncul berkala
             handler.postDelayed(this, NO_SIGNAL_TIMEOUT_MS);
         }
     };
@@ -67,7 +53,6 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
             "10 dBm", "15 dBm", "20 dBm", "25 dBm", "27 dBm"
     );
 
-    // ── Scanner via ScannerManager ────────────────────────────────
     @Override
     protected CommScanner getScannerInstance() {
         return ScannerManager.getInstance().getScanner();
@@ -77,9 +62,6 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search_signal);
-
-        token = "Bearer " + new PrefManager(this).getToken();
-        api   = ApiClient.getClient(this).create(ApiService.class);
 
         selectedItem   = (TagModels.SearchItemListDto) getIntent().getSerializableExtra("SELECTED_ITEM");
         selectedDetail = (TagModels.TagDetailDto)      getIntent().getSerializableExtra("SELECTED_DETAIL");
@@ -92,7 +74,6 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
             tvItemTitle.setText("Locating: " + selectedItem.getItemName() + " | " + location);
         }
 
-        // Power dropdown — activity ini RFID only, selalu visible
         btnPowerDropdown.setVisibility(View.VISIBLE);
         btnPowerDropdown.setOnClickListener(v ->
                 showPowerDropdownPopup(btnPowerDropdown, powerList, tvPowerLevel));
@@ -105,33 +86,29 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
 
     private void initUI() {
         containerSignalBars = findViewById(R.id.containerSignalBars);
-        tvItemTitle         = findViewById(R.id.tvItemTitle);
-        tvRssiValue         = findViewById(R.id.tvRssiValue);
-        btnPowerDropdown    = findViewById(R.id.btnPowerDropdown);
-        tvPowerLevel        = findViewById(R.id.tvPowerLevel);
+        tvItemTitle = findViewById(R.id.tvItemTitle);
+        tvRssiValue = findViewById(R.id.tvRssiValue);
+        btnPowerDropdown = findViewById(R.id.btnPowerDropdown);
+        tvPowerLevel = findViewById(R.id.tvPowerLevel);
     }
 
-    // ── RFID Callback ─────────────────────────────────────────────
-    // Activity ini hanya listen RFID signal dari 1 tag spesifik (locating)
     @Override
     public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
         for (RFIDData data : event.getRFIDData()) {
             String epc  = RfidBulkHelper.bytesToHex(data.getUII());
-            float  rssi = data.getRSSI() / 10f; // SDK return x10, e.g. -605 = -60.5 dBm
+            float  rssi = data.getRSSI() / 10f;
 
             if (selectedItem != null && epc.equalsIgnoreCase(selectedItem.getEpcTag())) {
                 handler.removeCallbacks(noSignalRunnable);
                 handler.post(() -> {
                     playScanFeedback(0);
                     updateSignalBars(rssi);
-                    // Jadwal ulang timer — jika hilang lagi setelah 8 detik, warning muncul
                     handler.postDelayed(noSignalRunnable, NO_SIGNAL_TIMEOUT_MS);
                 });
             }
         }
     }
 
-    // ── Signal Bars ───────────────────────────────────────────────
 
     public void updateSignalBars(float rssi) {
         int level;
@@ -159,10 +136,9 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
             }
             if (finalLevel >= 9 && !tagFoundNotified) {
                 tagFoundNotified = true;
-                showSuccess("Tag sudah ditemukan! Alat sangat dekat dengan tag.");
+                showSuccess("Tag found! Reader is very close.");
                 playScanFeedback(0);
             } else if (finalLevel < 7) {
-                // Reset flag saat menjauh, agar notif bisa muncul lagi saat dekat lagi
                 tagFoundNotified = false;
             }
         });
@@ -176,7 +152,6 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         }
     }
 
-    // ── Bottom Sheet Detail ───────────────────────────────────────
 
     private void showTagDetailBottomSheet(TagModels.TagDetailDto detail) {
         if (currentDialog != null && currentDialog.isShowing()) currentDialog.dismiss();
@@ -207,7 +182,6 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         }
     }
 
-    // ── Lifecycle ─────────────────────────────────────────────────
 
     @Override
     protected void onResume() {
@@ -218,7 +192,6 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         tagFoundNotified = false;
         resetSignalDisplay();
 
-        // Activity ini RFID only — langsung openInventory saat resume
         if (scanner != null) {
             int power = parsePower(tvPowerLevel.getText().toString(), 20);
             RfidBulkHelper.closeBarcode(scanner);
@@ -244,10 +217,4 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         if (currentDialog != null && currentDialog.isShowing()) currentDialog.dismiss();
     }
 
-    // ── Helper ────────────────────────────────────────────────────
-
-    private int parsePower(String text, int defaultVal) {
-        try { return Integer.parseInt(text.replace(" dBm", "").trim()); }
-        catch (NumberFormatException e) { return defaultVal; }
-    }
 }

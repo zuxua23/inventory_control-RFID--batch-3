@@ -37,7 +37,6 @@ public class StockTakingListActivity extends BaseScannerActivity {
     private final List<StockTakingModels.ActiveRes> sessionList = new ArrayList<>();
     private SessionAdapter adapter;
 
-    // Activity ini tidak pakai scanner langsung
     @Override
     protected CommScanner getScannerInstance() {
         return ScannerManager.getInstance().getScanner();
@@ -110,8 +109,6 @@ public class StockTakingListActivity extends BaseScannerActivity {
             }
         });
     }
-
-    // ── Inner Adapter ─────────────────────────────────────────────
 
     static class SessionAdapter extends RecyclerView.Adapter<SessionAdapter.VH> {
         interface OnClick { void onClick(StockTakingModels.ActiveRes s); }

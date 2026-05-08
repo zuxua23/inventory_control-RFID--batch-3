@@ -21,6 +21,7 @@ public class ItemModels {
         public String getItemId() { return itemId; }
         public String getItemName() { return itemName; }
         public int getQty() { return qty; }
+
         public void setItemId(String itemId) { this.itemId = itemId; }
         public void setItemName(String itemName) { this.itemName = itemName; }
     }
@@ -37,6 +38,7 @@ public class ItemModels {
         public String getItemId() { return itemId; }
         public String getItemName() { return itemName; }
     }
+
     public static class SumProductModel {
         private String itemId;
         private String itemName;
@@ -58,8 +60,8 @@ public class ItemModels {
         public String getItemName() { return itemName; }
         public int getCount() { return count; }
         public int getRequired() { return required; }
+
         public void setRequired(int required) { this.required = required; }
         public void addCount(int n) { this.count += n; }
     }
-
 }

@@ -28,6 +28,9 @@ public class SumProductPrepAdapter extends RecyclerView.Adapter<SumProductPrepAd
         notifyDataSetChanged();
     }
 
+    @Override
+    public int getItemCount() { return list == null ? 0 : list.size(); }
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -41,23 +44,16 @@ public class SumProductPrepAdapter extends RecyclerView.Adapter<SumProductPrepAd
         ItemModels.SumProductModel item = list.get(position);
 
         String name = item.getItemName();
-        if (name == null || name.trim().isEmpty()) {
+        if (name == null || name.trim().isEmpty())
             name = item.getItemId() != null ? item.getItemId() : "Item tidak diketahui";
-        }
 
         h.tvProductName.setText(name);
         h.tvQty.setText(item.getCount() + "/" + item.getRequired());
 
-        // Biru -> Hijau saat fulfilled
         boolean fulfilled = item.getRequired() > 0 && item.getCount() >= item.getRequired();
-        int colorRes = fulfilled ? R.color.green_button : R.color.blue_theme;
         h.cardSumItem.setCardBackgroundColor(
-                ContextCompat.getColor(h.itemView.getContext(), colorRes));
-    }
-
-    @Override
-    public int getItemCount() {
-        return list == null ? 0 : list.size();
+                ContextCompat.getColor(h.itemView.getContext(),
+                        fulfilled ? R.color.green_button : R.color.blue_theme));
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {

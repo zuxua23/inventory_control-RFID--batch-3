@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
+
 import com.google.gson.annotations.SerializedName;
 
 import java.util.List;
@@ -17,24 +18,20 @@ public class DOModels {
         @SerializedName("doId")
         @ColumnInfo(name = "do_id")
         private final String doId;
-
         @SerializedName("doNumber")
         @ColumnInfo(name = "do_number")
         private final String doNo;
-
         @SerializedName("status")
         @ColumnInfo(name = "status")
         private final String status;
-
         @SerializedName("createdAt")
         @ColumnInfo(name = "created_at")
         private final String createdAt;
-
         @SerializedName("scannerType")
         @ColumnInfo(name = "scanner_type")
         private final String scannerType;
-
-        public DOModel(@NonNull String doId, String doNo, String status, String createdAt, String scannerType) {
+        public DOModel(@NonNull String doId, String doNo, String status,
+                       String createdAt, String scannerType) {
             this.doId = doId;
             this.doNo = doNo;
             this.status = status;
@@ -46,7 +43,6 @@ public class DOModels {
         public String getDoNo() { return doNo; }
         public String getStatus() { return status; }
         public String getCreatedAt() { return createdAt; }
-
         public String getScannerType() { return scannerType; }
     }
 
@@ -60,7 +56,7 @@ public class DOModels {
         public String getItemName() { return itemName; }
         public int getQtyRequired() { return qtyRequired; }
         public int getQtyScanned() { return qtyScanned; }
-        public void setQtyScanned(int qty) { this.qtyScanned = qty; }
+        public void setQtyScanned(int q) { this.qtyScanned = q; }
     }
 
     public static class DOResponseDto {
@@ -70,6 +66,6 @@ public class DOModels {
 
         public String getDoId() { return doId; }
         public String getDoNumber() { return doNumber; }
-        public List<DODetailResponseDto> getDetails() { return details; }
+        public List<DODetailResponseDto> getDetails()  { return details; }
     }
 }

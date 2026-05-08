@@ -35,7 +35,7 @@ public class HomeActivity extends BaseScannerActivity {
 
     @Override
     protected CommScanner getScannerInstance() {
-        return mCommScanner;
+        return null;
     }
 
     @Override
@@ -151,7 +151,6 @@ public class HomeActivity extends BaseScannerActivity {
     protected void onResume() {
         super.onResume();
 
-        // ← tambah ini
         if (!prefManager.isSessionValid()) {
             prefManager.clearSession();
             Intent intent = new Intent(HomeActivity.this, LoginActivity.class);

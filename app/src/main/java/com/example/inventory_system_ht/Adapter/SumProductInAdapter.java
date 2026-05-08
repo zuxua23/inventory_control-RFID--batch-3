@@ -13,11 +13,11 @@ import com.example.inventory_system_ht.R;
 
 import java.util.List;
 
-public class SumProductAdapter extends RecyclerView.Adapter<SumProductAdapter.ViewHolder> {
+public class SumProductInAdapter extends RecyclerView.Adapter<SumProductInAdapter.ViewHolder> {
 
     private List<ItemModels.SumProductModel> list;
 
-    public SumProductAdapter(List<ItemModels.SumProductModel> list) {
+    public SumProductInAdapter(List<ItemModels.SumProductModel> list) {
         this.list = list;
     }
 
@@ -26,11 +26,14 @@ public class SumProductAdapter extends RecyclerView.Adapter<SumProductAdapter.Vi
         notifyDataSetChanged();
     }
 
+    @Override
+    public int getItemCount() { return list == null ? 0 : list.size(); }
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_sum_product_in, parent, false); // layout baru
+                .inflate(R.layout.item_sum_product_in, parent, false);
         return new ViewHolder(v);
     }
 
@@ -39,17 +42,11 @@ public class SumProductAdapter extends RecyclerView.Adapter<SumProductAdapter.Vi
         ItemModels.SumProductModel item = list.get(position);
 
         String name = item.getItemName();
-        if (name == null || name.trim().isEmpty()) {
+        if (name == null || name.trim().isEmpty())
             name = item.getItemId() != null ? item.getItemId() : "Item tidak diketahui";
-        }
 
         h.tvProductName.setText(name);
         h.tvQty.setText("Qty: " + item.getCount());
-    }
-
-    @Override
-    public int getItemCount() {
-        return list == null ? 0 : list.size();
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
@@ -60,7 +57,5 @@ public class SumProductAdapter extends RecyclerView.Adapter<SumProductAdapter.Vi
             tvProductName = itemView.findViewById(R.id.tvProductName);
             tvQty = itemView.findViewById(R.id.tvQty);
         }
-
-
     }
 }

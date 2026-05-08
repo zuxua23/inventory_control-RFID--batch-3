@@ -15,24 +15,25 @@ import java.util.List;
 
 public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
 
-    private List<ItemModels.ItemModel> itemList;
+    private final List<ItemModels.ItemModel> itemList;
     private OnItemClickListener listener;
 
     public interface OnItemClickListener {
         void onItemClick(ItemModels.ItemModel item);
     }
 
+    public ItemAdapter(List<ItemModels.ItemModel> itemList) {
+        this.itemList = itemList;
+    }
+
     public void setOnItemClickListener(OnItemClickListener listener) {
         this.listener = listener;
     }
 
-    public void setLastScannedPosition(int position) {
-        // reserved untuk highlight animasi kalau dibutuhkan nanti
-    }
+    public void setLastScannedPosition(int position) {}
 
-    public ItemAdapter(List<ItemModels.ItemModel> itemList) {
-        this.itemList = itemList;
-    }
+    @Override
+    public int getItemCount() { return itemList == null ? 0 : itemList.size(); }
 
     @NonNull
     @Override
@@ -56,15 +57,10 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
         });
     }
 
-    @Override
-    public int getItemCount() {
-        return itemList == null ? 0 : itemList.size();
-    }
-
-    public static class ViewHolder extends RecyclerView.ViewHolder {
+    static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvTagId, tvProductName;
 
-        public ViewHolder(@NonNull View itemView) {
+        ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTagId = itemView.findViewById(R.id.tvTagId);
             tvProductName = itemView.findViewById(R.id.tvProductName);

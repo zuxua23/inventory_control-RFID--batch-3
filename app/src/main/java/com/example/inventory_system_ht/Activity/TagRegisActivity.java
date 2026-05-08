@@ -86,14 +86,14 @@ public class TagRegisActivity extends BaseScannerActivity
         db = AppDatabase.getDatabase(this);
 
         // ── findViewById ──────────────────────────────────────────────
-        resultScan       = findViewById(R.id.resultScan);
-        tvScanned        = findViewById(R.id.tvScanned);
-        switchRfid       = findViewById(R.id.switchRfid);
-        btnClear         = findViewById(R.id.btnClear);
-        btnSubmitRegis   = findViewById(R.id.btnSubmitRegis);
-        rvTags           = findViewById(R.id.rvTags);
+        resultScan = findViewById(R.id.resultScan);
+        tvScanned = findViewById(R.id.tvScanned);
+        switchRfid = findViewById(R.id.switchRfid);
+        btnClear = findViewById(R.id.btnClear);
+        btnSubmitRegis = findViewById(R.id.btnSubmitRegis);
+        rvTags = findViewById(R.id.rvTags);
         btnPowerDropdown = findViewById(R.id.btnPowerDropdown);
-        tvPowerLevel     = findViewById(R.id.tvPowerLevel);
+        tvPowerLevel = findViewById(R.id.tvPowerLevel);
 
         // Dropdown hidden by default saat switch masih OFF
         btnPowerDropdown.setVisibility(View.GONE);
@@ -155,8 +155,13 @@ public class TagRegisActivity extends BaseScannerActivity
 
         // ── Barcode input via EditText (saat RFID OFF) ────────────────
         resultScan.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
-            @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
+            @Override
+            public void beforeTextChanged(CharSequence s, int i, int c, int a) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int i, int b, int c) {
+            }
 
             @Override
             public void afterTextChanged(Editable s) {
@@ -312,11 +317,11 @@ public class TagRegisActivity extends BaseScannerActivity
         if (!isNetworkConnected()) {
             new Thread(() -> {
                 PendingSubmitEntity pending = new PendingSubmitEntity();
-                pending.doId         = "TAG_REGISTRATION";
+                pending.doId = "TAG_REGISTRATION";
                 pending.scannedCodes = new Gson().toJson(tagIds);
-                pending.scannerType  = switchRfid.isChecked() ? "RFID" : "QR";
-                pending.locId        = "";
-                pending.createdAt    = System.currentTimeMillis();
+                pending.scannerType = switchRfid.isChecked() ? "RFID" : "QR";
+                pending.locId = "";
+                pending.createdAt = System.currentTimeMillis();
                 db.appDao().insertPendingSubmit(pending);
 
                 WorkManager.getInstance(getApplicationContext()).enqueue(
@@ -364,13 +369,5 @@ public class TagRegisActivity extends BaseScannerActivity
                     }
                 });
     }
-
-    // ── Helper ────────────────────────────────────────────────────────
-    private int parsePower(String text, int defaultVal) {
-        try {
-            return Integer.parseInt(text.replace(" dBm", "").trim());
-        } catch (NumberFormatException e) {
-            return defaultVal;
-        }
-    }
 }
+

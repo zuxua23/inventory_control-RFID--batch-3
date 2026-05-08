@@ -36,7 +36,6 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
     private final Handler handler = new Handler(Looper.getMainLooper());
     private AppDao appDao;
 
-    // ── Scanner via ScannerManager ────────────────────────────────
     @Override
     protected CommScanner getScannerInstance() {
         return ScannerManager.getInstance().getScanner();
@@ -103,7 +102,6 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
                                 appDao.insertDOList(remoteDOs);
                                 runOnUiThread(() -> {
                                     hideLoading();
-                                    showSuccess("DO list updated");
                                     playScanFeedback(0);
                                     loadDataFromLocalDB();
                                 });
@@ -132,7 +130,6 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
         startActivity(intent);
     }
 
-    // ── Barcode Callback ──────────────────────────────────────────
     @Override
     public void onBarcodeDataReceived(CommScanner scanner, BarcodeDataReceivedEvent event) {
         List<BarcodeData> dataList = event.getBarcodeData();
@@ -158,14 +155,12 @@ public class StockPrepActivity extends BaseScannerActivity implements BarcodeDat
         }
     }
 
-    // ── Lifecycle ─────────────────────────────────────────────────
     @Override
     protected void onResume() {
         super.onResume();
         CommScanner scanner = getScannerInstance();
         updateReaderBattery(findViewById(R.id.ivReaderBattery));
 
-        // Activity ini hanya pakai barcode (scan nomor DO)
         if (scanner != null) RfidBulkHelper.openBarcode(scanner, this);
 
         loadDataFromLocalDB();

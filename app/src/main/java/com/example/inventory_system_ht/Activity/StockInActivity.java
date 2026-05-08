@@ -32,7 +32,7 @@ import com.densowave.scannersdk.Listener.RFIDDataDelegate;
 import com.densowave.scannersdk.RFID.RFIDData;
 import com.densowave.scannersdk.RFID.RFIDDataReceivedEvent;
 import com.example.inventory_system_ht.Adapter.ItemAdapter;
-import com.example.inventory_system_ht.Adapter.SumProductAdapter;
+import com.example.inventory_system_ht.Adapter.SumProductInAdapter;
 import com.example.inventory_system_ht.Helper.ApiClient;
 import com.example.inventory_system_ht.Helper.ApiService;
 import com.example.inventory_system_ht.Helper.AppDatabase;
@@ -62,7 +62,6 @@ import retrofit2.Response;
 public class StockInActivity extends BaseScannerActivity
         implements BarcodeDataDelegate, RFIDDataDelegate {
 
-    // ─── Views ────────────────────────────────────────────────────
     private ImageView btnBack;
     private Button btnClear, btnSave, btnListProduct, btnSumProduct;
     private Switch switchRfid;
@@ -75,7 +74,7 @@ public class StockInActivity extends BaseScannerActivity
 
     // ─── Adapters & Data ──────────────────────────────────────────
     private ItemAdapter adapter;
-    private SumProductAdapter sumAdapter;
+    private SumProductInAdapter sumAdapter;
     private final List<ItemModels.ItemModel> scannedItemsList = new ArrayList<>();
     private List<ItemModels.SumProductModel> sumProductList = new ArrayList<>();
     private List<LocationModels.LocationModel> masterLocationList = new ArrayList<>();
@@ -91,7 +90,7 @@ public class StockInActivity extends BaseScannerActivity
 
     private int totalScanCount = 0;
     private boolean isListProductTab = true;
-    private String selectedLocation   = "";
+    private String selectedLocation = "";
     private String selectedLocationId = "";
 
     // ─── Scanner via ScannerManager ───────────────────────────────
@@ -113,7 +112,7 @@ public class StockInActivity extends BaseScannerActivity
         setupRecyclerView();
         setupTabButtons();
         setupLocationDropdown();
-        setupSwitchRfid();         // ← ganti setupScanner + setupPowerDropdown
+        setupSwitchRfid();
         setupBarcodeTextWatcher();
         setupButtonListeners();
 
@@ -121,7 +120,6 @@ public class StockInActivity extends BaseScannerActivity
         resultScan.postDelayed(() -> resultScan.requestFocus(), 100);
 
         fetchLocations();
-        fetchMasterItems();
         restoreFromRoom();
     }
 
@@ -132,13 +130,12 @@ public class StockInActivity extends BaseScannerActivity
 
         updateReaderBattery(findViewById(R.id.ivReaderBattery), switchRfid.isChecked());
 
-        // Buka barcode by default saat masuk (jika RFID switch OFF)
         if (!switchRfid.isChecked() && scanner != null) {
             RfidBulkHelper.openBarcode(scanner, this);
         }
 
         if (getHTBatteryLevel() <= 15) {
-            showWarning("HT Battery " + getHTBatteryLevel() + "%, segera charge!");
+            showWarning("HT Battery " + getHTBatteryLevel() + "%, please charge!");
             playScanFeedback(2);
         }
     }
@@ -155,20 +152,20 @@ public class StockInActivity extends BaseScannerActivity
     // ─── Init ─────────────────────────────────────────────────────
 
     private void bindViews() {
-        btnBack          = findViewById(R.id.btnBack);
-        btnClear         = findViewById(R.id.btnClear);
-        btnSave          = findViewById(R.id.btnSave);
-        btnListProduct   = findViewById(R.id.btnListProduct);
-        btnSumProduct    = findViewById(R.id.btnSumProduct);
-        switchRfid       = findViewById(R.id.switchRfid);
-        resultScan       = findViewById(R.id.resultScan);
-        tvScanned        = findViewById(R.id.tvScanned);
-        rvTags           = findViewById(R.id.rvTags);
+        btnBack = findViewById(R.id.btnBack);
+        btnClear = findViewById(R.id.btnClear);
+        btnSave = findViewById(R.id.btnSave);
+        btnListProduct = findViewById(R.id.btnListProduct);
+        btnSumProduct = findViewById(R.id.btnSumProduct);
+        switchRfid = findViewById(R.id.switchRfid);
+        resultScan = findViewById(R.id.resultScan);
+        tvScanned = findViewById(R.id.tvScanned);
+        rvTags = findViewById(R.id.rvTags);
         btnPowerDropdown = findViewById(R.id.btnPowerDropdown);
-        cardLocation     = findViewById(R.id.cardLocation);
-        etLocation       = findViewById(R.id.etLocation);
-        ivLocationArrow  = findViewById(R.id.ivLocationArrow);
-        tvPowerLevel     = findViewById(R.id.tvPowerLevel);
+        cardLocation = findViewById(R.id.cardLocation);
+        etLocation = findViewById(R.id.etLocation);
+        ivLocationArrow = findViewById(R.id.ivLocationArrow);
+        tvPowerLevel = findViewById(R.id.tvPowerLevel);
 
         switchRfid.setChecked(false);
         btnPowerDropdown.setVisibility(View.GONE);
@@ -181,7 +178,6 @@ public class StockInActivity extends BaseScannerActivity
         switchRfid.setOnCheckedChangeListener((btn, isChecked) -> {
             CommScanner scanner = getScannerInstance();
 
-            // Update icon battery tiap toggle
             updateReaderBattery(findViewById(R.id.ivReaderBattery), isChecked);
 
             if (isChecked) {
@@ -212,7 +208,6 @@ public class StockInActivity extends BaseScannerActivity
             }
         });
 
-        // Power dropdown popup
         btnPowerDropdown.setOnClickListener(v ->
                 showPowerDropdownPopup(btnPowerDropdown, powerList, tvPowerLevel));
     }
@@ -230,8 +225,14 @@ public class StockInActivity extends BaseScannerActivity
 
     private void setupBarcodeTextWatcher() {
         resultScan.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
             @Override
             public void afterTextChanged(Editable s) {
                 String data = s.toString().trim();
@@ -249,26 +250,33 @@ public class StockInActivity extends BaseScannerActivity
         btnBack.setOnClickListener(v -> finish());
 
         btnClear.setOnClickListener(v -> {
-            if (scannedItemsList.isEmpty()) { showWarning("Tidak ada item"); return; }
+            if (scannedItemsList.isEmpty()) {
+                showWarning("No items to clear");
+                return;
+            }
             new AlertDialog.Builder(this)
                     .setTitle("Clear")
-                    .setMessage("Hapus semua " + totalScanCount + " item dari list?")
-                    .setPositiveButton("Hapus", (d, w) -> {
+                    .setMessage("Clear all " + totalScanCount + " items from the list?")
+                    .setPositiveButton("Clear", (d, w) -> {
                         new Thread(() -> db.appDao().clearAllStockInScans()).start();
                         clearAllData();
                     })
-                    .setNegativeButton("Batal", null)
+                    .setNegativeButton("Cancel", null)
                     .show();
         });
 
         btnSave.setOnClickListener(v -> {
-            if (scannedItemsList.isEmpty()) { showWarning("No items scanned yet"); return; }
-            if (selectedLocationId.isEmpty()) { showWarning("Pilih lokasi terlebih dahulu"); return; }
+            if (scannedItemsList.isEmpty()) {
+                showWarning("No items scanned yet");
+                return;
+            }
+            if (selectedLocationId.isEmpty()) {
+                showWarning("Select a location first");
+                return;
+            }
             showSaveConfirmDialog();
         });
     }
-
-    // ─── Restore Session ──────────────────────────────────────────
 
     private void restoreFromRoom() {
         new Thread(() -> {
@@ -306,7 +314,7 @@ public class StockInActivity extends BaseScannerActivity
                         }
                     }
                 }
-                showWarning(totalScanCount + " item tersimpan dari sesi sebelumnya");
+                showWarning(totalScanCount + " items restored from previous session");
             });
         }).start();
     }
@@ -323,7 +331,7 @@ public class StockInActivity extends BaseScannerActivity
         }
 
         if (selectedLocationId.isEmpty()) {
-            showWarning("Pilih lokasi terlebih dahulu");
+            showWarning("Select a location first");
             return;
         }
 
@@ -335,12 +343,12 @@ public class StockInActivity extends BaseScannerActivity
                 StockInScanEntity entity = buildEntity(scannedData, "", "Loading...", false);
                 db.appDao().insertStockInScan(entity);
             }).start();
-            showWarning("Offline – item disimpan lokal");
+            showWarning("Offline – item saved locally");
             return;
         }
 
         String token = "Bearer " + new PrefManager(this).getToken();
-        String type  = switchRfid.isChecked() ? "RFID" : "QR";
+        String type = switchRfid.isChecked() ? "RFID" : "QR";
 
         ApiClient.getClient(this).create(ApiService.class)
                 .getTagByCode(token, scannedData, type)
@@ -372,7 +380,7 @@ public class StockInActivity extends BaseScannerActivity
                             StockInScanEntity entity = buildEntity(scannedData, "", "Loading...", false);
                             db.appDao().insertStockInScan(entity);
                         }).start();
-                        handler.post(() -> showWarning("Jaringan bermasalah – item disimpan lokal"));
+                        handler.post(() -> showWarning("Network error – item saved locally"));
                     }
                 });
     }
@@ -380,14 +388,14 @@ public class StockInActivity extends BaseScannerActivity
     private StockInScanEntity buildEntity(String epc, String itemId,
                                           String itemName, boolean resolved) {
         StockInScanEntity e = new StockInScanEntity();
-        e.epcTag      = epc;
-        e.itemId      = itemId;
-        e.itemName    = itemName;
+        e.epcTag = epc;
+        e.itemId = itemId;
+        e.itemName = itemName;
         e.scannerType = switchRfid.isChecked() ? "RFID" : "QR";
-        e.locationId  = selectedLocationId;
-        e.isResolved  = resolved;
-        e.isSynced    = false;
-        e.createdAt   = System.currentTimeMillis();
+        e.locationId = selectedLocationId;
+        e.isResolved = resolved;
+        e.isSynced = false;
+        e.createdAt = System.currentTimeMillis();
         return e;
     }
 
@@ -396,10 +404,10 @@ public class StockInActivity extends BaseScannerActivity
     private void showSaveConfirmDialog() {
         new AlertDialog.Builder(this)
                 .setTitle("Confirm")
-                .setMessage("Save " + totalScanCount + " item ke warehouse?")
+                .setMessage("Save " + totalScanCount + " items to warehouse?")
                 .setCancelable(false)
                 .setPositiveButton("Save", (d, w) -> saveToRoomThenSubmit())
-                .setNegativeButton("Batal", null)
+                .setNegativeButton("Cancel", null)
                 .show();
     }
 
@@ -468,7 +476,7 @@ public class StockInActivity extends BaseScannerActivity
                         hideLoading();
                         handleFailure(t);
                         playScanFeedback(2);
-                        showWarning("Gagal kirim – data tetap tersimpan lokal");
+                        showWarning("Send failed – data saved locally");
                     }
                 });
     }
@@ -581,22 +589,6 @@ public class StockInActivity extends BaseScannerActivity
         dialog.show();
     }
 
-    // ─── Fetch Master Data ────────────────────────────────────────
-
-    private void fetchMasterItems() {
-        if (!isNetworkConnected()) return;
-        String token = "Bearer " + new PrefManager(this).getToken();
-        ApiClient.getClient(this).create(ApiService.class)
-                .getAllItems(token)
-                .enqueue(new Callback<List<ItemModels.ItemResponseDto>>() {
-                    @Override
-                    public void onResponse(Call<List<ItemModels.ItemResponseDto>> call,
-                                           Response<List<ItemModels.ItemResponseDto>> response) {}
-                    @Override
-                    public void onFailure(Call<List<ItemModels.ItemResponseDto>> call, Throwable t) {}
-                });
-    }
-
     private void fetchLocations() {
         if (!isNetworkConnected()) return;
         String token = "Bearer " + new PrefManager(this).getToken();
@@ -622,8 +614,10 @@ public class StockInActivity extends BaseScannerActivity
                             }
                         }
                     }
+
                     @Override
-                    public void onFailure(Call<List<LocationModels.LocationModel>> call, Throwable t) {}
+                    public void onFailure(Call<List<LocationModels.LocationModel>> call, Throwable t) {
+                    }
                 });
     }
 
@@ -652,14 +646,16 @@ public class StockInActivity extends BaseScannerActivity
             @Override
             public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
                 View v = getLayoutInflater().inflate(R.layout.item_dropdown, parent, false);
-                return new RecyclerView.ViewHolder(v) {};
+                return new RecyclerView.ViewHolder(v) {
+                };
             }
+
             @Override
             public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
                 ((TextView) holder.itemView.findViewById(R.id.tvDropdownItem))
                         .setText(items.get(position));
                 holder.itemView.setOnClickListener(v -> {
-                    selectedLocation   = masterLocationList.get(position).getName();
+                    selectedLocation = masterLocationList.get(position).getName();
                     selectedLocationId = masterLocationList.get(position).getId();
                     etLocation.setText(selectedLocation);
                     new Thread(() ->
@@ -667,7 +663,11 @@ public class StockInActivity extends BaseScannerActivity
                     if (activePopup != null) activePopup.dismiss();
                 });
             }
-            @Override public int getItemCount() { return items.size(); }
+
+            @Override
+            public int getItemCount() {
+                return items.size();
+            }
         });
 
         int maxHeight = (int) (56 * getResources().getDisplayMetrics().density) * 4;
@@ -705,7 +705,7 @@ public class StockInActivity extends BaseScannerActivity
                 isListProductTab = false;
                 setTabActive(false);
                 buildSumProductList();
-                sumAdapter = new SumProductAdapter(sumProductList);
+                sumAdapter = new SumProductInAdapter(sumProductList);
                 rvTags.setAdapter(sumAdapter);
             }
         });
@@ -725,7 +725,10 @@ public class StockInActivity extends BaseScannerActivity
     // ─── Error Handling ───────────────────────────────────────────
 
     private void handleApiErrorFriendly(Response<?> response) {
-        if (response.code() == 401) { handleApiError(response); return; }
+        if (response.code() == 401) {
+            handleApiError(response);
+            return;
+        }
         hideLoading();
         String raw = ErrorParser.getMessage(response);
         showError(humanizeError(raw, response.code()));
@@ -755,16 +758,6 @@ public class StockInActivity extends BaseScannerActivity
         if (!event.getBarcodeData().isEmpty()) {
             String barcode = new String(event.getBarcodeData().get(0).getData());
             handler.post(() -> enqueueScan(barcode));
-        }
-    }
-
-    // ─── Helper ───────────────────────────────────────────────────
-
-    private int parsePower(String text, int defaultVal) {
-        try {
-            return Integer.parseInt(text.replace(" dBm", "").trim());
-        } catch (NumberFormatException e) {
-            return defaultVal;
         }
     }
 }

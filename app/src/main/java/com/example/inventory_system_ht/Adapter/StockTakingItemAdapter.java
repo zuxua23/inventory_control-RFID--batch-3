@@ -15,14 +15,6 @@ import com.example.inventory_system_ht.R;
 
 import java.util.List;
 
-/**
- * Adapter untuk list item dalam sesi Stock Taking.
- *
- * State warna:
- *  - PENDING    → biru (blue_theme)  — bisa diklik
- *  - FOUND      → hijau (#01C470)    — tidak bisa diklik
- *  - MANUAL_ADD → hijau (#01C470)    — tidak bisa diklik
- */
 public class StockTakingItemAdapter
         extends RecyclerView.Adapter<StockTakingItemAdapter.VH> {
 
@@ -30,9 +22,8 @@ public class StockTakingItemAdapter
         void onItemClick(StockTakingModels.SessionItem item, int position);
     }
 
-    private static final int COLOR_PENDING     = Color.parseColor("#1565C0"); // blue_theme
-    private static final int COLOR_FOUND       = Color.parseColor("#01C470"); // hijau
-    private static final int COLOR_MANUAL_ADD  = Color.parseColor("#01C470"); // sama
+    private static final int COLOR_PENDING = Color.parseColor("#1565C0");
+    private static final int COLOR_DONE = Color.parseColor("#01C470");
 
     private final List<StockTakingModels.SessionItem> list;
     private OnItemClickListener listener;
@@ -44,6 +35,9 @@ public class StockTakingItemAdapter
     public void setOnItemClickListener(OnItemClickListener l) {
         this.listener = l;
     }
+
+    @Override
+    public int getItemCount() { return list.size(); }
 
     @NonNull
     @Override
@@ -57,35 +51,25 @@ public class StockTakingItemAdapter
     public void onBindViewHolder(@NonNull VH h, int position) {
         StockTakingModels.SessionItem item = list.get(position);
 
-        // Tampilkan nama item, fallback ke itemId jika null
         String displayName = (item.itemName != null && !item.itemName.isEmpty())
                 ? item.itemName : (item.itemId != null ? item.itemId : "-");
         h.tvItemName.setText(displayName);
 
         String state = item.state != null ? item.state : "PENDING";
 
-        int bgColor;
         switch (state) {
             case "FOUND":
-            case "MANUAL_ADD":
-                bgColor = COLOR_FOUND;
-                break;
-            default:
-                bgColor = COLOR_PENDING;
-                break;
-        }
-        h.card.setCardBackgroundColor(bgColor);
-
-        switch (state) {
-            case "FOUND":
+                h.card.setCardBackgroundColor(COLOR_DONE);
                 h.tvStatus.setText("✓ Scanned");
                 h.tvStatus.setVisibility(View.VISIBLE);
                 break;
             case "MANUAL_ADD":
+                h.card.setCardBackgroundColor(COLOR_DONE);
                 h.tvStatus.setText("+ Manual");
                 h.tvStatus.setVisibility(View.VISIBLE);
                 break;
             default:
+                h.card.setCardBackgroundColor(COLOR_PENDING);
                 h.tvStatus.setVisibility(View.GONE);
                 break;
         }
@@ -106,19 +90,13 @@ public class StockTakingItemAdapter
 
     static class VH extends RecyclerView.ViewHolder {
         CardView card;
-        TextView tvItemName, tvStatus; // ← ganti tvItemId + tvLocation → tvItemName
+        TextView tvItemName, tvStatus;
 
         VH(@NonNull View itemView) {
             super(itemView);
-            card       = (CardView) itemView;
+            card = (CardView) itemView;
             tvItemName = itemView.findViewById(R.id.tvItemName);
-            tvStatus   = itemView.findViewById(R.id.tvStatus);
+            tvStatus = itemView.findViewById(R.id.tvStatus);
         }
     }
-
-    @Override
-    public int getItemCount() {
-        return list.size();
-    }
-
 }

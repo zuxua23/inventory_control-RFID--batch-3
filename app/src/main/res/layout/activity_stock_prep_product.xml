@@ -10,16 +10,16 @@
 
     <ImageView
         android:id="@+id/btnBack"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="10dp"
-        android:layout_marginTop="10dp"
-        android:padding="12dp"
+        android:layout_width="35dp"
+        android:layout_height="35dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="12dp"
+        android:contentDescription="@string/desc_back"
+        android:padding="4dp"
         android:src="@drawable/baseline_arrow_back_24"
         app:tint="@color/white"
         android:clickable="true"
         android:focusable="true"
-        android:contentDescription="@string/desc_back"
         android:background="?android:attr/selectableItemBackgroundBorderless"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -32,7 +32,7 @@
         android:textColor="@color/white"
         android:textSize="18sp"
         android:fontFamily="@font/raleway_bold"
-        android:layout_marginStart="4dp"
+        android:layout_marginStart="10dp"
         app:layout_constraintStart_toEndOf="@id/btnBack"
         app:layout_constraintTop_toTopOf="@id/btnBack"
         app:layout_constraintEnd_toStartOf="@id/ivReaderBattery"
@@ -42,7 +42,7 @@
         android:id="@+id/cardRfidSwitch"
         android:layout_width="wrap_content"
         android:layout_height="36dp"
-        android:layout_marginEnd="16dp"
+        android:layout_marginEnd="10dp"
         app:cardCornerRadius="18dp"
         app:cardElevation="0dp"
         app:cardBackgroundColor="@color/white"
@@ -50,28 +50,19 @@
         app:layout_constraintTop_toTopOf="@id/btnBack"
         app:layout_constraintBottom_toBottomOf="@id/btnBack">
 
-        <LinearLayout
-            android:layout_width="wrap_content"
+        <Switch
+            android:id="@+id/switchRfid"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:gravity="center_vertical"
             android:paddingHorizontal="12dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/label_rfid"
-                android:textColor="@color/blue_theme"
-                android:fontFamily="@font/raleway_bold"
-                android:textSize="14sp"
-                android:layout_marginEnd="8dp" />
-
-            <Switch
-                android:id="@+id/switchRfid"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                tools:ignore="UseSwitchCompatOrMaterialXml,TouchTargetSizeCheck" />
-        </LinearLayout>
+            android:text="@string/label_rfid"
+            android:textStyle="bold"
+            android:elevation="6dp"
+            android:textColor="@color/blue_theme"
+            android:fontFamily="@font/raleway_bold"
+            android:textSize="14sp"
+            android:switchPadding="8dp"
+            tools:ignore="UseSwitchCompatOrMaterialXml, TouchTargetSizeCheck" />
     </androidx.cardview.widget.CardView>
 
     <ImageView
@@ -90,10 +81,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="10dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="12dp"
         app:cardCornerRadius="16dp"
         app:cardBackgroundColor="@color/white"
-        app:cardElevation="10dp"
+        app:cardElevation="6dp"
         app:layout_constraintTop_toBottomOf="@id/btnBack">
 
         <EditText
@@ -153,97 +144,42 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginHorizontal="10dp"
-        android:layout_marginTop="5dp"
-        android:layout_marginBottom="6dp"
-        android:clipChildren="false"
-        android:clipToPadding="false"
-        android:paddingHorizontal="2dp"
-        android:paddingVertical="4dp"
         app:layout_constraintTop_toBottomOf="@id/cardInfo">
 
-        <androidx.cardview.widget.CardView
-            android:id="@+id/btnLocationDropdown"
+        <Spinner
+            android:id="@+id/spinnerLocation"
             android:layout_width="0dp"
             android:layout_height="40dp"
             android:layout_weight="1"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?android:attr/selectableItemBackground"
-            app:cardCornerRadius="15dp"
-            app:cardElevation="6dp"
-            app:cardBackgroundColor="@color/white"
-            tools:ignore="TouchTargetSizeCheck">
+            android:elevation="6dp"
+            android:background="@drawable/bg_spinner"
+            android:popupBackground="@drawable/bg_spinner_dropdown"
+            android:layout_margin="10dp"
+            android:fontFamily="@font/raleway_bold"
+            android:textSize="14sp" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center_vertical"
-                android:paddingHorizontal="14dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/etLocation"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:hint="@string/hint_location"
-                    android:textColor="@color/blue_theme"
-                    android:textColorHint="#9E9E9E"
-                    android:fontFamily="@font/raleway_bold"
-                    android:textSize="14sp"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    android:gravity="center_vertical" />
-
-                <ImageView
-                    android:id="@+id/ivLocationArrow"
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:src="@drawable/outline_arrow_drop_down_24"
-                    app:tint="@color/blue_theme"
-                    android:contentDescription="@string/desc_location_arrow"/>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <androidx.cardview.widget.CardView
-            android:id="@+id/btnPowerDropdown"
+        <Spinner
+            android:id="@+id/spinnerPower"
             android:layout_width="0dp"
             android:layout_height="40dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:visibility="gone"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?android:attr/selectableItemBackground"
-            app:cardCornerRadius="15dp"
-            app:cardElevation="6dp"
-            app:cardBackgroundColor="@color/white"
-            tools:ignore="TouchTargetSizeCheck">
+            android:elevation="6dp"
+            android:layout_margin="10dp"
+            android:background="@drawable/bg_spinner"
+            android:popupBackground="@drawable/bg_spinner_dropdown"
+            android:paddingHorizontal="12dp"
+            android:fontFamily="@font/raleway_bold"
+            android:textSize="14sp" />
 
-            <TextView
-                android:id="@+id/tvPowerLevel"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:text="@string/label_power"
-                android:textColor="@color/blue_theme"
-                android:fontFamily="@font/raleway_bold"
-                android:textSize="14sp"
-                app:drawableEndCompat="@drawable/outline_arrow_drop_down_24"
-                app:drawableTint="@color/blue_theme"
-                android:drawablePadding="4dp"
-                android:paddingHorizontal="12dp" />
-        </androidx.cardview.widget.CardView>
     </LinearLayout>
-
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/whiteContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="5dp"
         android:background="@drawable/bg_white_rounded_top"
-        android:elevation="10dp"
+        android:elevation="6dp"
         android:outlineProvider="background"
         app:layout_constraintTop_toBottomOf="@id/layoutDropdowns"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -364,7 +300,7 @@
                 android:fontFamily="@font/raleway_bold"
                 android:stateListAnimator="@null"
                 android:text="@string/action_clear"
-                android:elevation="2dp"
+                android:elevation="4dp"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
                 android:textSize="16sp"
@@ -381,7 +317,7 @@
                 android:backgroundTint="@color/green_button"
                 android:stateListAnimator="@null"
                 android:text="@string/action_save"
-                android:elevation="2dp"
+                android:elevation="4dp"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
                 android:textSize="16sp"

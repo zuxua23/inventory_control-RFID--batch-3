@@ -6,7 +6,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.cardview.widget.CardView;
@@ -27,75 +32,140 @@ import java.util.List;
 
 public class SearchSignalActivity extends BaseScannerActivity implements RFIDDataDelegate {
 
+    // ─── Fields ───────────────────────────────────────────────────────────────
     private TagModels.SearchItemListDto selectedItem;
     private TagModels.TagDetailDto selectedDetail;
 
     private LinearLayout containerSignalBars;
     private TextView tvItemTitle, tvRssiValue;
-    private CardView btnPowerDropdown;
-    private TextView tvPowerLevel;
-    private final Handler handler = new Handler(Looper.getMainLooper());
+    private Spinner spinnerPower;
     private BottomSheetDialog currentDialog;
-    private static final int NO_SIGNAL_TIMEOUT_MS = 8000;
+
+    private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean tagFoundNotified = false;
 
+    private static final int NO_SIGNAL_TIMEOUT_MS = 8000;
+
+    private final List<String> powerList = Arrays.asList(
+            "5 dBm", "10 dBm", "15 dBm", "18 dBm", "21 dBm", "24 dBm", "27 dBm", "30 dBm"
+    );
+
+    // Reset sinyal jika tag tidak terdeteksi dalam timeout
     private final Runnable noSignalRunnable = new Runnable() {
         @Override
         public void run() {
-            showWarning("Tag not detected. Try moving closer to the storage area.");
+            showWarning("Tag not detected, move closer");
             playScanFeedback(2);
             resetSignalDisplay();
             handler.postDelayed(this, NO_SIGNAL_TIMEOUT_MS);
         }
     };
 
-    private final List<String> powerList = Arrays.asList(
-            "5 dBm", "10 dBm", "15 dBm", "18 dBm", "21 dBm", "24 dBm", "27 dBm", "30 dBm"
-    );
-
+    // ─── Abstract Override ────────────────────────────────────────────────────
     @Override
     protected CommScanner getScannerInstance() {
         return ScannerManager.getInstance().getScanner();
     }
 
+    // ─── Lifecycle ────────────────────────────────────────────────────────────
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search_signal);
 
-        selectedItem   = (TagModels.SearchItemListDto) getIntent().getSerializableExtra("SELECTED_ITEM");
-        selectedDetail = (TagModels.TagDetailDto)      getIntent().getSerializableExtra("SELECTED_DETAIL");
+        selectedItem = (TagModels.SearchItemListDto) getIntent().getSerializableExtra("SELECTED_ITEM");
+        selectedDetail = (TagModels.TagDetailDto) getIntent().getSerializableExtra("SELECTED_DETAIL");
 
-        initUI();
+        initViews();
+        setupListeners();
 
         if (selectedItem != null) {
             String location = (selectedDetail != null && selectedDetail.getLocation() != null)
                     ? selectedDetail.getLocation() : "-";
             tvItemTitle.setText("Locating: " + selectedItem.getItemName() + " | " + location);
         }
-
-        btnPowerDropdown.setVisibility(View.VISIBLE);
-        btnPowerDropdown.setOnClickListener(v ->
-                showPowerDropdownPopup(btnPowerDropdown, powerList, tvPowerLevel));
-
-        findViewById(R.id.btnStopSearch).setOnClickListener(v -> finish());
-        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
-
-        showWarning("Pull trigger to locate item via RFID");
-    }
-
-    private void initUI() {
-        containerSignalBars = findViewById(R.id.containerSignalBars);
-        tvItemTitle = findViewById(R.id.tvItemTitle);
-        tvRssiValue = findViewById(R.id.tvRssiValue);
-        btnPowerDropdown = findViewById(R.id.btnPowerDropdown);
-        tvPowerLevel = findViewById(R.id.tvPowerLevel);
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        CommScanner scanner = getScannerInstance();
+        updateReaderBattery(findViewById(R.id.ivReaderBattery));
+
+        tagFoundNotified = false;
+        resetSignalDisplay();
+
+        if (scanner != null) {
+            int power = parsePower(spinnerPower.getSelectedItem().toString(), 21);
+            RfidBulkHelper.closeBarcode(scanner);
+            RfidBulkHelper.openInventory(scanner, this, power);
+            handler.removeCallbacks(noSignalRunnable);
+            handler.postDelayed(noSignalRunnable, NO_SIGNAL_TIMEOUT_MS);
+        } else {
+            showWarning("RFID reader not connected");
+        }
+
+        int bat = getHTBatteryLevel();
+        if (bat <= 15) {
+            showWarning("Battery low: " + bat + "%");
+            playScanFeedback(2);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        handler.removeCallbacks(noSignalRunnable);
+        RfidBulkHelper.closeInventory(getScannerInstance());
+        if (currentDialog != null && currentDialog.isShowing()) currentDialog.dismiss();
+    }
+
+    // ─── Init ─────────────────────────────────────────────────────────────────
+    private void initViews() {
+        containerSignalBars = findViewById(R.id.containerSignalBars);
+        tvItemTitle = findViewById(R.id.tvItemTitle);
+        tvRssiValue = findViewById(R.id.tvRssiValue);
+        spinnerPower = findViewById(R.id.spinnerPower);
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, R.layout.item_spinner_selected, R.id.tvSpinnerSelected, powerList) {
+            @Override
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                View view = LayoutInflater.from(getContext()).inflate(R.layout.item_dropdown, parent, false);
+                TextView tv = view.findViewById(R.id.tvDropdownItem);
+                ImageView icon = view.findViewById(R.id.ivDropdownIcon);
+                if (tv != null) tv.setText(getItem(position));
+                if (icon != null) icon.setVisibility(View.GONE);
+                return view;
+            }
+        };
+        spinnerPower.setAdapter(adapter);
+        spinnerPower.setSelection(4);
+    }
+
+    private void setupListeners() {
+        spinnerPower.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                CommScanner scanner = getScannerInstance();
+                if (scanner != null) {
+                    int power = parsePower(powerList.get(position), 21);
+                    RfidBulkHelper.closeInventory(scanner);
+                    RfidBulkHelper.openInventory(scanner, SearchSignalActivity.this, power);
+                }
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
+        findViewById(R.id.btnStopSearch).setOnClickListener(v -> finish());
+        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
+    }
+
+    // ─── Scanner Callback ─────────────────────────────────────────────────────
+    @Override
     public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
         for (RFIDData data : event.getRFIDData()) {
-            String epc  = RfidBulkHelper.bytesToHex(data.getUII());
+            String epc = RfidBulkHelper.bytesToHex(data.getUII());
             float  rssi = data.getRSSI() / 10f;
 
             if (selectedItem != null && epc.equalsIgnoreCase(selectedItem.getEpcTag())) {
@@ -109,10 +179,10 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         }
     }
 
-
+    // ─── Signal Display ───────────────────────────────────────────────────────
     public void updateSignalBars(float rssi) {
         int level;
-        if      (rssi > -45) level = 10;
+        if (rssi > -45) level = 10;
         else if (rssi > -50) level = 9;
         else if (rssi > -55) level = 8;
         else if (rssi > -60) level = 7;
@@ -122,7 +192,7 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         else if (rssi > -80) level = 3;
         else if (rssi > -85) level = 2;
         else if (rssi > -90) level = 1;
-        else                 level = 0;
+        else level = 0;
 
         final int finalLevel = level;
         handler.post(() -> {
@@ -130,19 +200,22 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
             int activeColor = (finalLevel >= 8)
                     ? Color.parseColor("#4CAF50")
                     : Color.parseColor("#03A9F4");
+
             for (int i = 0; i < containerSignalBars.getChildCount(); i++) {
                 containerSignalBars.getChildAt(i).setBackgroundColor(
                         i < finalLevel ? activeColor : Color.parseColor("#E0E0E0"));
             }
+
             if (finalLevel >= 9 && !tagFoundNotified) {
                 tagFoundNotified = true;
-                showSuccess("Tag found! Reader is very close.");
+                showSuccess("Tag found! Very close.");
                 playScanFeedback(0);
             } else if (finalLevel < 7) {
                 tagFoundNotified = false;
             }
         });
     }
+
     private void resetSignalDisplay() {
         if (tvRssiValue != null) tvRssiValue.setText("-- dBm");
         if (containerSignalBars != null) {
@@ -152,9 +225,10 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         }
     }
 
-
+    // ─── Bottom Sheet ─────────────────────────────────────────────────────────
     private void showTagDetailBottomSheet(TagModels.TagDetailDto detail) {
         if (currentDialog != null && currentDialog.isShowing()) currentDialog.dismiss();
+
         currentDialog = new BottomSheetDialog(this);
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_tag_detail, null);
 
@@ -173,48 +247,13 @@ public class SearchSignalActivity extends BaseScannerActivity implements RFIDDat
         currentDialog.show();
     }
 
+    // ─── Helper ───────────────────────────────────────────────────────────────
     private int statusColor(String status) {
         if (status == null) return Color.parseColor("#9E9E9E");
         switch (status.toUpperCase()) {
-            case "STOCK IN":    return Color.parseColor("#28a745");
+            case "STOCK IN": return Color.parseColor("#28a745");
             case "PREPARATION": return Color.parseColor("#ffc107");
-            default:            return Color.parseColor("#9E9E9E");
+            default: return Color.parseColor("#9E9E9E");
         }
     }
-
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        CommScanner scanner = getScannerInstance();
-        updateReaderBattery(findViewById(R.id.ivReaderBattery));
-
-        tagFoundNotified = false;
-        resetSignalDisplay();
-
-        if (scanner != null) {
-            int power = parsePower(tvPowerLevel.getText().toString(), 20);
-            RfidBulkHelper.closeBarcode(scanner);
-            RfidBulkHelper.openInventory(scanner, this, power);
-            handler.removeCallbacks(noSignalRunnable);
-            handler.postDelayed(noSignalRunnable, NO_SIGNAL_TIMEOUT_MS);
-        } else {
-            showWarning("SP1 Reader not connected!");
-        }
-
-        if (getHTBatteryLevel() <= 15) {
-            showWarning("Battery " + getHTBatteryLevel() + "%, charge now!");
-            playScanFeedback(2);
-        }
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        handler.removeCallbacks(noSignalRunnable);
-        CommScanner scanner = getScannerInstance();
-        RfidBulkHelper.closeInventory(scanner);
-        if (currentDialog != null && currentDialog.isShowing()) currentDialog.dismiss();
-    }
-
 }

@@ -10,17 +10,17 @@
 
     <ImageView
         android:id="@+id/btnBack"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="10dp"
-        android:layout_marginTop="10dp"
-        android:padding="10dp"
+        android:layout_width="35dp"
+        android:layout_height="35dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="12dp"
+        android:contentDescription="@string/desc_back"
+        android:padding="4dp"
         android:src="@drawable/baseline_arrow_back_24"
         app:tint="@color/white"
         android:clickable="true"
         android:focusable="true"
         android:background="?android:attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/desc_back"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
     <ImageView
@@ -33,11 +33,12 @@
         app:layout_constraintStart_toEndOf="@id/btnBack"
         app:layout_constraintTop_toTopOf="@id/btnBack"
         app:layout_constraintBottom_toBottomOf="@id/btnBack" />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/whiteContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="12dp"
         android:background="@drawable/bg_white_rounded_top"
         android:elevation="10dp"
         android:outlineProvider="background"
@@ -74,35 +75,19 @@
                 android:paddingHorizontal="4dp"
                 android:paddingVertical="4dp">
 
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/btnPowerDropdown"
+                <Spinner
+                    android:id="@+id/spinnerPower"
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:foreground="?android:attr/selectableItemBackground"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="0dp"
-                    app:cardBackgroundColor="@color/white"
-                    tools:ignore="TouchTargetSizeCheck"
+                    android:background="@drawable/bg_spinner"
+                    android:popupBackground="@drawable/bg_spinner_dropdown"
+                    android:paddingHorizontal="12dp"
+                    android:fontFamily="@font/raleway_bold"
+                    android:textSize="14sp"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent">
+                    app:layout_constraintBottom_toBottomOf="parent" />
 
-                    <TextView
-                        android:id="@+id/tvPowerLevel"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center_vertical"
-                        android:paddingHorizontal="12dp"
-                        android:text="@string/label_power"
-                        android:textColor="@color/blue_theme"
-                        android:fontFamily="@font/raleway_bold"
-                        android:textSize="14sp"
-                        app:drawableEndCompat="@drawable/outline_arrow_drop_down_24"
-                        app:drawableTint="@color/black"
-                        android:drawablePadding="4dp" />
-                </androidx.cardview.widget.CardView>
             </androidx.constraintlayout.widget.ConstraintLayout>
 
         </androidx.cardview.widget.CardView>

@@ -64,15 +64,14 @@
             android:layout_height="wrap_content"
             android:gravity="center_horizontal"
             android:orientation="vertical"
-            android:paddingHorizontal="24dp">
+            android:paddingHorizontal="15dp">
             <Space
                 android:layout_width="wrap_content"
                 android:layout_height="10dp"/>
             <ImageView
                 android:layout_width="160dp"
                 android:layout_height="132dp"
-                android:layout_marginBottom="16dp"
-                android:backgroundTint="#20FFFFFF"
+                android:layout_marginBottom="10dp"
                 android:padding="16dp"
                 android:src="@drawable/ic_box_24"
                 app:tint="@color/blue_theme"

@@ -30,29 +30,44 @@ import retrofit2.Response;
 
 public class StockTakingListActivity extends BaseScannerActivity {
 
-    private TextView   tvEmpty;
+    // ─── Fields ───────────────────────────────────────────────────────────────
+    private TextView tvEmpty;
     private ApiService api;
-    private String     token;
+    private String token;
 
     private final List<StockTakingModels.ActiveRes> sessionList = new ArrayList<>();
     private SessionAdapter adapter;
 
+    // ─── Abstract Override ────────────────────────────────────────────────────
     @Override
     protected CommScanner getScannerInstance() {
         return ScannerManager.getInstance().getScanner();
     }
 
+    // ─── Lifecycle ────────────────────────────────────────────────────────────
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_stock_taking_list);
 
         token = "Bearer " + new PrefManager(this).getToken();
-        api   = ApiClient.getClient(this).create(ApiService.class);
+        api = ApiClient.getClient(this).create(ApiService.class);
 
-        ImageView    btnBack     = findViewById(R.id.btnBack);
-        CardView     btnRefresh  = findViewById(R.id.btnRefresh);
-        RecyclerView rvSessions  = findViewById(R.id.rvTags);
+        initViews();
+        setupListeners();
+        loadActiveSession();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateReaderBattery(findViewById(R.id.ivReaderBattery));
+        loadActiveSession();
+    }
+
+    // ─── Init ─────────────────────────────────────────────────────────────────
+    private void initViews() {
+        RecyclerView rvSessions = findViewById(R.id.rvTags);
         tvEmpty = findViewById(R.id.tvEmpty);
 
         adapter = new SessionAdapter(sessionList, session -> {
@@ -64,23 +79,19 @@ public class StockTakingListActivity extends BaseScannerActivity {
 
         rvSessions.setLayoutManager(new LinearLayoutManager(this));
         rvSessions.setAdapter(adapter);
-
-        btnBack.setOnClickListener(v -> finish());
-        btnRefresh.setOnClickListener(v -> loadActiveSession());
-
-        loadActiveSession();
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        updateReaderBattery(findViewById(R.id.ivReaderBattery));
-        loadActiveSession();
+    private void setupListeners() {
+        ((ImageView) findViewById(R.id.btnBack)).setOnClickListener(v -> finish());
+        ((CardView)  findViewById(R.id.btnRefresh)).setOnClickListener(v -> loadActiveSession());
     }
 
+    // ─── Data ─────────────────────────────────────────────────────────────────
+
+    // Fetch sesi stock taking yang sedang aktif dari server
     private void loadActiveSession() {
         if (!isNetworkConnected()) {
-            showWarning("No internet connection.");
+            showWarning("No internet connection");
             return;
         }
         showLoading();
@@ -110,14 +121,16 @@ public class StockTakingListActivity extends BaseScannerActivity {
         });
     }
 
+    // ─── Adapter ──────────────────────────────────────────────────────────────
     static class SessionAdapter extends RecyclerView.Adapter<SessionAdapter.VH> {
+
         interface OnClick { void onClick(StockTakingModels.ActiveRes s); }
 
         private final List<StockTakingModels.ActiveRes> list;
         private final OnClick click;
 
         SessionAdapter(List<StockTakingModels.ActiveRes> list, OnClick click) {
-            this.list  = list;
+            this.list = list;
             this.click = click;
         }
 
@@ -147,7 +160,7 @@ public class StockTakingListActivity extends BaseScannerActivity {
             TextView tvSttId, tvLocation;
             VH(View v) {
                 super(v);
-                tvSttId    = v.findViewById(R.id.tvSttId);
+                tvSttId = v.findViewById(R.id.tvSttId);
                 tvLocation = v.findViewById(R.id.tvSttLocation);
             }
         }

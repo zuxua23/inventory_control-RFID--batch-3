@@ -7,13 +7,15 @@ import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
-import android.widget.Button;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
 
@@ -54,22 +56,22 @@ import retrofit2.Response;
 public class StockTakingActivity extends BaseScannerActivity
         implements BarcodeDataDelegate, RFIDDataDelegate {
 
-    // ── Views ─────────────────────────────────────────────────────
-    private Switch   switchRfid;
-    private CardView btnSave, btnRefresh, btnPowerDropdown;
+    // ─── Fields ───────────────────────────────────────────────────────────────
+    private Switch switchRfid;
+    private CardView btnSave, btnRefresh;
     private EditText resultScan;
     private RecyclerView rvTags;
-    private TextView tvRemark, tvLocation, tvQty, tvSyncStatus, tvPowerLevel;
+    private TextView tvRemark, tvLocation, tvQty, tvSyncStatus;
+    private Spinner spinnerPower;                               // ← ganti dari CardView + TextView
 
-    // ── Data ──────────────────────────────────────────────────────
-    private ApiService  api;
+    private ApiService api;
     private AppDatabase db;
-    private String      token;
-    private String      sttId  = "";
-    private String      remark = "";
+    private String token;
+    private String sttId  = "";
+    private String remark = "";
 
-    private final List<StockTakingModels.SessionItem>  sessionItems  = new ArrayList<>();
-    private final Map<String, Integer>                  epcIndexMap   = new HashMap<>();
+    private final List<StockTakingModels.SessionItem> sessionItems = new ArrayList<>();
+    private final Map<String, Integer> epcIndexMap = new HashMap<>();
     private final List<String> powerList = Arrays.asList(
             "5 dBm", "10 dBm", "15 dBm", "18 dBm", "21 dBm", "24 dBm", "27 dBm", "30 dBm"
     );
@@ -77,12 +79,13 @@ public class StockTakingActivity extends BaseScannerActivity
     private StockTakingItemAdapter adapter;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
-    // ── Scanner via ScannerManager ────────────────────────────────
+    // ─── Abstract Override ────────────────────────────────────────────────────
     @Override
     protected CommScanner getScannerInstance() {
         return ScannerManager.getInstance().getScanner();
     }
 
+    // ─── Lifecycle ────────────────────────────────────────────────────────────
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -92,42 +95,97 @@ public class StockTakingActivity extends BaseScannerActivity
         remark = getIntent().getStringExtra("remark");
 
         if (sttId == null || sttId.isEmpty()) {
-            showError("Session ID not found!");
+            showError("Session ID missing");
             finish();
             return;
         }
         if (remark == null) remark = "";
 
         token = "Bearer " + new PrefManager(this).getToken();
-        api   = ApiClient.getClient(this).create(ApiService.class);
-        db    = AppDatabase.getDatabase(this);
+        api = ApiClient.getClient(this).create(ApiService.class);
+        db = AppDatabase.getDatabase(this);
 
         bindViews();
+        setupPowerSpinner();
         setupAdapter();
         setupListeners();
 
         if (isNetworkConnected()) loadSessionTagsFromServer();
-        else { loadSessionTagsFromCache(); showWarning("Offline — loading cached data."); }
+        else { loadSessionTagsFromCache(); showWarning("Offline, using cache"); }
     }
 
-    // ── Bind & Setup ──────────────────────────────────────────────
+    @Override
+    protected void onResume() {
+        super.onResume();
+        CommScanner scanner = getScannerInstance();
+        updateReaderBattery(findViewById(R.id.ivReaderBattery), switchRfid.isChecked());
+        if (!switchRfid.isChecked() && scanner != null) RfidBulkHelper.openBarcode(scanner, this);
 
+        syncPendingQueue();
+        checkSessionStatus();
+
+        int bat = getHTBatteryLevel();
+        if (bat <= 15) {
+            showWarning("Battery low: " + bat + "%");
+            playScanFeedback(2);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        CommScanner scanner = getScannerInstance();
+        RfidBulkHelper.closeInventory(scanner);
+        RfidBulkHelper.closeBarcode(scanner);
+    }
+
+    // ─── Init ─────────────────────────────────────────────────────────────────
     private void bindViews() {
-        switchRfid       = findViewById(R.id.switchRfid);
-        btnSave          = findViewById(R.id.btnSave);
-        btnRefresh       = findViewById(R.id.btnRefresh);
-        resultScan       = findViewById(R.id.resultScan);
-        rvTags           = findViewById(R.id.rvTags);
-        tvRemark         = findViewById(R.id.tvRemark);
-        tvLocation       = findViewById(R.id.tvLocation);
-        tvQty            = findViewById(R.id.tvQty);
-        tvSyncStatus     = findViewById(R.id.tvSyncStatus);
-        btnPowerDropdown = findViewById(R.id.btnPowerDropdown);
-        tvPowerLevel     = findViewById(R.id.tvPowerLevel);
+        switchRfid = findViewById(R.id.switchRfid);
+        btnSave = findViewById(R.id.btnSave);
+        btnRefresh = findViewById(R.id.btnRefresh);
+        resultScan = findViewById(R.id.resultScan);
+        rvTags = findViewById(R.id.rvTags);
+        tvRemark = findViewById(R.id.tvRemark);
+        tvLocation = findViewById(R.id.tvLocation);
+        tvQty = findViewById(R.id.tvQty);
+        tvSyncStatus = findViewById(R.id.tvSyncStatus);
+        spinnerPower = findViewById(R.id.spinnerPower);
 
-        btnPowerDropdown.setVisibility(View.GONE);
+        spinnerPower.setVisibility(View.GONE);
         switchRfid.setChecked(false);
         tvRemark.setText("Note: " + (remark.isEmpty() ? "-" : remark));
+    }
+
+    // Setup spinner power
+    private void setupPowerSpinner() {
+        ArrayAdapter<String> powerAdapter = new ArrayAdapter<String>(this, R.layout.item_spinner_selected, R.id.tvSpinnerSelected, powerList) {
+            @Override
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                View view = LayoutInflater.from(getContext()).inflate(R.layout.item_dropdown, parent, false);
+                TextView tv = view.findViewById(R.id.tvDropdownItem);
+                ImageView icon = view.findViewById(R.id.ivDropdownIcon);
+                if (tv != null) tv.setText(getItem(position));
+                if (icon != null) icon.setVisibility(View.GONE);
+                return view;
+            }
+        };
+        spinnerPower.setAdapter(powerAdapter);
+        spinnerPower.setSelection(6); // default: 27 dBm
+
+        spinnerPower.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (!switchRfid.isChecked()) return;
+                CommScanner scanner = getScannerInstance();
+                if (scanner != null) {
+                    int power = parsePower(powerList.get(position), 27);
+                    RfidBulkHelper.closeInventory(scanner);
+                    RfidBulkHelper.openInventory(scanner, StockTakingActivity.this, power);
+                }
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) {}
+        });
     }
 
     private void setupAdapter() {
@@ -150,51 +208,48 @@ public class StockTakingActivity extends BaseScannerActivity
 
         switchRfid.setOnCheckedChangeListener((btn, isChecked) -> {
             CommScanner scanner = getScannerInstance();
-
             updateReaderBattery(findViewById(R.id.ivReaderBattery), isChecked);
 
             if (isChecked) {
                 if (scanner == null) {
-                    showError("SP1 Reader not connected!");
+                    showError("RFID not connected");
                     switchRfid.setChecked(false);
                     updateReaderBattery(findViewById(R.id.ivReaderBattery), false);
                     return;
                 }
                 RfidBulkHelper.closeBarcode(scanner);
-                int power = parsePower(tvPowerLevel.getText().toString(), 27);
+                int power = parsePower(
+                        spinnerPower.getSelectedItem() != null
+                                ? spinnerPower.getSelectedItem().toString() : "27 dBm", 27);
                 boolean ok = RfidBulkHelper.openInventory(scanner, this, power);
                 if (ok) {
-                    showSuccess("RFID Mode Active");
                     resultScan.setEnabled(false);
-                    btnPowerDropdown.setVisibility(View.VISIBLE);
+                    spinnerPower.setVisibility(View.VISIBLE);
                 } else {
-                    showError("Failed to start RFID inventory");
+                    showError("Failed to start RFID");
                     switchRfid.setChecked(false);
                 }
             } else {
                 RfidBulkHelper.closeInventory(scanner);
                 if (scanner != null) RfidBulkHelper.openBarcode(scanner, this);
-                showSagaFeedback("Barcode Mode Active", true);
+                // ✂️ Removed: showSagaFeedback("RFID OFF", true)
                 resultScan.setEnabled(true);
                 resultScan.requestFocus();
-                btnPowerDropdown.setVisibility(View.GONE);
+                spinnerPower.setVisibility(View.GONE);
             }
         });
 
-        btnPowerDropdown.setOnClickListener(v ->
-                showPowerDropdownPopup(btnPowerDropdown, powerList, tvPowerLevel));
-
         btnSave.setOnClickListener(v -> {
-            if (sttId.isEmpty()) { showWarning("No active session!"); return; }
+            if (sttId.isEmpty()) { showWarning("No active session"); return; }
             showCustomConfirmDialog(
-                    "Submit scan results to server? Scanned: " + countScanned(),
+                    "Submit scan results? Scanned: " + countScanned(),
                     this::handleSave);
         });
 
         if (btnRefresh != null) {
             btnRefresh.setOnClickListener(v -> {
                 if (!isNetworkConnected()) {
-                    showWarning("No internet. Showing cached data.");
+                    showWarning("No internet, showing cache");
                     loadSessionTagsFromCache();
                     return;
                 }
@@ -216,12 +271,12 @@ public class StockTakingActivity extends BaseScannerActivity
         });
     }
 
-    // ── Load Data ─────────────────────────────────────────────────
+    // ─── Data Load ────────────────────────────────────────────────────────────
 
     private void loadSessionTagsFromServer() {
         if (!isNetworkConnected()) {
             loadSessionTagsFromCache();
-            showWarning("Offline — loading cached data.");
+            showWarning("Offline, using cache");
             return;
         }
         showLoading();
@@ -245,18 +300,17 @@ public class StockTakingActivity extends BaseScannerActivity
                             updateInfo();
                             updateSyncStatus();
                             saveSessionItemsToCache(body);
-                            showSuccess("Loaded: " + body.size() + " items");
+                            // ✂️ Removed: showSuccess("Loaded X items") — hideLoading sudah cukup
                         } else {
-                            showError("Error " + response.code() + " — loading from cache.");
+                            showError("Load failed, using cache");
                             loadSessionTagsFromCache();
                         }
                     }
 
                     @Override
-                    public void onFailure(Call<List<StockTakingModels.SessionItem>> call,
-                                          Throwable t) {
+                    public void onFailure(Call<List<StockTakingModels.SessionItem>> call, Throwable t) {
                         hideLoading();
-                        showError("Failed — loading from cache.");
+                        showError("Load failed, using cache");
                         loadSessionTagsFromCache();
                     }
                 });
@@ -272,7 +326,7 @@ public class StockTakingActivity extends BaseScannerActivity
                 TextView tvEmpty = findViewById(R.id.tvEmpty);
                 if (cached.isEmpty()) {
                     if (tvEmpty != null) tvEmpty.setVisibility(View.VISIBLE);
-                    showWarning("No cached data. Connect and tap Refresh.");
+                    showWarning("No cached data, tap Refresh");
                     return;
                 }
                 if (tvEmpty != null) tvEmpty.setVisibility(View.GONE);
@@ -301,7 +355,7 @@ public class StockTakingActivity extends BaseScannerActivity
         }).start();
     }
 
-    // ── Scan ──────────────────────────────────────────────────────
+    // ─── Scan Processing ──────────────────────────────────────────────────────
 
     private void processScan(String epcOrBarcode) {
         if (sttId.isEmpty()) { playScanFeedback(2); return; }
@@ -323,7 +377,7 @@ public class StockTakingActivity extends BaseScannerActivity
 
         StockTakingModels.SessionItem item = sessionItems.get(idx);
         if (!"PENDING".equals(item.state)) {
-            if (!switchRfid.isChecked()) showWarning("Already scanned.");
+            if (!switchRfid.isChecked()) showWarning("Already scanned");
             return;
         }
 
@@ -339,29 +393,28 @@ public class StockTakingActivity extends BaseScannerActivity
         else updateSyncStatus();
     }
 
-    // ── Queue & Sync ──────────────────────────────────────────────
-
     private void saveToQueue(String epc, String action, String itemId, String remarkText) {
         new Thread(() -> {
             StockTakingModels.ScanQueueEntity e = new StockTakingModels.ScanQueueEntity();
-            e.sttId     = sttId;
-            e.epcTag    = epc;
-            e.action    = action;
-            e.itemId    = itemId;
-            e.remark    = remarkText;
-            e.isSynced  = false;
+            e.sttId = sttId;
+            e.epcTag = epc;
+            e.action = action;
+            e.itemId = itemId;
+            e.remark = remarkText;
+            e.isSynced = false;
             e.createdAt = System.currentTimeMillis();
             db.appDao().insertScanQueue(e);
             handler.post(this::updateSyncStatus);
         }).start();
     }
 
+    // ─── Sync ─────────────────────────────────────────────────────────────────
+
     private void syncSingleScan(String epc) {
         api.scanStockTaking(token, new StockTakingModels.ScanReq(sttId, epc))
                 .enqueue(new Callback<GeneralResponse>() {
                     @Override
-                    public void onResponse(Call<GeneralResponse> call,
-                                           Response<GeneralResponse> res) {
+                    public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> res) {
                         if (res.isSuccessful()) {
                             new Thread(() -> {
                                 db.appDao().markSyncedByEpc(sttId, epc);
@@ -376,8 +429,7 @@ public class StockTakingActivity extends BaseScannerActivity
     private void syncPendingQueue() {
         if (!isNetworkConnected()) return;
         new Thread(() -> {
-            List<StockTakingModels.ScanQueueEntity> pending =
-                    db.appDao().getUnsyncedBySttId(sttId);
+            List<StockTakingModels.ScanQueueEntity> pending = db.appDao().getUnsyncedBySttId(sttId);
             if (pending.isEmpty()) return;
 
             List<String> foundEpcs = new ArrayList<>();
@@ -392,7 +444,7 @@ public class StockTakingActivity extends BaseScannerActivity
                         db.appDao().markBulkSynced(sttId, foundEpcs);
                         handler.post(() -> {
                             updateSyncStatus();
-                            showSuccess("Synced " + foundEpcs.size() + " scans");
+                            // ✂️ Removed: showSuccess("Synced X scans") — background process, tidak perlu ganggu user
                         });
                     }
                 } catch (Exception ignored) {}
@@ -406,8 +458,7 @@ public class StockTakingActivity extends BaseScannerActivity
                                 new StockTakingModels.RemoveReq(q.sttId, q.epcTag)).execute();
                     else if ("MANUAL_ADD".equals(q.action))
                         api.manualAddStockTaking(token,
-                                new StockTakingModels.ManualAddReq(
-                                        q.sttId, q.itemId, q.remark)).execute();
+                                new StockTakingModels.ManualAddReq(q.sttId, q.itemId, q.remark)).execute();
                     db.appDao().markSyncedById(q.id);
                 } catch (Exception ignored) {}
             }
@@ -415,23 +466,8 @@ public class StockTakingActivity extends BaseScannerActivity
         }).start();
     }
 
-    // ── Save ──────────────────────────────────────────────────────
-
-    private void handleSave() {
-        if (!isNetworkConnected()) {
-            showWarning("No internet. Data saved locally. Will sync when connected.");
-            return;
-        }
-        showLoading();
-        new Thread(() -> {
-            syncPendingQueueSync();
-            handler.post(this::sendApplyAdjustment);
-        }).start();
-    }
-
     private void syncPendingQueueSync() {
-        List<StockTakingModels.ScanQueueEntity> pending =
-                db.appDao().getUnsyncedBySttId(sttId);
+        List<StockTakingModels.ScanQueueEntity> pending = db.appDao().getUnsyncedBySttId(sttId);
         if (pending.isEmpty()) return;
 
         List<String> foundEpcs = new ArrayList<>();
@@ -454,26 +490,38 @@ public class StockTakingActivity extends BaseScannerActivity
                             new StockTakingModels.RemoveReq(q.sttId, q.epcTag)).execute();
                 else if ("MANUAL_ADD".equals(q.action))
                     api.manualAddStockTaking(token,
-                            new StockTakingModels.ManualAddReq(
-                                    q.sttId, q.itemId, q.remark)).execute();
+                            new StockTakingModels.ManualAddReq(q.sttId, q.itemId, q.remark)).execute();
                 db.appDao().markSyncedById(q.id);
             } catch (Exception ignored) {}
         }
+    }
+
+    // ─── Submit ───────────────────────────────────────────────────────────────
+
+    private void handleSave() {
+        if (!isNetworkConnected()) {
+            showWarning("Saved offline");
+            return;
+        }
+        showLoading();
+        new Thread(() -> {
+            syncPendingQueueSync();
+            handler.post(this::sendApplyAdjustment);
+        }).start();
     }
 
     private void sendApplyAdjustment() {
         api.applyAdjustment(token, new StockTakingModels.FinalizeReq(sttId))
                 .enqueue(new Callback<GeneralResponse>() {
                     @Override
-                    public void onResponse(Call<GeneralResponse> call,
-                                           Response<GeneralResponse> response) {
+                    public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
                         hideLoading();
                         if (response.isSuccessful()) {
                             new Thread(() -> {
                                 db.appDao().clearSyncedBySttId(sttId);
                                 db.appDao().clearSessionItemsBySttId(sttId);
                             }).start();
-                            showSuccess("Data submitted! Waiting for admin to finalize.");
+                            showSuccess("Data submitted");
                             playScanFeedback(0);
                             hasChanges = false;
                             finish();
@@ -489,46 +537,7 @@ public class StockTakingActivity extends BaseScannerActivity
                 });
     }
 
-    // ── UI Update ─────────────────────────────────────────────────
-
-    private void updateInfo() {
-        int scanned = countScanned();
-        tvQty.setText("Qty: " + scanned + "/" + sessionItems.size());
-
-        List<String> locations = new ArrayList<>();
-        for (StockTakingModels.SessionItem item : sessionItems) {
-            if (item.location != null && !item.location.isEmpty()
-                    && !locations.contains(item.location))
-                locations.add(item.location);
-        }
-        tvLocation.setText("Location: " + (locations.isEmpty()
-                ? "-" : String.join(", ", locations)));
-    }
-
-    private void updateSyncStatus() {
-        new Thread(() -> {
-            int unsynced = db.appDao().countUnsyncedBySttId(sttId);
-            handler.post(() -> {
-                if (tvSyncStatus == null) return;
-                if (unsynced == 0) {
-                    tvSyncStatus.setText("✓ All synced");
-                    tvSyncStatus.setTextColor(Color.parseColor("#01C470"));
-                } else {
-                    tvSyncStatus.setText("⚠ " + unsynced + " pending sync");
-                    tvSyncStatus.setTextColor(Color.parseColor("#FFA000"));
-                }
-            });
-        }).start();
-    }
-
-    private int countScanned() {
-        int count = 0;
-        for (StockTakingModels.SessionItem item : sessionItems)
-            if ("FOUND".equals(item.state) || "MANUAL_ADD".equals(item.state)) count++;
-        return count;
-    }
-
-    // ── Session Status ────────────────────────────────────────────
+    // ─── Session Check ────────────────────────────────────────────────────────
 
     private void checkSessionStatus() {
         if (!isNetworkConnected()) return;
@@ -544,22 +553,44 @@ public class StockTakingActivity extends BaseScannerActivity
         });
     }
 
-    private void showSessionEndedDialog() {
-        if (isFinishing() || isDestroyed()) return;
-        new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Session Ended")
-                .setMessage("This stock taking session has been finalized by admin.")
-                .setCancelable(false)
-                .setPositiveButton("OK", (d, w) -> {
-                    new Thread(() -> {
-                        db.appDao().clearSyncedBySttId(sttId);
-                        db.appDao().clearSessionItemsBySttId(sttId);
-                    }).start();
-                    finish();
-                }).show();
+    // ─── UI Update ────────────────────────────────────────────────────────────
+
+    private void updateInfo() {
+        int scanned = countScanned();
+        tvQty.setText("Qty: " + scanned + "/" + sessionItems.size());
+
+        List<String> locations = new ArrayList<>();
+        for (StockTakingModels.SessionItem item : sessionItems) {
+            if (item.location != null && !item.location.isEmpty() && !locations.contains(item.location))
+                locations.add(item.location);
+        }
+        tvLocation.setText("Location: " + (locations.isEmpty() ? "-" : String.join(", ", locations)));
     }
 
-    // ── Dialogs ───────────────────────────────────────────────────
+    private void updateSyncStatus() {
+        new Thread(() -> {
+            int unsynced = db.appDao().countUnsyncedBySttId(sttId);
+            handler.post(() -> {
+                if (tvSyncStatus == null) return;
+                if (unsynced == 0) {
+                    tvSyncStatus.setText("✅ All synced");
+                    tvSyncStatus.setTextColor(Color.parseColor("#01C470"));
+                } else {
+                    tvSyncStatus.setText("⚠️ " + unsynced + " pending sync");
+                    tvSyncStatus.setTextColor(Color.parseColor("#FFA000"));
+                }
+            });
+        }).start();
+    }
+
+    private int countScanned() {
+        int count = 0;
+        for (StockTakingModels.SessionItem item : sessionItems)
+            if ("FOUND".equals(item.state) || "MANUAL_ADD".equals(item.state)) count++;
+        return count;
+    }
+
+    // ─── Dialog ───────────────────────────────────────────────────────────────
 
     private void showAdjustmentDialog(StockTakingModels.SessionItem item, int position) {
         Dialog dialog = new Dialog(this);
@@ -567,8 +598,7 @@ public class StockTakingActivity extends BaseScannerActivity
         dialog.setContentView(R.layout.dialog_adj);
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setLayout(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
         dialog.findViewById(R.id.btnFaq).setOnClickListener(v -> showFaqDialog());
         dialog.findViewById(R.id.btnRemove).setOnClickListener(v -> {
@@ -583,7 +613,7 @@ public class StockTakingActivity extends BaseScannerActivity
     }
 
     private void showRemoveConfirmDialog(StockTakingModels.SessionItem item, int position) {
-        showCustomConfirmDialog("Remove this item from the list?\nQty will decrease.", () -> {
+        showCustomConfirmDialog("Remove this item? Qty will decrease.", () -> {
             if (item.tagId != null && !item.tagId.isEmpty()) {
                 saveToQueue(item.tagId, "REMOVE", null, null);
                 if (isNetworkConnected()) {
@@ -601,7 +631,7 @@ public class StockTakingActivity extends BaseScannerActivity
             adapter.notifyItemRangeChanged(position, sessionItems.size());
             hasChanges = true;
             updateInfo();
-            showSuccess("Item removed.");
+            // ✂️ Removed: showSuccess("Item removed") — item hilang dari list sudah cukup
         });
     }
 
@@ -615,15 +645,21 @@ public class StockTakingActivity extends BaseScannerActivity
                     (int)(getResources().getDisplayMetrics().widthPixels * 0.90),
                     ViewGroup.LayoutParams.WRAP_CONTENT);
         }
-        EditText etItemId  = dialog.findViewById(R.id.etManualItemId);
-        EditText etRemark  = dialog.findViewById(R.id.etManualRemark);
+
+        ViewGroup dialogRoot = (ViewGroup) dialog.getWindow().getDecorView();
+
+        EditText etItemId = dialog.findViewById(R.id.etManualItemId);
+        EditText etRemark = dialog.findViewById(R.id.etManualRemark);
         etItemId.setText(item.itemId != null ? item.itemId : "");
         etItemId.setEnabled(false);
 
         dialog.findViewById(R.id.btnCancelManual).setOnClickListener(v -> dialog.dismiss());
         dialog.findViewById(R.id.btnSaveManual).setOnClickListener(v -> {
             String remarkText = etRemark.getText().toString().trim();
-            if (remarkText.isEmpty()) { showWarning("Remark cannot be empty!"); return; }
+            if (remarkText.isEmpty()) {
+                showSagaFeedback(dialogRoot, "Remark cannot be empty", 1);
+                return;
+            }
 
             saveToQueue(item.epcTag, "MANUAL_ADD", item.itemId, remarkText);
             if (isNetworkConnected()) {
@@ -631,8 +667,7 @@ public class StockTakingActivity extends BaseScannerActivity
                                 new StockTakingModels.ManualAddReq(sttId, item.itemId, remarkText))
                         .enqueue(new Callback<GeneralResponse>() {
                             @Override
-                            public void onResponse(Call<GeneralResponse> c,
-                                                   Response<GeneralResponse> r) {
+                            public void onResponse(Call<GeneralResponse> c, Response<GeneralResponse> r) {
                                 if (r.isSuccessful()) {
                                     new Thread(() -> {
                                         List<StockTakingModels.ScanQueueEntity> pending =
@@ -652,28 +687,16 @@ public class StockTakingActivity extends BaseScannerActivity
                             @Override public void onFailure(Call<GeneralResponse> c, Throwable t) {}
                         });
             }
-            item.state        = "MANUAL_ADD";
+            item.state = "MANUAL_ADD";
             item.manualRemark = remarkText;
-            hasChanges        = true;
+            hasChanges = true;
             adapter.notifyItemChanged(position);
             updateInfo();
             playScanFeedback(0);
-            showSuccess("Manual add saved!");
             dialog.dismiss();
+            showSuccess("Manual add saved");
         });
         dialog.show();
-    }
-
-    private void handleBackPressed() {
-        if (!hasChanges) { finish(); return; }
-        showCustomConfirmDialog(
-                "Exit without submitting?\nScanned data is saved locally.",
-                () -> {
-                    sessionItems.clear();
-                    epcIndexMap.clear();
-                    hasChanges = false;
-                    finish();
-                });
     }
 
     private void showFaqDialog() {
@@ -707,8 +730,36 @@ public class StockTakingActivity extends BaseScannerActivity
         dialog.show();
     }
 
-    // ── RFID / Barcode Callbacks ──────────────────────────────────
+    private void showSessionEndedDialog() {
+        if (isFinishing() || isDestroyed()) return;
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Session Ended")
+                .setMessage("This session has been finalized by admin.")
+                .setCancelable(false)
+                .setPositiveButton("OK", (d, w) -> {
+                    new Thread(() -> {
+                        db.appDao().clearSyncedBySttId(sttId);
+                        db.appDao().clearSessionItemsBySttId(sttId);
+                    }).start();
+                    finish();
+                }).show();
+    }
 
+    // ─── Back Handler ─────────────────────────────────────────────────────────
+
+    private void handleBackPressed() {
+        if (!hasChanges) { finish(); return; }
+        showCustomConfirmDialog(
+                "Exit? Scanned data saved locally.",
+                () -> {
+                    sessionItems.clear();
+                    epcIndexMap.clear();
+                    hasChanges = false;
+                    finish();
+                });
+    }
+
+    // ─── Scanner Callbacks ────────────────────────────────────────────────────
     @Override
     public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
         for (RFIDData data : event.getRFIDData()) {
@@ -724,33 +775,5 @@ public class StockTakingActivity extends BaseScannerActivity
             String barcode = new String(dataList.get(0).getData());
             handler.post(() -> processScan(barcode));
         }
-    }
-
-    // ── Lifecycle ─────────────────────────────────────────────────
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        CommScanner scanner = getScannerInstance();
-        updateReaderBattery(findViewById(R.id.ivReaderBattery), switchRfid.isChecked());
-
-        if (!switchRfid.isChecked() && scanner != null)
-            RfidBulkHelper.openBarcode(scanner, this);
-
-        syncPendingQueue();
-        checkSessionStatus();
-
-        if (getHTBatteryLevel() <= 15) {
-            showWarning("Battery " + getHTBatteryLevel() + "%, please charge!");
-            playScanFeedback(2);
-        }
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        CommScanner scanner = getScannerInstance();
-        RfidBulkHelper.closeInventory(scanner);
-        RfidBulkHelper.closeBarcode(scanner);
     }
 }

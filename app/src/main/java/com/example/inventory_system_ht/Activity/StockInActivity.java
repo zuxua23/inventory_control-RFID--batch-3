@@ -11,13 +11,16 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.PopupWindow;
+import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
 
@@ -62,45 +65,42 @@ import retrofit2.Response;
 public class StockInActivity extends BaseScannerActivity
         implements BarcodeDataDelegate, RFIDDataDelegate {
 
+    // ─── Fields ───────────────────────────────────────────────────────────────
     private ImageView btnBack;
     private Button btnClear, btnSave, btnListProduct, btnSumProduct;
     private Switch switchRfid;
-    private EditText resultScan, etLocation;
-    private TextView tvScanned;
+    private EditText resultScan;
+    private TextView tvScanned, tvEmpty;
     private RecyclerView rvTags;
-    private CardView btnPowerDropdown, cardLocation;
-    private ImageView ivLocationArrow;
-    private TextView tvPowerLevel;
+    private Spinner spinnerLocation, spinnerPower;
 
-    // ─── Adapters & Data ──────────────────────────────────────────
     private ItemAdapter adapter;
     private SumProductInAdapter sumAdapter;
     private final List<ItemModels.ItemModel> scannedItemsList = new ArrayList<>();
-    private List<ItemModels.SumProductModel> sumProductList = new ArrayList<>();
+    private List<ItemModels.SumProductModel> sumProductList   = new ArrayList<>();
     private List<LocationModels.LocationModel> masterLocationList = new ArrayList<>();
     private final List<String> locationList = new ArrayList<>();
     private final List<String> powerList = new ArrayList<>(Arrays.asList(
             "5 dBm", "10 dBm", "15 dBm", "18 dBm", "21 dBm", "24 dBm", "27 dBm", "30 dBm"
     ));
 
-    // ─── State ────────────────────────────────────────────────────
+    private ArrayAdapter<String> locationSpinnerAdapter;
+
     private final Handler handler = new Handler(Looper.getMainLooper());
     private AppDatabase db;
-    private PopupWindow activePopup = null;
 
     private int totalScanCount = 0;
     private boolean isListProductTab = true;
-    private String selectedLocation = "";
+    private String selectedLocation   = "";
     private String selectedLocationId = "";
 
-    // ─── Scanner via ScannerManager ───────────────────────────────
+    // ─── Abstract Override ────────────────────────────────────────────────────
     @Override
     protected CommScanner getScannerInstance() {
         return ScannerManager.getInstance().getScanner();
     }
 
-    // ─── Lifecycle ────────────────────────────────────────────────
-
+    // ─── Lifecycle ────────────────────────────────────────────────────────────
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -111,7 +111,8 @@ public class StockInActivity extends BaseScannerActivity
         bindViews();
         setupRecyclerView();
         setupTabButtons();
-        setupLocationDropdown();
+        setupLocationSpinner();
+        setupPowerSpinner();
         setupSwitchRfid();
         setupBarcodeTextWatcher();
         setupButtonListeners();
@@ -127,15 +128,12 @@ public class StockInActivity extends BaseScannerActivity
     protected void onResume() {
         super.onResume();
         CommScanner scanner = getScannerInstance();
-
         updateReaderBattery(findViewById(R.id.ivReaderBattery), switchRfid.isChecked());
+        if (!switchRfid.isChecked() && scanner != null) RfidBulkHelper.openBarcode(scanner, this);
 
-        if (!switchRfid.isChecked() && scanner != null) {
-            RfidBulkHelper.openBarcode(scanner, this);
-        }
-
-        if (getHTBatteryLevel() <= 15) {
-            showWarning("HT Battery " + getHTBatteryLevel() + "%, please charge!");
+        int bat = getHTBatteryLevel();
+        if (bat <= 15) {
+            showWarning("Battery low: " + bat + "%");
             playScanFeedback(2);
         }
     }
@@ -143,14 +141,12 @@ public class StockInActivity extends BaseScannerActivity
     @Override
     protected void onPause() {
         super.onPause();
-        if (activePopup != null && activePopup.isShowing()) activePopup.dismiss();
         CommScanner scanner = getScannerInstance();
         RfidBulkHelper.closeInventory(scanner);
         RfidBulkHelper.closeBarcode(scanner);
     }
 
-    // ─── Init ─────────────────────────────────────────────────────
-
+    // ─── Init ─────────────────────────────────────────────────────────────────
     private void bindViews() {
         btnBack = findViewById(R.id.btnBack);
         btnClear = findViewById(R.id.btnClear);
@@ -161,55 +157,15 @@ public class StockInActivity extends BaseScannerActivity
         resultScan = findViewById(R.id.resultScan);
         tvScanned = findViewById(R.id.tvScanned);
         rvTags = findViewById(R.id.rvTags);
-        btnPowerDropdown = findViewById(R.id.btnPowerDropdown);
-        cardLocation = findViewById(R.id.cardLocation);
-        etLocation = findViewById(R.id.etLocation);
-        ivLocationArrow = findViewById(R.id.ivLocationArrow);
-        tvPowerLevel = findViewById(R.id.tvPowerLevel);
+        spinnerLocation = findViewById(R.id.spinnerLocation);
+        spinnerPower = findViewById(R.id.spinnerPower);
+        tvEmpty = findViewById(R.id.tvEmpty);
 
         switchRfid.setChecked(false);
-        btnPowerDropdown.setVisibility(View.GONE);
+        spinnerPower.setVisibility(View.GONE);
         rvTags.setItemAnimator(null);
-    }
 
-    // ─── Switch RFID ──────────────────────────────────────────────
-
-    private void setupSwitchRfid() {
-        switchRfid.setOnCheckedChangeListener((btn, isChecked) -> {
-            CommScanner scanner = getScannerInstance();
-
-            updateReaderBattery(findViewById(R.id.ivReaderBattery), isChecked);
-
-            if (isChecked) {
-                if (scanner == null) {
-                    showError("SP1 Reader not connected!");
-                    switchRfid.setChecked(false);
-                    updateReaderBattery(findViewById(R.id.ivReaderBattery), false);
-                    return;
-                }
-                RfidBulkHelper.closeBarcode(scanner);
-                int power = parsePower(tvPowerLevel.getText().toString(), 27);
-                boolean ok = RfidBulkHelper.openInventory(scanner, this, power);
-                if (ok) {
-                    showSuccess("RFID Bulk Scan: ON");
-                    resultScan.setEnabled(false);
-                    btnPowerDropdown.setVisibility(View.VISIBLE);
-                } else {
-                    showError("Failed to start RFID inventory");
-                    switchRfid.setChecked(false);
-                }
-            } else {
-                RfidBulkHelper.closeInventory(scanner);
-                if (scanner != null) RfidBulkHelper.openBarcode(scanner, this);
-                showSagaFeedback("RFID Bulk Scan: OFF", true);
-                resultScan.setEnabled(true);
-                resultScan.requestFocus();
-                btnPowerDropdown.setVisibility(View.GONE);
-            }
-        });
-
-        btnPowerDropdown.setOnClickListener(v ->
-                showPowerDropdownPopup(btnPowerDropdown, powerList, tvPowerLevel));
+        updateEmptyState();
     }
 
     private void setupRecyclerView() {
@@ -222,469 +178,6 @@ public class StockInActivity extends BaseScannerActivity
             if (pos != -1) showDeleteItemDialog(item, pos);
         });
     }
-
-    private void setupBarcodeTextWatcher() {
-        resultScan.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                String data = s.toString().trim();
-                if (data.length() >= 8 && !switchRfid.isChecked()) {
-                    resultScan.setText("");
-                    enqueueScan(data);
-                }
-            }
-        });
-        resultScan.setOnKeyListener((v, keyCode, event) ->
-                keyCode == android.view.KeyEvent.KEYCODE_ENTER);
-    }
-
-    private void setupButtonListeners() {
-        btnBack.setOnClickListener(v -> finish());
-
-        btnClear.setOnClickListener(v -> {
-            if (scannedItemsList.isEmpty()) {
-                showWarning("No items to clear");
-                return;
-            }
-            new AlertDialog.Builder(this)
-                    .setTitle("Clear")
-                    .setMessage("Clear all " + totalScanCount + " items from the list?")
-                    .setPositiveButton("Clear", (d, w) -> {
-                        new Thread(() -> db.appDao().clearAllStockInScans()).start();
-                        clearAllData();
-                    })
-                    .setNegativeButton("Cancel", null)
-                    .show();
-        });
-
-        btnSave.setOnClickListener(v -> {
-            if (scannedItemsList.isEmpty()) {
-                showWarning("No items scanned yet");
-                return;
-            }
-            if (selectedLocationId.isEmpty()) {
-                showWarning("Select a location first");
-                return;
-            }
-            showSaveConfirmDialog();
-        });
-    }
-
-    private void restoreFromRoom() {
-        new Thread(() -> {
-            List<StockInScanEntity> saved = db.appDao().getAllStockInScans();
-            if (saved.isEmpty()) return;
-
-            List<ItemModels.ItemModel> restored = new ArrayList<>();
-            String locId = null;
-            for (StockInScanEntity e : saved) {
-                restored.add(new ItemModels.ItemModel(
-                        e.epcTag,
-                        e.itemId != null ? e.itemId : "",
-                        e.isResolved ? e.itemName : "Pending...",
-                        1
-                ));
-                if (locId == null && e.locationId != null && !e.locationId.isEmpty())
-                    locId = e.locationId;
-            }
-
-            final String finalLocId = locId;
-            handler.post(() -> {
-                scannedItemsList.clear();
-                scannedItemsList.addAll(restored);
-                totalScanCount = scannedItemsList.size();
-                adapter.notifyDataSetChanged();
-                updateScanCount();
-
-                if (finalLocId != null) {
-                    selectedLocationId = finalLocId;
-                    for (LocationModels.LocationModel loc : masterLocationList) {
-                        if (loc.getId().equals(finalLocId)) {
-                            selectedLocation = loc.getName();
-                            etLocation.setText(selectedLocation);
-                            break;
-                        }
-                    }
-                }
-                showWarning(totalScanCount + " items restored from previous session");
-            });
-        }).start();
-    }
-
-    // ─── Scan ─────────────────────────────────────────────────────
-
-    private void enqueueScan(String scannedData) {
-        for (ItemModels.ItemModel t : scannedItemsList) {
-            if (t.getEpcTag().equalsIgnoreCase(scannedData)) {
-                playScanFeedback(1);
-                showWarning("Item already in the list");
-                return;
-            }
-        }
-
-        if (selectedLocationId.isEmpty()) {
-            showWarning("Select a location first");
-            return;
-        }
-
-        addItemToList(new ItemModels.ItemModel(scannedData, "", "Loading...", 1));
-        playScanFeedback(0);
-
-        if (!isNetworkConnected()) {
-            new Thread(() -> {
-                StockInScanEntity entity = buildEntity(scannedData, "", "Loading...", false);
-                db.appDao().insertStockInScan(entity);
-            }).start();
-            showWarning("Offline – item saved locally");
-            return;
-        }
-
-        String token = "Bearer " + new PrefManager(this).getToken();
-        String type = switchRfid.isChecked() ? "RFID" : "QR";
-
-        ApiClient.getClient(this).create(ApiService.class)
-                .getTagByCode(token, scannedData, type)
-                .enqueue(new Callback<TagModels.TagResponseDto>() {
-                    @Override
-                    public void onResponse(Call<TagModels.TagResponseDto> call,
-                                           Response<TagModels.TagResponseDto> response) {
-                        if (response.isSuccessful() && response.body() != null) {
-                            TagModels.TagResponseDto tag = response.body();
-                            new Thread(() -> {
-                                StockInScanEntity entity = buildEntity(
-                                        scannedData, tag.getItemId(), tag.getItemName(), true);
-                                db.appDao().insertStockInScan(entity);
-                            }).start();
-                            runOnUiThread(() ->
-                                    updateItemInList(scannedData, tag.getItemId(), tag.getItemName()));
-                        } else {
-                            runOnUiThread(() -> {
-                                removeItemFromList(scannedData);
-                                playScanFeedback(2);
-                                showError("Item not registered: " + scannedData);
-                            });
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(Call<TagModels.TagResponseDto> call, Throwable t) {
-                        new Thread(() -> {
-                            StockInScanEntity entity = buildEntity(scannedData, "", "Loading...", false);
-                            db.appDao().insertStockInScan(entity);
-                        }).start();
-                        handler.post(() -> showWarning("Network error – item saved locally"));
-                    }
-                });
-    }
-
-    private StockInScanEntity buildEntity(String epc, String itemId,
-                                          String itemName, boolean resolved) {
-        StockInScanEntity e = new StockInScanEntity();
-        e.epcTag = epc;
-        e.itemId = itemId;
-        e.itemName = itemName;
-        e.scannerType = switchRfid.isChecked() ? "RFID" : "QR";
-        e.locationId = selectedLocationId;
-        e.isResolved = resolved;
-        e.isSynced = false;
-        e.createdAt = System.currentTimeMillis();
-        return e;
-    }
-
-    // ─── Save ─────────────────────────────────────────────────────
-
-    private void showSaveConfirmDialog() {
-        new AlertDialog.Builder(this)
-                .setTitle("Confirm")
-                .setMessage("Save " + totalScanCount + " items to warehouse?")
-                .setCancelable(false)
-                .setPositiveButton("Save", (d, w) -> saveToRoomThenSubmit())
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    private void saveToRoomThenSubmit() {
-        showLoading();
-        String type = switchRfid.isChecked() ? "RFID" : "QR";
-
-        new Thread(() -> {
-            List<StockInScanEntity> existing = db.appDao().getAllStockInScans();
-            for (ItemModels.ItemModel item : scannedItemsList) {
-                boolean alreadyInRoom = false;
-                for (StockInScanEntity e : existing) {
-                    if (e.epcTag.equalsIgnoreCase(item.getEpcTag())) {
-                        alreadyInRoom = true;
-                        break;
-                    }
-                }
-                if (!alreadyInRoom) {
-                    db.appDao().insertStockInScan(buildEntity(
-                            item.getEpcTag(), item.getItemId(), item.getItemName(),
-                            !item.getItemName().equals("Loading...")
-                                    && !item.getItemName().equals("Pending...")
-                    ));
-                }
-            }
-            db.appDao().updateStockInLocation(selectedLocationId);
-            db.appDao().updateStockInScannerType(type);
-
-            handler.post(() -> {
-                hideLoading();
-                if (isNetworkConnected()) hitApiStockIn(type);
-                else showWarning("Tidak ada jaringan – data tersimpan lokal");
-            });
-        }).start();
-    }
-
-    private void hitApiStockIn(String scannerType) {
-        showLoading();
-        String token = "Bearer " + new PrefManager(this).getToken();
-
-        List<String> codes = new ArrayList<>();
-        for (ItemModels.ItemModel item : scannedItemsList) codes.add(item.getEpcTag());
-
-        StockInRequest request = new StockInRequest(scannerType, codes, selectedLocationId);
-        ApiClient.getClient(this).create(ApiService.class)
-                .stockIn(token, request)
-                .enqueue(new Callback<GeneralResponse>() {
-                    @Override
-                    public void onResponse(Call<GeneralResponse> call,
-                                           Response<GeneralResponse> response) {
-                        hideLoading();
-                        if (response.isSuccessful()) {
-                            new Thread(() -> db.appDao().clearAllStockInScans()).start();
-                            showSuccess("Success: " + response.body().getMessage());
-                            playScanFeedback(0);
-                            clearAllData();
-                        } else {
-                            handleApiErrorFriendly(response);
-                            playScanFeedback(2);
-                        }
-                        resultScan.requestFocus();
-                    }
-
-                    @Override
-                    public void onFailure(Call<GeneralResponse> call, Throwable t) {
-                        hideLoading();
-                        handleFailure(t);
-                        playScanFeedback(2);
-                        showWarning("Send failed – data saved locally");
-                    }
-                });
-    }
-
-    // ─── UI Helpers ───────────────────────────────────────────────
-
-    private void addItemToList(ItemModels.ItemModel item) {
-        scannedItemsList.add(0, item);
-        if (adapter != null) adapter.setLastScannedPosition(0);
-        if (!isListProductTab) {
-            buildSumProductList();
-            if (sumAdapter != null) sumAdapter.updateData(sumProductList);
-        } else {
-            adapter.notifyItemInserted(0);
-        }
-        rvTags.scrollToPosition(0);
-        totalScanCount++;
-        updateScanCount();
-    }
-
-    private void updateItemInList(String epc, String itemId, String itemName) {
-        for (int i = 0; i < scannedItemsList.size(); i++) {
-            if (scannedItemsList.get(i).getEpcTag().equalsIgnoreCase(epc)) {
-                scannedItemsList.get(i).setItemId(itemId);
-                scannedItemsList.get(i).setItemName(itemName);
-                adapter.notifyItemChanged(i);
-                break;
-            }
-        }
-    }
-
-    private void removeItemFromList(String epc) {
-        for (int i = 0; i < scannedItemsList.size(); i++) {
-            if (scannedItemsList.get(i).getEpcTag().equalsIgnoreCase(epc)) {
-                scannedItemsList.remove(i);
-                totalScanCount--;
-                if (isListProductTab) {
-                    adapter.notifyItemRemoved(i);
-                    adapter.notifyItemRangeChanged(i, scannedItemsList.size());
-                } else {
-                    buildSumProductList();
-                    if (sumAdapter != null) sumAdapter.updateData(sumProductList);
-                }
-                updateScanCount();
-                break;
-            }
-        }
-    }
-
-    private void clearAllData() {
-        scannedItemsList.clear();
-        sumProductList.clear();
-        if (isListProductTab) adapter.notifyDataSetChanged();
-        else if (sumAdapter != null) sumAdapter.updateData(sumProductList);
-        totalScanCount = 0;
-        updateScanCount();
-    }
-
-    private void updateScanCount() {
-        tvScanned.setText("Scanned: " + totalScanCount);
-    }
-
-    private void buildSumProductList() {
-        Map<String, ItemModels.SumProductModel> map = new LinkedHashMap<>();
-        for (ItemModels.ItemModel item : scannedItemsList) {
-            if (map.containsKey(item.getItemId()))
-                map.get(item.getItemId()).addCount(1);
-            else
-                map.put(item.getItemId(),
-                        new ItemModels.SumProductModel(
-                                item.getItemId(), item.getItemName(), 1));
-        }
-        sumProductList = new ArrayList<>(map.values());
-    }
-
-    private void showDeleteItemDialog(ItemModels.ItemModel item, int position) {
-        Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_regist);
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setLayout(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-
-        ((TextView) dialog.findViewById(R.id.tvTitle))
-                .setText("Remove " + item.getEpcTag() + " from list?");
-
-        Button btnYes = dialog.findViewById(R.id.btnSave);
-        btnYes.setText("Remove");
-        btnYes.setBackgroundTintList(ColorStateList.valueOf(Color.RED));
-
-        dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
-        btnYes.setOnClickListener(v -> {
-            dialog.dismiss();
-            new Thread(() -> db.appDao().deleteStockInScanByEpc(item.getEpcTag())).start();
-            scannedItemsList.remove(position);
-            totalScanCount--;
-            if (isListProductTab) {
-                adapter.notifyItemRemoved(position);
-                adapter.notifyItemRangeChanged(position, scannedItemsList.size());
-            } else {
-                buildSumProductList();
-                if (sumAdapter != null) sumAdapter.updateData(sumProductList);
-            }
-            updateScanCount();
-            showSuccess("Item removed");
-            resultScan.requestFocus();
-        });
-        dialog.show();
-    }
-
-    private void fetchLocations() {
-        if (!isNetworkConnected()) return;
-        String token = "Bearer " + new PrefManager(this).getToken();
-        ApiClient.getClient(this).create(ApiService.class)
-                .getLocations(token)
-                .enqueue(new Callback<List<LocationModels.LocationModel>>() {
-                    @Override
-                    public void onResponse(Call<List<LocationModels.LocationModel>> call,
-                                           Response<List<LocationModels.LocationModel>> response) {
-                        if (response.isSuccessful() && response.body() != null) {
-                            masterLocationList = response.body();
-                            locationList.clear();
-                            for (LocationModels.LocationModel loc : masterLocationList)
-                                locationList.add(loc.getName());
-                            if (!selectedLocationId.isEmpty() && selectedLocation.isEmpty()) {
-                                for (LocationModels.LocationModel loc : masterLocationList) {
-                                    if (loc.getId().equals(selectedLocationId)) {
-                                        selectedLocation = loc.getName();
-                                        runOnUiThread(() -> etLocation.setText(selectedLocation));
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(Call<List<LocationModels.LocationModel>> call, Throwable t) {
-                    }
-                });
-    }
-
-    // ─── Location Dropdown ────────────────────────────────────────
-
-    private void setupLocationDropdown() {
-        View.OnClickListener listener = v -> showDropdownPopup(cardLocation, locationList);
-        etLocation.setOnClickListener(listener);
-        ivLocationArrow.setOnClickListener(listener);
-        cardLocation.setOnClickListener(listener);
-    }
-
-    private void showDropdownPopup(View anchor, List<String> items) {
-        if (items.isEmpty()) {
-            showWarning("Loading location...");
-            fetchLocations();
-            return;
-        }
-        if (activePopup != null && activePopup.isShowing()) activePopup.dismiss();
-
-        View popupView = getLayoutInflater().inflate(R.layout.dropdown_popup, null);
-        RecyclerView rv = popupView.findViewById(R.id.rvDropdown);
-        rv.setLayoutManager(new LinearLayoutManager(this));
-
-        rv.setAdapter(new RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-            @Override
-            public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-                View v = getLayoutInflater().inflate(R.layout.item_dropdown, parent, false);
-                return new RecyclerView.ViewHolder(v) {
-                };
-            }
-
-            @Override
-            public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-                ((TextView) holder.itemView.findViewById(R.id.tvDropdownItem))
-                        .setText(items.get(position));
-                holder.itemView.setOnClickListener(v -> {
-                    selectedLocation = masterLocationList.get(position).getName();
-                    selectedLocationId = masterLocationList.get(position).getId();
-                    etLocation.setText(selectedLocation);
-                    new Thread(() ->
-                            db.appDao().updateStockInLocation(selectedLocationId)).start();
-                    if (activePopup != null) activePopup.dismiss();
-                });
-            }
-
-            @Override
-            public int getItemCount() {
-                return items.size();
-            }
-        });
-
-        int maxHeight = (int) (56 * getResources().getDisplayMetrics().density) * 4;
-        PopupWindow popup = new PopupWindow(
-                popupView, anchor.getWidth(), ViewGroup.LayoutParams.WRAP_CONTENT, true);
-        popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        popup.setElevation(16f);
-        popup.setOutsideTouchable(true);
-        popupView.measure(
-                View.MeasureSpec.makeMeasureSpec(anchor.getWidth(), View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-        popup.setHeight(Math.min(popupView.getMeasuredHeight(), maxHeight));
-        popup.showAsDropDown(anchor, 0, 6);
-        activePopup = popup;
-    }
-
-    // ─── Tab Buttons ──────────────────────────────────────────────
 
     private void setupTabButtons() {
         setTabActive(true);
@@ -711,40 +204,520 @@ public class StockInActivity extends BaseScannerActivity
         });
     }
 
-    private void setTabActive(boolean listActive) {
-        btnListProduct.setBackgroundTintList(ColorStateList.valueOf(
-                getColor(listActive ? R.color.blue_theme : R.color.white)));
-        btnListProduct.setTextColor(
-                getColor(listActive ? R.color.white : R.color.blue_theme));
-        btnSumProduct.setBackgroundTintList(ColorStateList.valueOf(
-                getColor(listActive ? R.color.white : R.color.blue_theme)));
-        btnSumProduct.setTextColor(
-                getColor(listActive ? R.color.blue_theme : R.color.white));
+    // Setup spinner lokasi
+    private void setupLocationSpinner() {
+        // Tambah hint "Select Location" di posisi 0
+        List<String> locationListWithHint = new ArrayList<>();
+        locationListWithHint.add("Select Location");
+        locationListWithHint.addAll(locationList);
+
+        locationSpinnerAdapter = new ArrayAdapter<String>(this, R.layout.item_spinner_selected, R.id.tvSpinnerSelected, locationListWithHint) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                TextView tv = view.findViewById(R.id.tvSpinnerSelected);
+                if (tv != null) {
+                    tv.setTextColor(position == 0
+                            ? getColor(R.color.text_grey)  // hint color
+                            : getColor(R.color.black));
+                }
+                return view;
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                View view = LayoutInflater.from(getContext())
+                        .inflate(R.layout.item_dropdown, parent, false);
+                TextView tv = view.findViewById(R.id.tvDropdownItem);
+                ImageView icon = view.findViewById(R.id.ivDropdownIcon);
+                if (tv != null) tv.setText(getItem(position));
+                if (icon != null) icon.setVisibility(position == 0 ? View.GONE : View.VISIBLE);
+                return view;
+            }
+        };
+
+        spinnerLocation.setAdapter(locationSpinnerAdapter);
+        spinnerLocation.setSelection(0);
+
+        spinnerLocation.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position == 0) {
+                    // Hint dipilih, reset selection
+                    selectedLocation = "";
+                    selectedLocationId = "";
+                    return;
+                }
+                int realPos = position - 1; // offset karena hint di posisi 0
+                if (realPos >= masterLocationList.size()) return;
+                selectedLocation   = masterLocationList.get(realPos).getName();
+                selectedLocationId = masterLocationList.get(realPos).getId();
+                new Thread(() -> db.appDao().updateStockInLocation(selectedLocationId)).start();
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) {}
+        });
     }
 
-    // ─── Error Handling ───────────────────────────────────────────
 
-    private void handleApiErrorFriendly(Response<?> response) {
-        if (response.code() == 401) {
-            handleApiError(response);
+    private void setupPowerSpinner() {
+        ArrayAdapter<String> powerAdapter = new ArrayAdapter<String>(this, R.layout.item_spinner_selected, R.id.tvSpinnerSelected, powerList) {
+            @Override
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                View view = LayoutInflater.from(getContext())
+                        .inflate(R.layout.item_dropdown, parent, false);
+                TextView tv = view.findViewById(R.id.tvDropdownItem);
+                ImageView icon = view.findViewById(R.id.ivDropdownIcon);
+                if (tv != null) tv.setText(getItem(position));
+                if (icon != null) icon.setVisibility(View.GONE);
+                return view;
+            }
+        };
+        spinnerPower.setAdapter(powerAdapter);
+        spinnerPower.setSelection(6);
+
+        spinnerPower.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (!switchRfid.isChecked()) return;
+                CommScanner scanner = getScannerInstance();
+                if (scanner != null) {
+                    int power = parsePower(powerList.get(position), 27);
+                    RfidBulkHelper.closeInventory(scanner);
+                    RfidBulkHelper.openInventory(scanner, StockInActivity.this, power);
+                }
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) {}
+        });
+    }
+
+    private void setupSwitchRfid() {
+        switchRfid.setOnCheckedChangeListener((btn, isChecked) -> {
+            CommScanner scanner = getScannerInstance();
+            updateReaderBattery(findViewById(R.id.ivReaderBattery), isChecked);
+
+            if (isChecked) {
+                if (scanner == null) {
+                    showError("RFID not connected");
+                    switchRfid.setChecked(false);
+                    updateReaderBattery(findViewById(R.id.ivReaderBattery), false);
+                    return;
+                }
+                RfidBulkHelper.closeBarcode(scanner);
+                int power = parsePower(
+                        spinnerPower.getSelectedItem() != null
+                                ? spinnerPower.getSelectedItem().toString() : "27 dBm", 27);
+                boolean ok = RfidBulkHelper.openInventory(scanner, this, power);
+                if (ok) {
+                    resultScan.setEnabled(false);
+                    spinnerPower.setVisibility(View.VISIBLE);
+                } else {
+                    showError("Failed to start RFID");
+                    switchRfid.setChecked(false);
+                }
+            } else {
+                RfidBulkHelper.closeInventory(scanner);
+                if (scanner != null) RfidBulkHelper.openBarcode(scanner, this);
+                resultScan.setEnabled(true);
+                resultScan.requestFocus();
+                spinnerPower.setVisibility(View.GONE);
+            }
+        });
+
+        // Restart inventory saat power berubah lewat spinner
+        spinnerPower.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (!switchRfid.isChecked()) return;
+                CommScanner scanner = getScannerInstance();
+                if (scanner != null) {
+                    int power = parsePower(powerList.get(position), 27);
+                    RfidBulkHelper.closeInventory(scanner);
+                    RfidBulkHelper.openInventory(scanner, StockInActivity.this, power);
+                }
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+    }
+
+    private void setupBarcodeTextWatcher() {
+        resultScan.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                String data = s.toString().trim();
+                if (data.length() >= 8 && !switchRfid.isChecked()) {
+                    resultScan.setText("");
+                    enqueueScan(data);
+                }
+            }
+        });
+        resultScan.setOnKeyListener((v, keyCode, event) ->
+                keyCode == android.view.KeyEvent.KEYCODE_ENTER);
+    }
+
+    private void setupButtonListeners() {
+        btnBack.setOnClickListener(v -> finish());
+
+        btnClear.setOnClickListener(v -> {
+            if (scannedItemsList.isEmpty()) { showWarning("Nothing to clear"); return; }
+            new AlertDialog.Builder(this)
+                    .setTitle("Clear")
+                    .setMessage("Clear all " + totalScanCount + " items?")
+                    .setPositiveButton("Clear", (d, w) -> {
+                        new Thread(() -> db.appDao().clearAllStockInScans()).start();
+                        clearAllData();
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        });
+
+        btnSave.setOnClickListener(v -> {
+            if (scannedItemsList.isEmpty()) { showWarning("No items scanned"); return; }
+            if (selectedLocationId.isEmpty()) { showWarning("Select location first"); return; }
+            showSaveConfirmDialog();
+        });
+    }
+
+    // ─── Data ─────────────────────────────────────────────────────────────────
+
+    // Restore item scan dari Room DB saat activity dibuka ulang
+    private void restoreFromRoom() {
+        new Thread(() -> {
+            List<StockInScanEntity> saved = db.appDao().getAllStockInScans();
+            if (saved.isEmpty()) return;
+
+            List<ItemModels.ItemModel> restored = new ArrayList<>();
+            String locId = null;
+            for (StockInScanEntity e : saved) {
+                restored.add(new ItemModels.ItemModel(
+                        e.epcTag,
+                        e.itemId != null ? e.itemId : "",
+                        e.isResolved ? e.itemName : "Pending...", 1));
+                if (locId == null && e.locationId != null && !e.locationId.isEmpty())
+                    locId = e.locationId;
+            }
+
+            final String finalLocId = locId;
+            handler.post(() -> {
+                scannedItemsList.clear();
+                scannedItemsList.addAll(restored);
+                totalScanCount = scannedItemsList.size();
+                adapter.notifyDataSetChanged();
+                updateEmptyState();
+                updateScanCount();
+
+                if (finalLocId != null) {
+                    selectedLocationId = finalLocId;
+                    for (int i = 0; i < masterLocationList.size(); i++) {
+                        if (masterLocationList.get(i).getId().equals(finalLocId)) {
+                            selectedLocation = masterLocationList.get(i).getName();
+                            spinnerLocation.setSelection(i);
+                            break;
+                        }
+                    }
+                }
+                showWarning(totalScanCount + " items restored");
+            });
+        }).start();
+    }
+
+    // Fetch daftar lokasi dari API
+    private void fetchLocations() {
+        if (!isNetworkConnected()) return;
+        String token = "Bearer " + new PrefManager(this).getToken();
+        ApiClient.getClient(this).create(ApiService.class)
+                .getLocations(token)
+                .enqueue(new Callback<List<LocationModels.LocationModel>>() {
+                    @Override
+                    public void onResponse(Call<List<LocationModels.LocationModel>> call,
+                                           Response<List<LocationModels.LocationModel>> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            masterLocationList = response.body();
+                            locationList.clear();
+                            for (LocationModels.LocationModel loc : masterLocationList)
+                                locationList.add(loc.getName());
+                            runOnUiThread(() -> {
+                                // Rebuild list dengan hint
+                                List<String> withHint = new ArrayList<>();
+                                withHint.add("Select Location");
+                                for (LocationModels.LocationModel loc : masterLocationList)
+                                    withHint.add(loc.getName());
+
+                                locationSpinnerAdapter.clear();
+                                locationSpinnerAdapter.addAll(withHint);
+                                locationSpinnerAdapter.notifyDataSetChanged();
+
+                                if (!selectedLocationId.isEmpty()) {
+                                    for (int i = 0; i < masterLocationList.size(); i++) {
+                                        if (masterLocationList.get(i).getId().equals(selectedLocationId)) {
+                                            spinnerLocation.setSelection(i + 1); // +1 karena hint
+                                            break;
+                                        }
+                                    }
+                                }
+                            });
+
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<List<LocationModels.LocationModel>> call, Throwable t) {}
+                });
+    }
+
+    // Proses scan masuk
+    private void enqueueScan(String scannedData) {
+        for (ItemModels.ItemModel t : scannedItemsList) {
+            if (t.getEpcTag().equalsIgnoreCase(scannedData)) {
+                playScanFeedback(1);
+                showWarning("Already scanned");
+                return;
+            }
+        }
+        if (selectedLocationId.isEmpty()) { showWarning("Select location first"); return; }
+
+        addItemToList(new ItemModels.ItemModel(scannedData, "", "Loading...", 1));
+        playScanFeedback(0);
+
+        if (!isNetworkConnected()) {
+            new Thread(() -> db.appDao().insertStockInScan(
+                    buildEntity(scannedData, "", "Loading...", false))).start();
+            showWarning("Saved offline");
             return;
         }
-        hideLoading();
-        String raw = ErrorParser.getMessage(response);
-        showError(humanizeError(raw, response.code()));
+
+        String token = "Bearer " + new PrefManager(this).getToken();
+        String type  = switchRfid.isChecked() ? "RFID" : "QR";
+
+        ApiClient.getClient(this).create(ApiService.class)
+                .getTagByCode(token, scannedData, type)
+                .enqueue(new Callback<TagModels.TagResponseDto>() {
+                    @Override
+                    public void onResponse(Call<TagModels.TagResponseDto> call,
+                                           Response<TagModels.TagResponseDto> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            TagModels.TagResponseDto tag = response.body();
+                            new Thread(() -> db.appDao().insertStockInScan(
+                                    buildEntity(scannedData, tag.getItemId(), tag.getItemName(), true))).start();
+                            runOnUiThread(() -> updateItemInList(scannedData, tag.getItemId(), tag.getItemName()));
+                        } else {
+                            runOnUiThread(() -> {
+                                removeItemFromList(scannedData);
+                                playScanFeedback(2);
+                                showError("Tag not registered");
+                            });
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<TagModels.TagResponseDto> call, Throwable t) {
+                        new Thread(() -> db.appDao().insertStockInScan(
+                                buildEntity(scannedData, "", "Loading...", false))).start();
+                        handler.post(() -> showWarning("Saved offline"));
+                    }
+                });
     }
 
-    private String humanizeError(String rawMsg, int code) {
-        if (code == 403) return "You don't have access for this action";
-        if (code >= 500) return "Server error, please try again later";
-        if (rawMsg != null && !rawMsg.isEmpty()
-                && !rawMsg.toLowerCase().contains("exception")
-                && !rawMsg.toLowerCase().contains("null")) return rawMsg;
-        return "Something went wrong, please try again";
+    // Build entity Room DB untuk scan item
+    private StockInScanEntity buildEntity(String epc, String itemId, String itemName, boolean resolved) {
+        StockInScanEntity e = new StockInScanEntity();
+        e.epcTag = epc;
+        e.itemId = itemId;
+        e.itemName = itemName;
+        e.scannerType = switchRfid.isChecked() ? "RFID" : "QR";
+        e.locationId = selectedLocationId;
+        e.isResolved = resolved;
+        e.isSynced = false;
+        e.createdAt = System.currentTimeMillis();
+        return e;
     }
 
-    // ─── RFID / Barcode Callbacks ─────────────────────────────────
+    // Simpan ke Room lalu submit ke API
+    private void saveToRoomThenSubmit() {
+        showLoading();
+        String type = switchRfid.isChecked() ? "RFID" : "QR";
 
+        new Thread(() -> {
+            List<StockInScanEntity> existing = db.appDao().getAllStockInScans();
+            for (ItemModels.ItemModel item : scannedItemsList) {
+                boolean found = false;
+                for (StockInScanEntity e : existing) {
+                    if (e.epcTag.equalsIgnoreCase(item.getEpcTag())) { found = true; break; }
+                }
+                if (!found) db.appDao().insertStockInScan(buildEntity(
+                        item.getEpcTag(), item.getItemId(), item.getItemName(),
+                        !item.getItemName().equals("Loading...") && !item.getItemName().equals("Pending...")));
+            }
+            db.appDao().updateStockInLocation(selectedLocationId);
+            db.appDao().updateStockInScannerType(type);
+
+            handler.post(() -> {
+                hideLoading();
+                if (isNetworkConnected()) hitApiStockIn(type);
+                else showWarning("Saved offline");
+            });
+        }).start();
+    }
+
+    // Submit stock in ke API
+    private void hitApiStockIn(String scannerType) {
+        showLoading();
+        String token = "Bearer " + new PrefManager(this).getToken();
+
+        List<String> codes = new ArrayList<>();
+        for (ItemModels.ItemModel item : scannedItemsList) codes.add(item.getEpcTag());
+
+        ApiClient.getClient(this).create(ApiService.class)
+                .stockIn(token, new StockInRequest(scannerType, codes, selectedLocationId))
+                .enqueue(new Callback<GeneralResponse>() {
+                    @Override
+                    public void onResponse(Call<GeneralResponse> call, Response<GeneralResponse> response) {
+                        hideLoading();
+                        if (response.isSuccessful()) {
+                            new Thread(() -> db.appDao().clearAllStockInScans()).start();
+                            showSuccess(response.body().getMessage());
+                            playScanFeedback(0);
+                            clearAllData();
+                        } else {
+                            handleApiErrorFriendly(response);
+                            playScanFeedback(2);
+                        }
+                        resultScan.requestFocus();
+                    }
+
+                    @Override
+                    public void onFailure(Call<GeneralResponse> call, Throwable t) {
+                        hideLoading();
+                        handleFailure(t);
+                        playScanFeedback(2);
+                        showWarning("Saved offline");
+                    }
+                });
+    }
+
+    // ─── List Operations ──────────────────────────────────────────────────────
+
+    private void addItemToList(ItemModels.ItemModel item) {
+        scannedItemsList.add(0, item);
+        if (adapter != null) adapter.setLastScannedPosition(0);
+        if (!isListProductTab) {
+            buildSumProductList();
+            if (sumAdapter != null) sumAdapter.updateData(sumProductList);
+        } else {
+            adapter.notifyItemInserted(0);
+        }
+        rvTags.scrollToPosition(0);
+        totalScanCount++;
+        updateScanCount();
+        updateEmptyState();
+    }
+
+    private void updateItemInList(String epc, String itemId, String itemName) {
+        for (int i = 0; i < scannedItemsList.size(); i++) {
+            if (scannedItemsList.get(i).getEpcTag().equalsIgnoreCase(epc)) {
+                scannedItemsList.get(i).setItemId(itemId);
+                scannedItemsList.get(i).setItemName(itemName);
+                adapter.notifyItemChanged(i);
+                break;
+            }
+        }
+    }
+
+    private void removeItemFromList(String epc) {
+        for (int i = 0; i < scannedItemsList.size(); i++) {
+            if (scannedItemsList.get(i).getEpcTag().equalsIgnoreCase(epc)) {
+                scannedItemsList.remove(i);
+                totalScanCount--;
+                if (isListProductTab) {
+                    adapter.notifyItemRemoved(i);
+                    adapter.notifyItemRangeChanged(i, scannedItemsList.size());
+                } else {
+                    buildSumProductList();
+                    if (sumAdapter != null) sumAdapter.updateData(sumProductList);
+                }
+                updateScanCount();
+                updateEmptyState();
+                break;
+            }
+        }
+    }
+
+    private void clearAllData() {
+        scannedItemsList.clear();
+        sumProductList.clear();
+        if (isListProductTab) adapter.notifyDataSetChanged();
+        else if (sumAdapter != null) sumAdapter.updateData(sumProductList);
+        totalScanCount = 0;
+        updateScanCount();
+        updateEmptyState();
+    }
+
+    private void updateScanCount() {
+        tvScanned.setText("Scanned: " + totalScanCount);
+    }
+
+    private void buildSumProductList() {
+        Map<String, ItemModels.SumProductModel> map = new LinkedHashMap<>();
+        for (ItemModels.ItemModel item : scannedItemsList) {
+            if (map.containsKey(item.getItemId()))
+                map.get(item.getItemId()).addCount(1);
+            else
+                map.put(item.getItemId(),
+                        new ItemModels.SumProductModel(item.getItemId(), item.getItemName(), 1));
+        }
+        sumProductList = new ArrayList<>(map.values());
+    }
+
+    // ─── Dialog ───────────────────────────────────────────────────────────────
+
+    private void showSaveConfirmDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("Confirm")
+                .setMessage("Save " + totalScanCount + " items to warehouse?")
+                .setCancelable(false)
+                .setPositiveButton("Save", (d, w) -> saveToRoomThenSubmit())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showDeleteItemDialog(ItemModels.ItemModel item, int position) {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_regist);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        ((TextView) dialog.findViewById(R.id.tvTitle)).setText("Remove " + item.getEpcTag() + "?");
+
+        Button btnYes = dialog.findViewById(R.id.btnSave);
+        btnYes.setText("Remove");
+        btnYes.setBackgroundTintList(ColorStateList.valueOf(Color.RED));
+
+        dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
+        btnYes.setOnClickListener(v -> {
+            dialog.dismiss();
+            new Thread(() -> db.appDao().deleteStockInScanByEpc(item.getEpcTag())).start();
+            scannedItemsList.remove(position);
+            totalScanCount--;
+            if (isListProductTab) {
+                adapter.notifyItemRemoved(position);
+                adapter.notifyItemRangeChanged(position, scannedItemsList.size());
+            } else {
+                buildSumProductList();
+                if (sumAdapter != null) sumAdapter.updateData(sumProductList);
+            }
+            updateScanCount();
+            resultScan.requestFocus();
+        });
+        dialog.show();
+    }
+
+    // ─── Scanner Callbacks ────────────────────────────────────────────────────
     @Override
     public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
         for (RFIDData data : event.getRFIDData()) {
@@ -759,5 +732,34 @@ public class StockInActivity extends BaseScannerActivity
             String barcode = new String(event.getBarcodeData().get(0).getData());
             handler.post(() -> enqueueScan(barcode));
         }
+    }
+
+    // ─── Helper ───────────────────────────────────────────────────────────────
+
+    private void setTabActive(boolean listActive) {
+        btnListProduct.setBackgroundTintList(ColorStateList.valueOf(
+                getColor(listActive ? R.color.blue_theme : R.color.white)));
+        btnListProduct.setTextColor(getColor(listActive ? R.color.white : R.color.blue_theme));
+        btnSumProduct.setBackgroundTintList(ColorStateList.valueOf(
+                getColor(listActive ? R.color.white : R.color.blue_theme)));
+        btnSumProduct.setTextColor(getColor(listActive ? R.color.blue_theme : R.color.white));
+    }
+
+    private void handleApiErrorFriendly(Response<?> response) {
+        if (response.code() == 401) { handleApiError(response); return; }
+        hideLoading();
+        showError(humanizeError(ErrorParser.getMessage(response), response.code()));
+    }
+
+    private String humanizeError(String rawMsg, int code) {
+        if (code == 403) return "Access denied";
+        if (code >= 500) return "Server error, try again";
+        if (rawMsg != null && !rawMsg.isEmpty()
+                && !rawMsg.toLowerCase().contains("exception")
+                && !rawMsg.toLowerCase().contains("null")) return rawMsg;
+        return "Request failed";
+    }
+    private void updateEmptyState() {
+        tvEmpty.setVisibility(scannedItemsList.isEmpty() ? View.VISIBLE : View.GONE);
     }
 }

@@ -1,6 +1,7 @@
 package com.example.inventory_system_ht.Activity;
 
 import android.graphics.Color;
+import android.graphics.PixelFormat;
 import android.graphics.drawable.ColorDrawable;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,6 +24,7 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.view.Gravity;
 import android.view.Window;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -34,13 +36,26 @@ import com.example.inventory_system_ht.R;
 
 public abstract class BaseScannerActivity extends AppCompatActivity {
 
+    // ─── Fields ───────────────────────────────────────────────────────────────
     private Dialog loadingDialog;
     private ToneGenerator toneGen;
     private Vibrator vibrator;
     private PopupWindow activePowerPopup = null;
+
+    // ─── Abstract ─────────────────────────────────────────────────────────────
     protected abstract CommScanner getScannerInstance();
 
-    // ── Network ───────────────────────────────────────────────────
+    // ─── Lifecycle ────────────────────────────────────────────────────────────
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (toneGen != null) {
+            toneGen.release();
+            toneGen = null;
+        }
+    }
+
+    // ─── Network ──────────────────────────────────────────────────────────────
 
     public boolean isNetworkConnected() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -52,62 +67,99 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
         return false;
     }
 
-    // ── Snackbar Banner ───────────────────────────────────────────
+    // ─── UI Feedback ──────────────────────────────────────────────────────────
 
+    // Shortcut: true = success, false = error
     public void showSagaFeedback(String pesan, boolean isSuccess) {
         showSagaFeedback(pesan, isSuccess ? 0 : 2);
     }
 
+    // Banner ke Activity root (normal usage)
     public void showSagaFeedback(String pesan, int type) {
         FrameLayout rootLayout = findViewById(android.R.id.content);
+        showSagaFeedback(rootLayout, pesan, type);
+    }
 
-        View     bannerView = getLayoutInflater().inflate(R.layout.layout_message_banner, rootLayout, false);
-        ImageView dot       = bannerView.findViewById(R.id.dotIndicator);
-        TextView tvMessage  = bannerView.findViewById(R.id.tvBannerMessage);
+    // Banner ke ViewGroup custom (dipakai internal)
+    public void showSagaFeedback(ViewGroup root, String pesan, int type) {
+        View bannerView = getLayoutInflater().inflate(R.layout.layout_message_banner, root, false);
+        ImageView dot = bannerView.findViewById(R.id.dotIndicator);
+        TextView tvMessage = bannerView.findViewById(R.id.tvBannerMessage);
 
         switch (type) {
-            case 1:  dot.setImageResource(R.drawable.dot_warning); break;
-            case 2:  dot.setImageResource(R.drawable.dot_error);   break;
+            case 1: dot.setImageResource(R.drawable.dot_warning); break;
+            case 2: dot.setImageResource(R.drawable.dot_error);   break;
             default: dot.setImageResource(R.drawable.dot_success); break;
         }
-
         tvMessage.setText(pesan);
 
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        );
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.gravity = Gravity.TOP;
         params.setMargins(15, 15, 15, 0);
         bannerView.setLayoutParams(params);
 
         bannerView.setAlpha(0f);
         bannerView.setTranslationY(-60f);
-        rootLayout.addView(bannerView);
+        root.addView(bannerView);
 
-        bannerView.animate()
-                .alpha(1f)
-                .translationY(0f)
-                .setDuration(200)
-                .setInterpolator(new android.view.animation.OvershootInterpolator(1.2f))
-                .start();
+        bannerView.animate().alpha(1f).translationY(0f).setDuration(200)
+                .setInterpolator(new android.view.animation.OvershootInterpolator(1.2f)).start();
 
         bannerView.postDelayed(() ->
-                        bannerView.animate()
-                                .alpha(0f)
-                                .translationY(-40f)
-                                .setDuration(250)
-                                .withEndAction(() -> rootLayout.removeView(bannerView))
-                                .start(),
-                2500
+                bannerView.animate().alpha(0f).translationY(-40f).setDuration(250)
+                        .withEndAction(() -> root.removeView(bannerView)).start(), 2000);
+    }
+
+    // Banner overlay via WindowManager — muncul di atas dialog sekalipun
+    public void showBannerOverlay(String pesan, int type) {
+        View bannerView = getLayoutInflater().inflate(R.layout.layout_message_banner, null);
+        ImageView dot = bannerView.findViewById(R.id.dotIndicator);
+        TextView tvMessage = bannerView.findViewById(R.id.tvBannerMessage);
+
+        switch (type) {
+            case 1: dot.setImageResource(R.drawable.dot_warning); break;
+            case 2: dot.setImageResource(R.drawable.dot_error);   break;
+            default: dot.setImageResource(R.drawable.dot_success); break;
+        }
+        tvMessage.setText(pesan);
+
+        FrameLayout wrapper = new FrameLayout(this);
+        int px = (int)(15 * getResources().getDisplayMetrics().density);
+        wrapper.setPadding(px, 0, px, 0);
+        wrapper.addView(bannerView);
+
+        WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                PixelFormat.TRANSLUCENT
         );
+        params.gravity = Gravity.TOP;
+        params.y = px;
+
+        wrapper.setAlpha(0f);
+        wrapper.setTranslationY(-60f);
+        wm.addView(wrapper, params);
+
+        wrapper.animate().alpha(1f).translationY(0f).setDuration(200)
+                .setInterpolator(new android.view.animation.OvershootInterpolator(1.2f)).start();
+
+        wrapper.postDelayed(() ->
+                wrapper.animate().alpha(0f).translationY(-40f).setDuration(250)
+                        .withEndAction(() -> {
+                            try { wm.removeView(wrapper); } catch (Exception ignored) {}
+                        }).start(), 2000);
     }
 
     public void showSuccess(String pesan) { showSagaFeedback(pesan, 0); }
-    public void showError(String pesan)   { showSagaFeedback(pesan, 2); }
+    public void showError(String pesan) { showSagaFeedback(pesan, 2); }
     public void showWarning(String pesan) { showSagaFeedback(pesan, 1); }
 
-    // ── Loading Dialog ────────────────────────────────────────────
+    // ─── Loading Dialog ───────────────────────────────────────────────────────
 
     public void showLoading() {
         if (loadingDialog == null) {
@@ -118,7 +170,8 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
             if (loadingDialog.getWindow() != null) {
                 loadingDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
                 loadingDialog.getWindow().setLayout(
-                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
             }
         }
         if (!loadingDialog.isShowing()) loadingDialog.show();
@@ -128,26 +181,25 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
         if (loadingDialog != null && loadingDialog.isShowing()) loadingDialog.dismiss();
     }
 
-    // ── Error Handling ────────────────────────────────────────────
+    // ─── API Error Handling ───────────────────────────────────────────────────
 
     public void handleApiError(int statusCode) {
         hideLoading();
         if (statusCode == 401) {
-            showSagaFeedback("Session expired, please login again", false);
-            PrefManager pref = new PrefManager(this);
-            pref.clearSession();
+            showSagaFeedback("Session expired", false);
+            new PrefManager(this).clearSession();
             Intent intent = new Intent(this, LoginActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
             finish();
-        } else if (statusCode >= 500) {
-            showSagaFeedback("Server is having issues, please try again later", false);
         } else if (statusCode == 403) {
-            showSagaFeedback("You don't have permission for this action", false);
+            showSagaFeedback("Access denied", false);
         } else if (statusCode == 404) {
             showSagaFeedback("Data not found", false);
+        } else if (statusCode >= 500) {
+            showSagaFeedback("Server error, try again", false);
         } else {
-            showSagaFeedback("Something went wrong, please check your input", false);
+            showSagaFeedback("Request failed", false);
         }
     }
 
@@ -155,13 +207,12 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
         hideLoading();
         int statusCode = response.code();
         if (statusCode == 401) {
-            PrefManager pref = new PrefManager(this);
-            pref.clearSession();
+            new PrefManager(this).clearSession();
+            showSagaFeedback("Session expired", false);
             Intent intent = new Intent(this, LoginActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
             finish();
-            showSagaFeedback("Session expired, please login again", false);
             return;
         }
         String msg = com.example.inventory_system_ht.Helper.ErrorParser.getMessage(response);
@@ -171,35 +222,34 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
     public void handleFailure(Throwable t) {
         hideLoading();
         if (t instanceof java.net.SocketTimeoutException) {
-            showSagaFeedback("Connection timeout, please check your internet", false);
+            showSagaFeedback("Connection timeout", false);
         } else if (t instanceof java.net.ConnectException) {
-            showSagaFeedback("Cannot reach server, is it online?", false);
+            showSagaFeedback("Server unreachable", false);
         } else if (t instanceof java.io.IOException) {
-            showSagaFeedback("Network error, check your WiFi/Data connection", false);
+            showSagaFeedback("Network error", false);
         } else {
-            showSagaFeedback("Something went wrong, please try again", false);
+            showSagaFeedback("Unexpected error", false);
         }
     }
 
-    // ── Scan Feedback ─────────────────────────────────────────────
+    // ─── Scan Feedback ────────────────────────────────────────────────────────
 
     public void playScanFeedback(int type) {
-        if (toneGen  == null) toneGen  = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
+        if (toneGen == null) toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
         if (vibrator == null) vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
 
         switch (type) {
-            case 0: // SUCCESS
+            case 0:
                 toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 50);
                 break;
-            case 1: // DUPLICATE
+            case 1:
                 toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 100);
                 break;
-            case 2: // ERROR
+            case 2:
                 toneGen.startTone(ToneGenerator.TONE_CDMA_HIGH_L, 200);
                 if (vibrator != null && vibrator.hasVibrator()) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        vibrator.vibrate(VibrationEffect.createOneShot(
-                                300, VibrationEffect.DEFAULT_AMPLITUDE));
+                        vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE));
                     } else {
                         vibrator.vibrate(300);
                     }
@@ -208,21 +258,23 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
         }
     }
 
+    // ─── RFID Hardware ────────────────────────────────────────────────────────
+
     public void applyRfidPower(int dbm) {
         CommScanner scanner = getScannerInstance();
         if (scanner == null || scanner.getRFIDScanner() == null) {
-            showError("RFID Reader not connected.");
+            showError("RFID not connected");
             return;
         }
         int safePower = Math.max(4, Math.min(30, dbm));
         try {
             RFIDScannerSettings settings = scanner.getRFIDScanner().getSettings();
-            settings.scan.powerLevelRead  = safePower;
+            settings.scan.powerLevelRead = safePower;
             settings.scan.powerLevelWrite = safePower;
             scanner.getRFIDScanner().setSettings(settings);
-            showSuccess("RFID Power set to " + safePower + " dBm");
+            showSuccess("Power: " + safePower + " dBm");
         } catch (Exception e) {
-            showError("Failed to set power: " + e.getMessage());
+            showError("Set power failed");
         }
     }
 
@@ -237,24 +289,27 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
             CommConst.CommBattery battery = scanner.getRemainingBattery();
             ivBattery.setVisibility(View.VISIBLE);
             int color;
-            if      (battery == CommConst.CommBattery.UNDER10) color = Color.parseColor("#F44336");
+            if (battery == CommConst.CommBattery.UNDER10) color = Color.parseColor("#F44336");
             else if (battery == CommConst.CommBattery.UNDER40) color = Color.parseColor("#FFC107");
-            else                                                color = Color.parseColor("#4CAF50");
+            else color = Color.parseColor("#4CAF50");
             ivBattery.setColorFilter(color);
         } catch (Exception e) {
             ivBattery.setVisibility(View.GONE);
         }
     }
+
     public void updateReaderBattery(ImageView ivBattery, boolean switchOn) {
         if (ivBattery == null) return;
-        if (!switchOn) {
-            ivBattery.setVisibility(View.GONE);
-            return;
-        }
+        if (!switchOn) { ivBattery.setVisibility(View.GONE); return; }
         updateReaderBattery(ivBattery);
     }
 
-    // ── Power Popup ───────────────────────────────────────────────
+    public int getHTBatteryLevel() {
+        BatteryManager bm = (BatteryManager) getSystemService(BATTERY_SERVICE);
+        return bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+    }
+
+    // ─── Dropdown Popup ───────────────────────────────────────────────────────
 
     protected void showPowerDropdownPopup(View anchor, List<String> items, TextView tvPowerLevel) {
         View popupView = getLayoutInflater().inflate(R.layout.dropdown_popup, null);
@@ -276,12 +331,8 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
                 holder.itemView.setOnClickListener(v -> {
                     String selected = items.get(position);
                     tvPowerLevel.setText(selected);
-
-                    try {
-                        applyRfidPower(parsePower(selected, 20));
-
-                    } catch (NumberFormatException ignored) {}
-
+                    try { applyRfidPower(parsePower(selected, 20)); }
+                    catch (NumberFormatException ignored) {}
                     if (activePowerPopup != null) activePowerPopup.dismiss();
                 });
             }
@@ -291,45 +342,26 @@ public abstract class BaseScannerActivity extends AppCompatActivity {
         });
 
         int itemHeightPx = (int)(56 * getResources().getDisplayMetrics().density);
-        int maxHeight    = itemHeightPx * 4;
+        int maxHeight = itemHeightPx * 4;
 
         PopupWindow popup = new PopupWindow(
-                popupView,
-                anchor.getWidth(),
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                true
-        );
+                popupView, anchor.getWidth(), ViewGroup.LayoutParams.WRAP_CONTENT, true);
         popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         popup.setElevation(16f);
         popup.setOutsideTouchable(true);
 
         popupView.measure(
                 View.MeasureSpec.makeMeasureSpec(anchor.getWidth(), View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        );
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
         popup.setHeight(Math.min(popupView.getMeasuredHeight(), maxHeight));
         popup.showAsDropDown(anchor, 0, 6);
         activePowerPopup = popup;
     }
 
+    // ─── Utility ──────────────────────────────────────────────────────────────
+
     protected int parsePower(String text, int defaultVal) {
         try { return Integer.parseInt(text.replace(" dBm", "").trim()); }
         catch (NumberFormatException e) { return defaultVal; }
-    }
-
-    public int getHTBatteryLevel() {
-        BatteryManager bm = (BatteryManager) getSystemService(BATTERY_SERVICE);
-        return bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
-    }
-
-    // ── Lifecycle ─────────────────────────────────────────────────
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (toneGen != null) {
-            toneGen.release();
-            toneGen = null;
-        }
     }
 }

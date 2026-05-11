@@ -1,14 +1,6 @@
 package com.example.inventory_system_ht.Activity;
 
-import androidx.work.Constraints;
-import androidx.work.NetworkType;
-import androidx.work.OneTimeWorkRequest;
-import androidx.work.WorkManager;
-import com.example.inventory_system_ht.Helper.AppDatabase;
-import com.example.inventory_system_ht.Helper.SyncWorker;
-import com.example.inventory_system_ht.Models.PendingSubmitEntity;
-import com.google.gson.Gson;
-
+import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
@@ -16,19 +8,25 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
 
-import android.annotation.SuppressLint;
-
-import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.work.Constraints;
+import androidx.work.NetworkType;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
 
 import com.densowave.scannersdk.Barcode.BarcodeDataReceivedEvent;
 import com.densowave.scannersdk.Common.CommScanner;
@@ -39,13 +37,17 @@ import com.densowave.scannersdk.RFID.RFIDDataReceivedEvent;
 import com.example.inventory_system_ht.Adapter.TagRegisAdapter;
 import com.example.inventory_system_ht.Helper.ApiClient;
 import com.example.inventory_system_ht.Helper.ApiService;
+import com.example.inventory_system_ht.Helper.AppDatabase;
 import com.example.inventory_system_ht.Helper.PrefManager;
 import com.example.inventory_system_ht.Helper.RfidBulkHelper;
 import com.example.inventory_system_ht.Helper.ScannerManager;
+import com.example.inventory_system_ht.Helper.SyncWorker;
 import com.example.inventory_system_ht.Models.AuthModels;
 import com.example.inventory_system_ht.Models.GeneralResponse;
+import com.example.inventory_system_ht.Models.PendingSubmitEntity;
 import com.example.inventory_system_ht.Models.TagModels;
 import com.example.inventory_system_ht.R;
+import com.google.gson.Gson;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,13 +59,14 @@ import retrofit2.Call;
 public class TagRegisActivity extends BaseScannerActivity
         implements RFIDDataDelegate, BarcodeDataDelegate {
 
+    // ─── Fields ───────────────────────────────────────────────────────────────
     private EditText resultScan;
     private TextView tvScanned;
     private Switch switchRfid;
     private Button btnClear, btnSubmitRegis;
     private RecyclerView rvTags;
-    private CardView btnPowerDropdown;
-    private TextView tvPowerLevel;
+    private Spinner spinnerPower;                           // ← ganti dari CardView + TextView
+
     private TagRegisAdapter adapter;
     private List<TagModels.TagModel> registeredTagList;
     private final Handler handler = new Handler();
@@ -73,11 +76,13 @@ public class TagRegisActivity extends BaseScannerActivity
             "5 dBm", "10 dBm", "15 dBm", "18 dBm", "21 dBm", "24 dBm", "27 dBm", "30 dBm"
     ));
 
+    // ─── Abstract Override ────────────────────────────────────────────────────
     @Override
     protected CommScanner getScannerInstance() {
         return ScannerManager.getInstance().getScanner();
     }
 
+    // ─── Lifecycle ────────────────────────────────────────────────────────────
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -85,174 +90,26 @@ public class TagRegisActivity extends BaseScannerActivity
 
         db = AppDatabase.getDatabase(this);
 
-        // ── findViewById ──────────────────────────────────────────────
-        resultScan = findViewById(R.id.resultScan);
-        tvScanned = findViewById(R.id.tvScanned);
-        switchRfid = findViewById(R.id.switchRfid);
-        btnClear = findViewById(R.id.btnClear);
-        btnSubmitRegis = findViewById(R.id.btnSubmitRegis);
-        rvTags = findViewById(R.id.rvTags);
-        btnPowerDropdown = findViewById(R.id.btnPowerDropdown);
-        tvPowerLevel = findViewById(R.id.tvPowerLevel);
-
-        // Dropdown hidden by default saat switch masih OFF
-        btnPowerDropdown.setVisibility(View.GONE);
-
-        // ── RecyclerView ──────────────────────────────────────────────
-        rvTags.setItemAnimator(null);
-        rvTags.setLayoutManager(new LinearLayoutManager(this));
-        registeredTagList = new ArrayList<>();
-        adapter = new TagRegisAdapter(registeredTagList);
-        rvTags.setAdapter(adapter);
-        adapter.setOnItemClickListener(item -> {
-            int pos = registeredTagList.indexOf(item);
-            if (pos != -1) showDeleteDialog(item, pos);
-        });
-
-        // ── Switch RFID ON/OFF ────────────────────────────────────────
-        switchRfid.setOnCheckedChangeListener((btn, isChecked) -> {
-            CommScanner scanner = getScannerInstance();
-
-            // Update icon battery tiap toggle
-            updateReaderBattery(findViewById(R.id.ivReaderBattery), isChecked);
-
-            if (isChecked) {
-                if (scanner == null) {
-                    showError("SP1 Reader not connected!");
-                    switchRfid.setChecked(false);
-                    updateReaderBattery(findViewById(R.id.ivReaderBattery), false);
-                    return;
-                }
-
-                // Tutup barcode dulu — SDK tidak bisa RFID + Barcode bersamaan
-                RfidBulkHelper.closeBarcode(scanner);
-
-                int power = parsePower(tvPowerLevel.getText().toString(), 27);
-                boolean ok = RfidBulkHelper.openInventory(scanner, this, power);
-
-                if (ok) {
-                    showSuccess("RFID Bulk Scan: ON");
-                    resultScan.setEnabled(false);
-                    btnPowerDropdown.setVisibility(View.VISIBLE);
-                } else {
-                    showError("Failed to start RFID inventory");
-                    switchRfid.setChecked(false);
-                }
-
-            } else {
-                RfidBulkHelper.closeInventory(scanner);
-                if (scanner != null) RfidBulkHelper.openBarcode(scanner, this);
-                showSagaFeedback("RFID Bulk Scan: OFF", true);
-                resultScan.setEnabled(true);
-                resultScan.requestFocus();
-                btnPowerDropdown.setVisibility(View.GONE);
-            }
-        });
-
-        // ── Power dropdown popup ──────────────────────────────────────
-        btnPowerDropdown.setOnClickListener(v ->
-                showPowerDropdownPopup(btnPowerDropdown, powerList, tvPowerLevel));
-
-        // ── Barcode input via EditText (saat RFID OFF) ────────────────
-        resultScan.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int i, int c, int a) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int i, int b, int c) {
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                if (switchRfid.isChecked()) return;
-                String data = s.toString().trim();
-                if (data.length() < 4) return;
-
-                resultScan.removeTextChangedListener(this);
-                resultScan.setText("");
-                resultScan.addTextChangedListener(this);
-
-                processScannedData(data);
-            }
-        });
-
-        // ── Tombol ────────────────────────────────────────────────────
-        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
-
-        btnClear.setOnClickListener(v -> {
-            registeredTagList.clear();
-            adapter.notifyDataSetChanged();
-            updateCount();
-            showSuccess("List cleared");
-        });
-
-        btnSubmitRegis.setOnClickListener(v -> {
-            if (registeredTagList.isEmpty()) showWarning("No tags scanned yet!");
-            else showBulkConfirmDialog();
-        });
+        bindViews();
+        setupPowerSpinner();
+        setupRecyclerView();
+        setupSwitchRfid();
+        setupBarcodeTextWatcher();
+        setupButtonListeners();
 
         resultScan.setShowSoftInputOnFocus(false);
         resultScan.postDelayed(() -> resultScan.requestFocus(), 150);
     }
 
-    // ── RFID Bulk Callback ────────────────────────────────────────────
-    @Override
-    public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
-        for (RFIDData data : event.getRFIDData()) {
-            String epc = RfidBulkHelper.bytesToHex(data.getUII());
-            if (!epc.isEmpty()) {
-                handler.post(() -> processScannedData(epc));
-            }
-        }
-    }
-
-    // ── Barcode Callback ──────────────────────────────────────────────
-    @Override
-    public void onBarcodeDataReceived(CommScanner scanner, BarcodeDataReceivedEvent event) {
-        if (!event.getBarcodeData().isEmpty()) {
-            String barcode = new String(event.getBarcodeData().get(0).getData());
-            handler.post(() -> processScannedData(barcode));
-        }
-    }
-
-    // ── Process data (RFID / Barcode) ─────────────────────────────────
-    private void processScannedData(String data) {
-        for (TagModels.TagModel t : registeredTagList) {
-            if (t.getEpcTag().equalsIgnoreCase(data)) {
-                playScanFeedback(1); // beep duplicate, silent skip
-                return;
-            }
-        }
-
-        TagModels.TagModel newTag = new TagModels.TagModel(
-                data, data, "TAG", "Scanned Item", "STAGING", 0
-        );
-        registeredTagList.add(0, newTag);
-        adapter.setLastScannedPosition(0);
-        adapter.notifyItemInserted(0);
-        rvTags.scrollToPosition(0);
-        updateCount();
-        playScanFeedback(0); // beep success
-    }
-
-    private void updateCount() {
-        tvScanned.setText("Scanned: " + registeredTagList.size());
-    }
-
-    // ── Lifecycle ─────────────────────────────────────────────────────
     @Override
     protected void onResume() {
         super.onResume();
         CommScanner scanner = getScannerInstance();
-
         updateReaderBattery(findViewById(R.id.ivReaderBattery), switchRfid.isChecked());
-        if (!switchRfid.isChecked() && scanner != null) {
-            RfidBulkHelper.openBarcode(scanner, this);
-        }
+        if (!switchRfid.isChecked() && scanner != null) RfidBulkHelper.openBarcode(scanner, this);
 
-        if (getHTBatteryLevel() <= 15)
-            showWarning("HT Battery " + getHTBatteryLevel() + "%, charge now!");
+        int bat = getHTBatteryLevel();
+        if (bat <= 15) showWarning("Battery low: " + bat + "%");
     }
 
     @Override
@@ -263,65 +120,167 @@ public class TagRegisActivity extends BaseScannerActivity
         RfidBulkHelper.closeBarcode(scanner);
     }
 
-    // ── Dialog Confirm Register ───────────────────────────────────────
-    private void showBulkConfirmDialog() {
-        Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_regist);
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-        ((TextView) dialog.findViewById(R.id.tvTitle))
-                .setText("Register " + registeredTagList.size() + " Tags?");
-        dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
-        dialog.findViewById(R.id.btnSave).setOnClickListener(v -> {
-            dialog.dismiss();
-            List<String> ids = new ArrayList<>();
-            for (TagModels.TagModel t : registeredTagList) ids.add(t.getEpcTag());
-            hitApiRegisterTags(ids);
-        });
-        dialog.show();
+    // ─── Init ─────────────────────────────────────────────────────────────────
+    private void bindViews() {
+        resultScan = findViewById(R.id.resultScan);
+        tvScanned = findViewById(R.id.tvScanned);
+        switchRfid = findViewById(R.id.switchRfid);
+        btnClear = findViewById(R.id.btnClear);
+        btnSubmitRegis = findViewById(R.id.btnSubmitRegis);
+        rvTags = findViewById(R.id.rvTags);
+        spinnerPower = findViewById(R.id.spinnerPower);
+
+        spinnerPower.setVisibility(View.GONE);
     }
 
-    // ── Dialog Delete Item ────────────────────────────────────────────
-    private void showDeleteDialog(TagModels.TagModel tag, int position) {
-        Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_regist);
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-        ((TextView) dialog.findViewById(R.id.tvTitle)).setText("Remove tag from list?");
+    // Setup spinner power
+    private void setupPowerSpinner() {
+        ArrayAdapter<String> powerAdapter = new ArrayAdapter<String>(this, R.layout.item_spinner_selected, R.id.tvSpinnerSelected, powerList) {
+            @Override
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                View view = LayoutInflater.from(getContext()).inflate(R.layout.item_dropdown, parent, false);
+                TextView tv = view.findViewById(R.id.tvDropdownItem);
+                ImageView icon = view.findViewById(R.id.ivDropdownIcon);
+                if (tv != null) tv.setText(getItem(position));
+                if (icon != null) icon.setVisibility(View.GONE);
+                return view;
+            }
+        };
+        spinnerPower.setAdapter(powerAdapter);
+        spinnerPower.setSelection(6); // default: 27 dBm
 
-        Button btnYes = dialog.findViewById(R.id.btnSave);
-        btnYes.setText("Remove");
-        btnYes.setBackgroundTintList(
-                android.content.res.ColorStateList.valueOf(Color.RED));
+        spinnerPower.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (!switchRfid.isChecked()) return;
+                CommScanner scanner = getScannerInstance();
+                if (scanner != null) {
+                    int power = parsePower(powerList.get(position), 27);
+                    RfidBulkHelper.closeInventory(scanner);
+                    RfidBulkHelper.openInventory(scanner, TagRegisActivity.this, power);
+                }
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) {}
+        });
+    }
 
-        dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
-        btnYes.setOnClickListener(v -> {
-            dialog.dismiss();
-            registeredTagList.remove(position);
-            adapter.notifyItemRemoved(position);
-            adapter.notifyItemRangeChanged(position, registeredTagList.size());
+    private void setupRecyclerView() {
+        rvTags.setItemAnimator(null);
+        rvTags.setLayoutManager(new LinearLayoutManager(this));
+        registeredTagList = new ArrayList<>();
+        adapter = new TagRegisAdapter(registeredTagList);
+        rvTags.setAdapter(adapter);
+        adapter.setOnItemClickListener(item -> {
+            int pos = registeredTagList.indexOf(item);
+            if (pos != -1) showDeleteDialog(item, pos);
+        });
+    }
+
+    private void setupSwitchRfid() {
+        switchRfid.setOnCheckedChangeListener((btn, isChecked) -> {
+            CommScanner scanner = getScannerInstance();
+            updateReaderBattery(findViewById(R.id.ivReaderBattery), isChecked);
+
+            if (isChecked) {
+                if (scanner == null) {
+                    showError("RFID not connected");
+                    switchRfid.setChecked(false);
+                    updateReaderBattery(findViewById(R.id.ivReaderBattery), false);
+                    return;
+                }
+                RfidBulkHelper.closeBarcode(scanner);
+                int power = parsePower(
+                        spinnerPower.getSelectedItem() != null
+                                ? spinnerPower.getSelectedItem().toString() : "27 dBm", 27);
+                boolean ok = RfidBulkHelper.openInventory(scanner, this, power);
+                if (ok) {
+                    // ✂️ Removed: showSuccess("RFID ON")
+                    resultScan.setEnabled(false);
+                    spinnerPower.setVisibility(View.VISIBLE);
+                } else {
+                    showError("Failed to start RFID");
+                    switchRfid.setChecked(false);
+                }
+            } else {
+                RfidBulkHelper.closeInventory(scanner);
+                if (scanner != null) RfidBulkHelper.openBarcode(scanner, this);
+                // ✂️ Removed: showSagaFeedback("RFID OFF", true)
+                resultScan.setEnabled(true);
+                resultScan.requestFocus();
+                spinnerPower.setVisibility(View.GONE);
+            }
+        });
+    }
+
+    private void setupBarcodeTextWatcher() {
+        resultScan.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
+            @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (switchRfid.isChecked()) return;
+                String data = s.toString().trim();
+                if (data.length() < 4) return;
+
+                resultScan.removeTextChangedListener(this);
+                resultScan.setText("");
+                resultScan.addTextChangedListener(this);
+                processScannedData(data);
+            }
+        });
+    }
+
+    private void setupButtonListeners() {
+        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
+
+        btnClear.setOnClickListener(v -> {
+            registeredTagList.clear();
+            adapter.notifyDataSetChanged();
             updateCount();
-            showSuccess("Tag removed");
+            // ✂️ Removed: showSuccess("List cleared") — list kosong sudah cukup
         });
-        dialog.show();
+
+        btnSubmitRegis.setOnClickListener(v -> {
+            if (registeredTagList.isEmpty()) { showWarning("No tags scanned"); return; }
+            showBulkConfirmDialog();
+        });
     }
 
-    // ── API Register Tags ─────────────────────────────────────────────
+    // ─── Scan Processing ──────────────────────────────────────────────────────
+
+    private void processScannedData(String data) {
+        for (TagModels.TagModel t : registeredTagList) {
+            if (t.getEpcTag().equalsIgnoreCase(data)) {
+                playScanFeedback(1);
+                return;
+            }
+        }
+        TagModels.TagModel newTag = new TagModels.TagModel(
+                data, data, "TAG", "Scanned Item", "STAGING", 0);
+        registeredTagList.add(0, newTag);
+        adapter.setLastScannedPosition(0);
+        adapter.notifyItemInserted(0);
+        rvTags.scrollToPosition(0);
+        updateCount();
+        playScanFeedback(0);
+    }
+
+    private void updateCount() {
+        tvScanned.setText("Scanned: " + registeredTagList.size());
+    }
+
+    // ─── API ──────────────────────────────────────────────────────────────────
+
     private void hitApiRegisterTags(List<String> tagIds) {
         if (!isNetworkConnected()) {
             new Thread(() -> {
                 PendingSubmitEntity pending = new PendingSubmitEntity();
-                pending.doId = "TAG_REGISTRATION";
+                pending.doId        = "TAG_REGISTRATION";
                 pending.scannedCodes = new Gson().toJson(tagIds);
                 pending.scannerType = switchRfid.isChecked() ? "RFID" : "QR";
-                pending.locId = "";
-                pending.createdAt = System.currentTimeMillis();
+                pending.locId       = "";
+                pending.createdAt   = System.currentTimeMillis();
                 db.appDao().insertPendingSubmit(pending);
 
                 WorkManager.getInstance(getApplicationContext()).enqueue(
@@ -331,7 +290,7 @@ public class TagRegisActivity extends BaseScannerActivity
                                 .build());
 
                 runOnUiThread(() -> {
-                    showWarning("Offline – " + tagIds.size() + " tag tersimpan lokal, akan dikirim saat online");
+                    showWarning(tagIds.size() + " tags saved offline, will sync later");
                     registeredTagList.clear();
                     adapter.notifyDataSetChanged();
                     updateCount();
@@ -369,5 +328,70 @@ public class TagRegisActivity extends BaseScannerActivity
                     }
                 });
     }
-}
 
+    // ─── Dialog ───────────────────────────────────────────────────────────────
+
+    private void showBulkConfirmDialog() {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_regist);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+        ((TextView) dialog.findViewById(R.id.tvTitle))
+                .setText("Register " + registeredTagList.size() + " tags?");
+        dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
+        dialog.findViewById(R.id.btnSave).setOnClickListener(v -> {
+            dialog.dismiss();
+            List<String> ids = new ArrayList<>();
+            for (TagModels.TagModel t : registeredTagList) ids.add(t.getEpcTag());
+            hitApiRegisterTags(ids);
+        });
+        dialog.show();
+    }
+
+    private void showDeleteDialog(TagModels.TagModel tag, int position) {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_regist);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+        ((TextView) dialog.findViewById(R.id.tvTitle)).setText("Remove tag from list?");
+
+        Button btnYes = dialog.findViewById(R.id.btnSave);
+        btnYes.setText("Remove");
+        btnYes.setBackgroundTintList(
+                android.content.res.ColorStateList.valueOf(Color.RED));
+
+        dialog.findViewById(R.id.btnNo).setOnClickListener(v -> dialog.dismiss());
+        btnYes.setOnClickListener(v -> {
+            dialog.dismiss();
+            registeredTagList.remove(position);
+            adapter.notifyItemRemoved(position);
+            adapter.notifyItemRangeChanged(position, registeredTagList.size());
+            updateCount();
+            // ✂️ Removed: showSuccess("Tag removed") — item hilang dari list sudah cukup
+        });
+        dialog.show();
+    }
+
+    // ─── Scanner Callbacks ────────────────────────────────────────────────────
+    @Override
+    public void onRFIDDataReceived(CommScanner scanner, RFIDDataReceivedEvent event) {
+        for (RFIDData data : event.getRFIDData()) {
+            String epc = RfidBulkHelper.bytesToHex(data.getUII());
+            if (!epc.isEmpty()) handler.post(() -> processScannedData(epc));
+        }
+    }
+
+    @Override
+    public void onBarcodeDataReceived(CommScanner scanner, BarcodeDataReceivedEvent event) {
+        if (!event.getBarcodeData().isEmpty()) {
+            String barcode = new String(event.getBarcodeData().get(0).getData());
+            handler.post(() -> processScannedData(barcode));
+        }
+    }
+}

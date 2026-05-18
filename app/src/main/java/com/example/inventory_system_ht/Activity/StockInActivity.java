@@ -3,6 +3,7 @@ package com.example.inventory_system_ht.Activity;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
@@ -24,6 +25,8 @@ import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -50,6 +53,7 @@ import com.example.inventory_system_ht.Models.StockInRequest;
 import com.example.inventory_system_ht.Models.StockInScanEntity;
 import com.example.inventory_system_ht.Models.TagModels;
 import com.example.inventory_system_ht.R;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -73,6 +77,7 @@ public class StockInActivity extends BaseScannerActivity
     private TextView tvScanned, tvEmpty;
     private RecyclerView rvTags;
     private Spinner spinnerLocation, spinnerPower;
+    private FloatingActionButton fabScanCamera;
 
     private ItemAdapter adapter;
     private SumProductInAdapter sumAdapter;
@@ -160,6 +165,7 @@ public class StockInActivity extends BaseScannerActivity
         spinnerLocation = findViewById(R.id.spinnerLocation);
         spinnerPower = findViewById(R.id.spinnerPower);
         tvEmpty = findViewById(R.id.tvEmpty);
+        fabScanCamera = findViewById(R.id.fabScanCamera);
 
         switchRfid.setChecked(false);
         spinnerPower.setVisibility(View.GONE);
@@ -202,7 +208,25 @@ public class StockInActivity extends BaseScannerActivity
                 rvTags.setAdapter(sumAdapter);
             }
         });
+        fabScanCamera.setOnClickListener(v -> {
+            if (switchRfid.isChecked()) switchRfid.setChecked(false);
+            cameraScanLauncher.launch(new Intent(this, BarcodeCameraActivity.class));
+        });
+
     }
+    private final ActivityResultLauncher<Intent> cameraScanLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        overridePendingTransition(0, 0);
+                        if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                            String barcode = result.getData().getStringExtra(BarcodeCameraActivity.EXTRA_BARCODE);
+                            if (barcode != null && !barcode.isEmpty()) enqueueScan(barcode);
+                        } else if (result.getResultCode() == BarcodeCameraActivity.RESULT_PERMISSION_DENIED) {
+                            showError("Camera permission denied");
+                        }
+                    }
+            );
 
     // Setup spinner lokasi
     private void setupLocationSpinner() {
@@ -468,8 +492,10 @@ public class StockInActivity extends BaseScannerActivity
 
     // Proses scan masuk
     private void enqueueScan(String scannedData) {
+        final String cleanData = scannedData.trim().replace("\r", "").replace("\n", "");
+
         for (ItemModels.ItemModel t : scannedItemsList) {
-            if (t.getEpcTag().equalsIgnoreCase(scannedData)) {
+            if (t.getEpcTag().equalsIgnoreCase(cleanData)) {
                 playScanFeedback(1);
                 showWarning("Already scanned");
                 return;
@@ -477,12 +503,12 @@ public class StockInActivity extends BaseScannerActivity
         }
         if (selectedLocationId.isEmpty()) { showWarning("Select location first"); return; }
 
-        addItemToList(new ItemModels.ItemModel(scannedData, "", "Loading...", 1));
+        addItemToList(new ItemModels.ItemModel(cleanData, "", "Loading...", 1));
         playScanFeedback(0);
 
         if (!isNetworkConnected()) {
             new Thread(() -> db.appDao().insertStockInScan(
-                    buildEntity(scannedData, "", "Loading...", false))).start();
+                    buildEntity(cleanData, "", "Loading...", false))).start();
             showWarning("Saved offline");
             return;
         }
@@ -491,21 +517,20 @@ public class StockInActivity extends BaseScannerActivity
         String type  = switchRfid.isChecked() ? "RFID" : "QR";
 
         ApiClient.getClient(this).create(ApiService.class)
-                .getTagByCode(token, scannedData, type)
+                .getTagByCode(token, cleanData, type)  // ← ini juga harus cleanData
                 .enqueue(new Callback<TagModels.TagResponseDto>() {
                     @Override
-                    public void onResponse(Call<TagModels.TagResponseDto> call,
-                                           Response<TagModels.TagResponseDto> response) {
+                    public void onResponse(Call<TagModels.TagResponseDto> call, Response<TagModels.TagResponseDto> response) {
                         if (response.isSuccessful() && response.body() != null) {
                             TagModels.TagResponseDto tag = response.body();
                             new Thread(() -> db.appDao().insertStockInScan(
-                                    buildEntity(scannedData, tag.getItemId(), tag.getItemName(), true))).start();
-                            runOnUiThread(() -> updateItemInList(scannedData, tag.getItemId(), tag.getItemName()));
+                                    buildEntity(cleanData, tag.getItemId(), tag.getItemName(), true))).start();
+                            runOnUiThread(() -> updateItemInList(cleanData, tag.getItemId(), tag.getItemName()));
                         } else {
                             runOnUiThread(() -> {
-                                removeItemFromList(scannedData);
+                                removeItemFromList(cleanData);
                                 playScanFeedback(2);
-                                showError("Tag not registered");
+                                showError(ErrorParser.getMessage(response));
                             });
                         }
                     }
@@ -513,7 +538,7 @@ public class StockInActivity extends BaseScannerActivity
                     @Override
                     public void onFailure(Call<TagModels.TagResponseDto> call, Throwable t) {
                         new Thread(() -> db.appDao().insertStockInScan(
-                                buildEntity(scannedData, "", "Loading...", false))).start();
+                                buildEntity(cleanData, "", "Loading...", false))).start();
                         handler.post(() -> showWarning("Saved offline"));
                     }
                 });

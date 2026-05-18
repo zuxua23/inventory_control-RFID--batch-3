@@ -87,4 +87,9 @@
     <string name="tvlokationstocktaking">Location: Plant 2</string>
     <string name="qtystocktakingadj">Qty: 0/100</string>
     <string name="etstock_taking">Stock Taking</string>
+    <string name="desc_scan_camera">Scan barcode using camera</string>
+    <string name="title_scan_camera">Scan Tag Barcode</string>
+    <string name="scan_hint">Point the camera at the barcode</string>
+    <string name="desc_close">Tutup</string>
+    <string name="desc_torch">Senter</string>
 </resources>

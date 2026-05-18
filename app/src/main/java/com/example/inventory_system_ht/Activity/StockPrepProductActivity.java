@@ -2,6 +2,7 @@ package com.example.inventory_system_ht.Activity;
 
 import android.annotation.SuppressLint;
 import android.app.Dialog;
+import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
@@ -24,6 +25,8 @@ import android.widget.Switch;
 import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -58,6 +61,7 @@ import com.example.inventory_system_ht.Models.PendingSubmitEntity;
 import com.example.inventory_system_ht.Models.StockPrepBulkRequest;
 import com.example.inventory_system_ht.Models.TagModels;
 import com.example.inventory_system_ht.R;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.gson.Gson;
 
 import java.text.SimpleDateFormat;
@@ -86,6 +90,7 @@ public class StockPrepProductActivity extends BaseScannerActivity
     private RecyclerView rvTags;
     private Spinner spinnerLocation, spinnerPower;
     private Button btnListProduct, btnSumProduct;
+    private FloatingActionButton fabScanCamera;
 
     private TagAdapter adapter;
     private SumProductPrepAdapter sumAdapter;
@@ -189,6 +194,7 @@ public class StockPrepProductActivity extends BaseScannerActivity
         spinnerPower = findViewById(R.id.spinnerPower);
         btnListProduct = findViewById(R.id.btnListProduct);
         btnSumProduct = findViewById(R.id.btnSumProduct);
+        fabScanCamera = findViewById(R.id.fabScanCamera);
 
         spinnerPower.setVisibility(View.GONE);
         switchRfid.setChecked(false);
@@ -387,7 +393,24 @@ public class StockPrepProductActivity extends BaseScannerActivity
                 });
             }).start();
         });
+        fabScanCamera.setOnClickListener(v -> {
+            if (switchRfid.isChecked()) switchRfid.setChecked(false);
+            cameraScanLauncher.launch(new Intent(this, BarcodeCameraActivity.class));
+        });
+
     }
+    private final ActivityResultLauncher<Intent> cameraScanLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                            String barcode = result.getData().getStringExtra(BarcodeCameraActivity.EXTRA_BARCODE);
+                            if (barcode != null && !barcode.isEmpty()) processScan(barcode);
+                        } else if (result.getResultCode() == BarcodeCameraActivity.RESULT_PERMISSION_DENIED) {
+                            showError("Camera permission denied");
+                        }
+                    }
+            );
 
     private void setupTabButtons() {
         setTabActive(true);

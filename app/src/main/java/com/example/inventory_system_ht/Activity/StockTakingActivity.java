@@ -2,6 +2,7 @@ package com.example.inventory_system_ht.Activity;
 
 import android.annotation.SuppressLint;
 import android.app.Dialog;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
@@ -19,6 +20,8 @@ import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -41,6 +44,7 @@ import com.example.inventory_system_ht.Helper.ScannerManager;
 import com.example.inventory_system_ht.Models.GeneralResponse;
 import com.example.inventory_system_ht.Models.StockTakingModels;
 import com.example.inventory_system_ht.R;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,6 +67,7 @@ public class StockTakingActivity extends BaseScannerActivity
     private RecyclerView rvTags;
     private TextView tvRemark, tvLocation, tvQty, tvSyncStatus;
     private Spinner spinnerPower;
+    private FloatingActionButton fabScanCamera;
 
     private ApiService api;
     private AppDatabase db;
@@ -151,6 +156,7 @@ public class StockTakingActivity extends BaseScannerActivity
         tvQty = findViewById(R.id.tvQty);
         tvSyncStatus = findViewById(R.id.tvSyncStatus);
         spinnerPower = findViewById(R.id.spinnerPower);
+        fabScanCamera = findViewById(R.id.fabScanCamera);
 
         spinnerPower.setVisibility(View.GONE);
         switchRfid.setChecked(false);
@@ -232,7 +238,6 @@ public class StockTakingActivity extends BaseScannerActivity
             } else {
                 RfidBulkHelper.closeInventory(scanner);
                 if (scanner != null) RfidBulkHelper.openBarcode(scanner, this);
-                // ✂️ Removed: showSagaFeedback("RFID OFF", true)
                 resultScan.setEnabled(true);
                 resultScan.requestFocus();
                 spinnerPower.setVisibility(View.GONE);
@@ -269,7 +274,24 @@ public class StockTakingActivity extends BaseScannerActivity
             }
             return true;
         });
+        fabScanCamera.setOnClickListener(v -> {
+            if (switchRfid.isChecked()) switchRfid.setChecked(false);
+            cameraScanLauncher.launch(new Intent(this, BarcodeCameraActivity.class));
+        });
+
     }
+    private final ActivityResultLauncher<Intent> cameraScanLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                            String barcode = result.getData().getStringExtra(BarcodeCameraActivity.EXTRA_BARCODE);
+                            if (barcode != null && !barcode.isEmpty()) processScan(barcode);
+                        } else if (result.getResultCode() == BarcodeCameraActivity.RESULT_PERMISSION_DENIED) {
+                            showError("Camera permission denied");
+                        }
+                    }
+            );
 
     // ─── Data Load ────────────────────────────────────────────────────────────
 

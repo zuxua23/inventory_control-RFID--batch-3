@@ -2,6 +2,7 @@ package com.example.inventory_system_ht.Activity;
 
 import android.annotation.SuppressLint;
 import android.app.Dialog;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
@@ -21,6 +22,8 @@ import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.work.Constraints;
@@ -47,6 +50,7 @@ import com.example.inventory_system_ht.Models.GeneralResponse;
 import com.example.inventory_system_ht.Models.PendingSubmitEntity;
 import com.example.inventory_system_ht.Models.TagModels;
 import com.example.inventory_system_ht.R;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.gson.Gson;
 
 import java.util.ArrayList;
@@ -66,6 +70,7 @@ public class TagRegisActivity extends BaseScannerActivity
     private Button btnClear, btnSubmitRegis;
     private RecyclerView rvTags;
     private Spinner spinnerPower;
+    private FloatingActionButton fabScanCamera;
 
     private TagRegisAdapter adapter;
     private List<TagModels.TagModel> registeredTagList;
@@ -129,6 +134,7 @@ public class TagRegisActivity extends BaseScannerActivity
         btnSubmitRegis = findViewById(R.id.btnSubmitRegis);
         rvTags = findViewById(R.id.rvTags);
         spinnerPower = findViewById(R.id.spinnerPower);
+        fabScanCamera = findViewById(R.id.fabScanCamera);
 
         spinnerPower.setVisibility(View.GONE);
     }
@@ -242,7 +248,13 @@ public class TagRegisActivity extends BaseScannerActivity
             if (registeredTagList.isEmpty()) { showWarning("No tags scanned"); return; }
             showBulkConfirmDialog();
         });
+
+        fabScanCamera.setOnClickListener(v -> {
+            if (switchRfid.isChecked()) switchRfid.setChecked(false);
+            cameraScanLauncher.launch(new Intent(this, BarcodeCameraActivity.class));
+        });
     }
+
 
     // ─── Scan Processing ──────────────────────────────────────────────────────
 
@@ -347,6 +359,18 @@ public class TagRegisActivity extends BaseScannerActivity
         });
         dialog.show();
     }
+    private final ActivityResultLauncher<Intent> cameraScanLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                            String barcode = result.getData().getStringExtra(BarcodeCameraActivity.EXTRA_BARCODE);
+                            if (barcode != null && !barcode.isEmpty()) processScannedData(barcode);
+                        } else if (result.getResultCode() == BarcodeCameraActivity.RESULT_PERMISSION_DENIED) {
+                            showError("Camera permission denied");
+                        }
+                    }
+            );
 
     private void showDeleteDialog(TagModels.TagModel tag, int position) {
         Dialog dialog = new Dialog(this);
@@ -391,3 +415,4 @@ public class TagRegisActivity extends BaseScannerActivity
         }
     }
 }
+
